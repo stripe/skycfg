@@ -1,0 +1,25 @@
+language: go
+go_import_path: github.com/stripe/skycfg
+go:
+  - "1.11"
+  - master
+env:
+  global:
+    - PROTOC_VERSION=3.6.1
+    - GO111MODULE=on
+
+install:
+  - mkdir -p "${TRAVIS_HOME}/third_party/protobuf-${PROTOC_VERSION}"
+  - |
+    (
+      cd "${TRAVIS_HOME}/third_party/protobuf-${PROTOC_VERSION}"
+      wget "https://github.com/google/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-${TRAVIS_OS_NAME}-x86_64.zip"
+      unzip "protoc-${PROTOC_VERSION}-${TRAVIS_OS_NAME}-x86_64.zip"
+    )
+  - export PATH="${TRAVIS_HOME}/third_party/protobuf-${PROTOC_VERSION}/bin:${PATH}"
+  - go get github.com/golang/protobuf/protoc-gen-go
+  - protoc --go_out="${TRAVIS_HOME}/gopath/src" --proto_path=testdata test_proto_v2.proto test_proto_v3.proto
+  - go get -t -v ./...
+
+script:
+  - go test -v ./...
