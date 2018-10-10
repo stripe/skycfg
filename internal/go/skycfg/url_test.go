@@ -17,7 +17,7 @@ type UrlTestCase struct {
 func TestEncodeQuery(t *testing.T) {
 	thread := new(skylark.Thread)
 	env := skylark.StringDict{
-		"url": urlModule(),
+		"url": UrlModule(),
 	}
 
 	testCases := []UrlTestCase{

@@ -22,7 +22,7 @@ func init() {
 
 func skyEval(t *testing.T, src string) skylark.Value {
 	globals := skylark.StringDict{
-		"proto": newProtoModule(),
+		"proto": NewProtoModule(nil),
 	}
 	val, err := skylark.Eval(&skylark.Thread{}, "", src, globals)
 	if err != nil {
@@ -174,7 +174,7 @@ func TestProtoMergeV3(t *testing.T) {
 func TestProtoMergeDiffTypes(t *testing.T) {
 	errorMsg := "proto.merge: types are not the same: got skycfg.test_proto.MessageV3 and skycfg.test_proto.MessageV2"
 	globals := skylark.StringDict{
-		"proto": newProtoModule(),
+		"proto": NewProtoModule(nil),
 	}
 	src, err := skylark.Eval(&skylark.Thread{}, "",
 		`proto.merge(proto.package("skycfg.test_proto").MessageV2(), proto.package("skycfg.test_proto").MessageV3())`, globals)
@@ -463,7 +463,7 @@ func TestMessageV3(t *testing.T) {
 
 func TestAttrValidation(t *testing.T) {
 	globals := skylark.StringDict{
-		"proto": newProtoModule(),
+		"proto": NewProtoModule(nil),
 	}
 	tests := []struct {
 		src     string

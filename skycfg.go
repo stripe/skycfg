@@ -13,6 +13,8 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/google/skylark"
 	"github.com/google/skylark/skylarkstruct"
+
+	impl "github.com/stripe/skycfg/internal/go/skycfg"
 )
 
 type FileReader interface {
@@ -61,7 +63,11 @@ type LoadOption interface {
 type loadOptions struct {
 	globals    skylark.StringDict
 	fileReader FileReader
-	protoRegistry unstableProtoRegistry
+	protoRegistry impl.ProtoRegistry
+}
+
+type unstableProtoRegistry interface {
+	impl.ProtoRegistry
 }
 
 type fnLoadOption func(*loadOptions)
@@ -95,22 +101,22 @@ func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
 }
 
 func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, error) {
-	protoModule := newProtoModule(nil /* TODO: registry from options */).(*protoModule)
+	protoModule := impl.NewProtoModule(nil /* TODO: registry from options */)
 	parsedOpts := &loadOptions{
 		globals: skylark.StringDict{
 			"fail":   skylark.NewBuiltin("fail", skyFail),
 			"proto":  protoModule,
 			"struct": skylark.NewBuiltin("struct", skylarkstruct.Make),
-			"json":   jsonModule(),
-			"yaml":   yamlModule(),
-			"url":    urlModule(),
+			"json":   impl.JsonModule(),
+			"yaml":   impl.YamlModule(),
+			"url":    impl.UrlModule(),
 		},
 		fileReader: LocalFileReader(filepath.Dir(filename)),
 	}
 	for _, opt := range opts {
 		opt.apply(parsedOpts)
 	}
-	protoModule.registry = parsedOpts.protoRegistry
+	protoModule.Registry = parsedOpts.protoRegistry
 	configLocals, err := loadImpl(ctx, parsedOpts, filename)
 	if err != nil {
 		return nil, err
@@ -192,9 +198,9 @@ func (c *Config) Main() ([]proto.Message, error) {
 	for key, value := range c.CtxVars {
 		vars.Set(skylark.String(key), value)
 	}
-	mainCtx := &skyModule{
-		name: "skycfg_ctx",
-		attrs: skylark.StringDict(map[string]skylark.Value{
+	mainCtx := &impl.Module{
+		Name: "skycfg_ctx",
+		Attrs: skylark.StringDict(map[string]skylark.Value{
 			"vars": vars,
 		}),
 	}
@@ -217,7 +223,7 @@ func (c *Config) Main() ([]proto.Message, error) {
 	var msgs []proto.Message
 	for ii := 0; ii < mainList.Len(); ii++ {
 		maybeMsg := mainList.Index(ii)
-		msg, ok := toProtoMessage(maybeMsg)
+		msg, ok := impl.ToProtoMessage(maybeMsg)
 		if !ok {
 			return nil, fmt.Errorf("`main' returned something that's not a protobuf (a %s)", maybeMsg.Type())
 		}

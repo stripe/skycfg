@@ -7,11 +7,11 @@ import (
 	"github.com/google/skylark"
 )
 
-// urlModule returns a Skylark module for URL helpers.
-func urlModule() skylark.Value {
-	return &skyModule{
-		name: "url",
-		attrs: skylark.StringDict{
+// UrlModule returns a Skylark module for URL helpers.
+func UrlModule() skylark.Value {
+	return &Module{
+		Name: "url",
+		Attrs: skylark.StringDict{
 			"encode_query": urlEncodeQuery(),
 		},
 	}

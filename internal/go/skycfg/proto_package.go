@@ -10,7 +10,7 @@ import (
 //
 // Protobuf packagess are conceptually similar to a C++ namespace or Ruby
 // module, in that they're aggregated from multiple .proto source files.
-func newProtoPackage(registry unstableProtoRegistry, name string) skylark.Value {
+func newProtoPackage(registry ProtoRegistry, name string) skylark.Value {
 	return &skyProtoPackage{
 		registry: registry,
 		name: name,
@@ -18,7 +18,7 @@ func newProtoPackage(registry unstableProtoRegistry, name string) skylark.Value 
 }
 
 type skyProtoPackage struct {
-	registry unstableProtoRegistry
+	registry ProtoRegistry
 	name string
 }
 

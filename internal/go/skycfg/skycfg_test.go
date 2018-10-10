@@ -1,4 +1,4 @@
-package skycfg
+package skycfg_test
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/skylark"
+
+	"github.com/stripe/skycfg"
 	pb "github.com/stripe/skycfg/test_proto"
 )
 
@@ -130,7 +132,7 @@ func TestSkycfgEndToEnd(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		config, err := Load(ctx, testCase.fileToLoad, WithFileReader(loader))
+		config, err := skycfg.Load(ctx, testCase.fileToLoad, skycfg.WithFileReader(loader))
 		if testCase.expLoadErr {
 			if err == nil {
 				t.Error(

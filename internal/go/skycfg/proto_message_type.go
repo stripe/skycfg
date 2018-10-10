@@ -14,7 +14,7 @@ import (
 //
 // The message type must have been registered with the protobuf library, and implement
 // the expected interfaces for a generated .pb.go message struct.
-func newMessageType(registry unstableProtoRegistry, name string) (skylark.Value, error) {
+func newMessageType(registry ProtoRegistry, name string) (skylark.Value, error) {
 	var goType reflect.Type
 	if registry == nil {
 		goType = proto.MessageType(name)
@@ -61,7 +61,7 @@ func newMessageType(registry unstableProtoRegistry, name string) (skylark.Value,
 // A Skylark built-in type representing a Protobuf message type. This is the
 // message type itself rather than any particular message value.
 type skyProtoMessageType struct {
-	registry unstableProtoRegistry
+	registry ProtoRegistry
 	fileDesc *descriptor_pb.FileDescriptorProto
 	msgDesc  *descriptor_pb.DescriptorProto
 

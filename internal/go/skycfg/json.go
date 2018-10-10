@@ -9,11 +9,11 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-// jsonModule returns a Skylark module for JSON helpers.
-func jsonModule() skylark.Value {
-	return &skyModule{
-		name: "json",
-		attrs: skylark.StringDict{
+// JsonModule returns a Skylark module for JSON helpers.
+func JsonModule() skylark.Value {
+	return &Module{
+		Name: "json",
+		Attrs: skylark.StringDict{
 			"marshal": jsonMarshal(),
 		},
 	}
@@ -39,11 +39,11 @@ func fnJsonMarshal(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	return skylark.String(buf.String()), nil
 }
 
-// yamlModule returns a Skylark module for YAML helpers.
-func yamlModule() skylark.Value {
-	return &skyModule{
-		name: "yaml",
-		attrs: skylark.StringDict{
+// YamlModule returns a Skylark module for YAML helpers.
+func YamlModule() skylark.Value {
+	return &Module{
+		Name: "yaml",
+		Attrs: skylark.StringDict{
 			"marshal": yamlMarshal(),
 		},
 	}

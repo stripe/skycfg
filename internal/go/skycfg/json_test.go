@@ -15,7 +15,7 @@ type TestCase struct {
 func TestSkyToJson(t *testing.T) {
 	thread := new(skylark.Thread)
 	env := skylark.StringDict{
-		"json": jsonModule(),
+		"json": JsonModule(),
 	}
 
 	testCases := []TestCase{
@@ -59,7 +59,7 @@ func TestSkyToJson(t *testing.T) {
 func TestSkyToYaml(t *testing.T) {
 	thread := new(skylark.Thread)
 	env := skylark.StringDict{
-		"yaml": yamlModule(),
+		"yaml": YamlModule(),
 	}
 
 	testCases := []TestCase{

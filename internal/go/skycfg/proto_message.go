@@ -60,7 +60,7 @@ func newSkyProtoMessage(msg proto.Message) *skyProtoMessage {
 	return wrapper
 }
 
-func toProtoMessage(val skylark.Value) (proto.Message, bool) {
+func ToProtoMessage(val skylark.Value) (proto.Message, bool) {
 	if msg, ok := val.(*skyProtoMessage); ok {
 		return msg.msg, true
 	}

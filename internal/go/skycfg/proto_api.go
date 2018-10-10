@@ -14,15 +14,15 @@ import (
 // UNSTABLE extension point for configuring how protobuf messages are loaded.
 //
 // This will be stabilized after the go-protobuf v2 API has reached GA.
-type unstableProtoRegistry interface {
+type ProtoRegistry interface {
 	// UNSTABLE lookup from full protobuf message name to a Go type of the
 	// generated message struct.
 	UnstableProtoMessageType(name string) (reflect.Type, error)
 }
 
-func newProtoModule(registry unstableProtoRegistry) skylark.Value {
-	mod := &protoModule{
-		registry: registry,
+func NewProtoModule(registry ProtoRegistry) *ProtoModule {
+	mod := &ProtoModule{
+		Registry: registry,
 		attrs: skylark.StringDict{
 			"clear":        skylark.NewBuiltin("proto.clear", fnProtoClear),
 			"clone":        skylark.NewBuiltin("proto.clone", fnProtoClone),
@@ -37,29 +37,29 @@ func newProtoModule(registry unstableProtoRegistry) skylark.Value {
 	return mod
 }
 
-type protoModule struct {
-	registry unstableProtoRegistry
+type ProtoModule struct {
+	Registry ProtoRegistry
 	attrs skylark.StringDict
 }
 
-var _ skylark.HasAttrs = (*protoModule)(nil)
+var _ skylark.HasAttrs = (*ProtoModule)(nil)
 
-func (mod *protoModule) String() string      { return fmt.Sprintf("<module %q>", "proto") }
-func (mod *protoModule) Type() string        { return "module" }
-func (mod *protoModule) Freeze()             { mod.attrs.Freeze() }
-func (mod *protoModule) Truth() skylark.Bool { return skylark.True }
-func (mod *protoModule) Hash() (uint32, error) {
+func (mod *ProtoModule) String() string      { return fmt.Sprintf("<module %q>", "proto") }
+func (mod *ProtoModule) Type() string        { return "module" }
+func (mod *ProtoModule) Freeze()             { mod.attrs.Freeze() }
+func (mod *ProtoModule) Truth() skylark.Bool { return skylark.True }
+func (mod *ProtoModule) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: %s", mod.Type())
 }
 
-func (mod *protoModule) Attr(name string) (skylark.Value, error) {
+func (mod *ProtoModule) Attr(name string) (skylark.Value, error) {
 	if val, ok := mod.attrs[name]; ok {
 		return val, nil
 	}
 	return nil, nil
 }
 
-func (mod *protoModule) AttrNames() []string {
+func (mod *ProtoModule) AttrNames() []string {
 	var names []string
 	for name := range mod.attrs {
 		names = append(names, name)
@@ -136,13 +136,13 @@ func fnProtoSetDefaults(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tup
 // Note: doesn't do any sort of input validation, because the go-protobuf
 // message registration data isn't currently exported in a useful way
 // (see https://github.com/golang/protobuf/issues/623).
-func (mod *protoModule) fnProtoPackage(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (mod *ProtoModule) fnProtoPackage(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var packageName string
 	if err := skylark.UnpackPositionalArgs("proto.package", args, kwargs, 1, &packageName); err != nil {
 		return nil, err
 	}
 	return &skyProtoPackage{
-		registry: mod.registry,
+		registry: mod.Registry,
 		name: packageName,
 	}, nil
 }
