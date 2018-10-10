@@ -10,13 +10,15 @@ import (
 //
 // Protobuf packagess are conceptually similar to a C++ namespace or Ruby
 // module, in that they're aggregated from multiple .proto source files.
-func newProtoPackage(name string) skylark.Value {
+func newProtoPackage(registry unstableProtoRegistry, name string) skylark.Value {
 	return &skyProtoPackage{
+		registry: registry,
 		name: name,
 	}
 }
 
 type skyProtoPackage struct {
+	registry unstableProtoRegistry
 	name string
 }
 
@@ -37,5 +39,5 @@ func (pkg *skyProtoPackage) AttrNames() []string {
 }
 
 func (pkg *skyProtoPackage) Attr(attrName string) (skylark.Value, error) {
-	return newMessageType(fmt.Sprintf("%s.%s", pkg.name, attrName))
+	return newMessageType(pkg.registry, fmt.Sprintf("%s.%s", pkg.name, attrName))
 }

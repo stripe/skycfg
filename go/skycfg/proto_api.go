@@ -3,6 +3,7 @@ package skycfg
 import (
 	"fmt"
 	"sort"
+	"reflect"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -10,22 +11,34 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
-func newProtoModule() skylark.Value {
-	return &protoModule{
+// UNSTABLE extension point for configuring how protobuf messages are loaded.
+//
+// This will be stabilized after the go-protobuf v2 API has reached GA.
+type unstableProtoRegistry interface {
+	// UNSTABLE lookup from full protobuf message name to a Go type of the
+	// generated message struct.
+	UnstableProtoMessageType(name string) (reflect.Type, error)
+}
+
+func newProtoModule(registry unstableProtoRegistry) skylark.Value {
+	mod := &protoModule{
+		registry: registry,
 		attrs: skylark.StringDict{
 			"clear":        skylark.NewBuiltin("proto.clear", fnProtoClear),
 			"clone":        skylark.NewBuiltin("proto.clone", fnProtoClone),
 			"merge":        skylark.NewBuiltin("proto.merge", fnProtoMerge),
-			"package":      skylark.NewBuiltin("proto.package", fnProtoPackage),
 			"set_defaults": skylark.NewBuiltin("proto.set_defaults", fnProtoSetDefaults),
 			"to_json":      skylark.NewBuiltin("proto.to_json", fnProtoToJson),
 			"to_text":      skylark.NewBuiltin("proto.to_text", fnProtoToText),
 			"to_yaml":      skylark.NewBuiltin("proto.to_json", fnProtoToYaml),
 		},
 	}
+	mod.attrs["package"] = skylark.NewBuiltin("proto.package", mod.fnProtoPackage)
+	return mod
 }
 
 type protoModule struct {
+	registry unstableProtoRegistry
 	attrs skylark.StringDict
 }
 
@@ -123,12 +136,13 @@ func fnProtoSetDefaults(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tup
 // Note: doesn't do any sort of input validation, because the go-protobuf
 // message registration data isn't currently exported in a useful way
 // (see https://github.com/golang/protobuf/issues/623).
-func fnProtoPackage(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func (mod *protoModule) fnProtoPackage(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var packageName string
 	if err := skylark.UnpackPositionalArgs("proto.package", args, kwargs, 1, &packageName); err != nil {
 		return nil, err
 	}
 	return &skyProtoPackage{
+		registry: mod.registry,
 		name: packageName,
 	}, nil
 }

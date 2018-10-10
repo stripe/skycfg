@@ -48,7 +48,8 @@ func (r *localFileReader) ReadFile(ctx context.Context, path string) ([]byte, er
 
 type Config struct {
 	filename string
-	symbols  skylark.StringDict
+	globals skylark.StringDict
+	locals skylark.StringDict
 
 	CtxVars skylark.StringDict
 }
@@ -60,6 +61,7 @@ type LoadOption interface {
 type loadOptions struct {
 	globals    skylark.StringDict
 	fileReader FileReader
+	protoRegistry unstableProtoRegistry
 }
 
 type fnLoadOption func(*loadOptions)
@@ -83,11 +85,21 @@ func WithFileReader(r FileReader) LoadOption {
 	})
 }
 
+func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
+	if r == nil {
+		panic("WithProtoRegistry: nil registry")
+	}
+	return fnLoadOption(func(opts *loadOptions) {
+		opts.protoRegistry = r
+	})
+}
+
 func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, error) {
+	protoModule := newProtoModule(nil /* TODO: registry from options */).(*protoModule)
 	parsedOpts := &loadOptions{
 		globals: skylark.StringDict{
 			"fail":   skylark.NewBuiltin("fail", skyFail),
-			"proto":  newProtoModule(),
+			"proto":  protoModule,
 			"struct": skylark.NewBuiltin("struct", skylarkstruct.Make),
 			"json":   jsonModule(),
 			"yaml":   yamlModule(),
@@ -98,13 +110,15 @@ func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, er
 	for _, opt := range opts {
 		opt.apply(parsedOpts)
 	}
-	configSymbols, err := loadImpl(ctx, parsedOpts, filename)
+	protoModule.registry = parsedOpts.protoRegistry
+	configLocals, err := loadImpl(ctx, parsedOpts, filename)
 	if err != nil {
 		return nil, err
 	}
 	return &Config{
 		filename: filename,
-		symbols:  configSymbols,
+		globals: parsedOpts.globals,
+		locals:  configLocals,
 	}, nil
 }
 
@@ -156,8 +170,16 @@ func (c *Config) Filename() string {
 	return c.filename
 }
 
+func (c *Config) Globals() skylark.StringDict {
+	return c.globals
+}
+
+func (c *Config) Locals() skylark.StringDict {
+	return c.locals
+}
+
 func (c *Config) Main() ([]proto.Message, error) {
-	mainVal, ok := c.symbols["main"]
+	mainVal, ok := c.locals["main"]
 	if !ok {
 		return nil, fmt.Errorf("no `main' function found in %q", c.filename)
 	}

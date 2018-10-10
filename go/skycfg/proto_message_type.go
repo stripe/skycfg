@@ -14,10 +14,19 @@ import (
 //
 // The message type must have been registered with the protobuf library, and implement
 // the expected interfaces for a generated .pb.go message struct.
-func newMessageType(name string) (skylark.Value, error) {
-	goType := proto.MessageType(name)
+func newMessageType(registry unstableProtoRegistry, name string) (skylark.Value, error) {
+	var goType reflect.Type
+	if registry == nil {
+		goType = proto.MessageType(name)
+	} else {
+		var err error
+		goType, err = registry.UnstableProtoMessageType(name)
+		if err != nil {
+			return nil, err
+		}
+	}
 	if goType == nil {
-		return nil, fmt.Errorf("not found") // TODO
+		return nil, fmt.Errorf("Protobuf message type %q not found", name)
 	}
 
 	var emptyMsg descriptor.Message
@@ -35,6 +44,7 @@ func newMessageType(name string) (skylark.Value, error) {
 	}
 	fileDesc, msgDesc := descriptor.ForMessage(emptyMsg)
 	mt := &skyProtoMessageType{
+		registry: registry,
 		fileDesc: fileDesc,
 		msgDesc:  msgDesc,
 		emptyMsg: emptyMsg,
@@ -51,6 +61,7 @@ func newMessageType(name string) (skylark.Value, error) {
 // A Skylark built-in type representing a Protobuf message type. This is the
 // message type itself rather than any particular message value.
 type skyProtoMessageType struct {
+	registry unstableProtoRegistry
 	fileDesc *descriptor_pb.FileDescriptorProto
 	msgDesc  *descriptor_pb.DescriptorProto
 
@@ -79,7 +90,7 @@ func (mt *skyProtoMessageType) Name() string {
 }
 
 func (mt *skyProtoMessageType) Attr(attrName string) (skylark.Value, error) {
-	return newMessageType(fmt.Sprintf("%s.%s", mt.Name(), attrName))
+	return newMessageType(mt.registry, fmt.Sprintf("%s.%s", mt.Name(), attrName))
 }
 
 func (mt *skyProtoMessageType) AttrNames() []string {
