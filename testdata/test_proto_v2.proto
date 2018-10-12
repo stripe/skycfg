@@ -20,4 +20,18 @@ message MessageV2 {
 
   map<string, string>    map_string = 12;
   map<string, MessageV2> map_submsg = 13;
+
+  enum NestedEnum {
+    NESTED_ENUM_A = 0;
+    NESTED_ENUM_B = 1;
+  }
+  optional ToplevelEnumV2 f_toplevel_enum = 14;
+  optional NestedEnum f_nested_enum = 15;
+
+  // NEXT: 16
+}
+
+enum ToplevelEnumV2 {
+  TOPLEVEL_ENUM_V2_A = 0;
+  TOPLEVEL_ENUM_V2_B = 1;
 }

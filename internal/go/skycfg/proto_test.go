@@ -280,6 +280,8 @@ func TestMessageAttrNames(t *testing.T) {
 		"r_submsg",
 		"map_string",
 		"map_submsg",
+		"f_toplevel_enum",
+		"f_nested_enum",
 	}
 	sort.Strings(want)
 	if !reflect.DeepEqual(want, got) {
@@ -314,6 +316,8 @@ func TestMessageV2(t *testing.T) {
 				f_string = "map_submsg val",
 			),
 		},
+		f_toplevel_enum = proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B,
+		f_nested_enum = proto.package("skycfg.test_proto").MessageV2.NestedEnum.NESTED_ENUM_B,
 	)`)
 	gotMsg := val.(*skyProtoMessage).msg
 	wantMsg := &pb.MessageV2{
@@ -340,6 +344,8 @@ func TestMessageV2(t *testing.T) {
 				FString: proto.String("map_submsg val"),
 			},
 		},
+		FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_B.Enum(),
+		FNestedEnum: pb.MessageV2_NESTED_ENUM_B.Enum(),
 	}
 	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
 		t.Fatalf("diff from expected message:\n%s", diff)
@@ -359,6 +365,8 @@ func TestMessageV2(t *testing.T) {
 		"r_submsg":   `[<skycfg.test_proto.MessageV2 f_string:"string in r_submsg" >]`,
 		"map_string": `{"map_string key": "map_string val"}`,
 		"map_submsg": `{"map_submsg key": <skycfg.test_proto.MessageV2 f_string:"map_submsg val" >}`,
+		"f_toplevel_enum": `<skycfg.test_proto.ToplevelEnumV2 TOPLEVEL_ENUM_V2_B=1>`,
+		"f_nested_enum": `<skycfg.test_proto.MessageV2.NestedEnum NESTED_ENUM_B=1>`,
 	}
 	attrs := val.(skylark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {
@@ -370,7 +378,6 @@ func TestMessageV2(t *testing.T) {
 		if wantAttr != gotAttr {
 			t.Errorf("val.Attr(%q): wanted %q, got %q", attrName, wantAttr, gotAttr)
 		}
-
 	}
 }
 
@@ -401,6 +408,8 @@ func TestMessageV3(t *testing.T) {
 				f_string = "map_submsg val",
 			),
 		},
+		f_toplevel_enum = proto.package("skycfg.test_proto").ToplevelEnumV3.TOPLEVEL_ENUM_V3_B,
+		f_nested_enum = proto.package("skycfg.test_proto").MessageV3.NestedEnum.NESTED_ENUM_B,
 	)`)
 	gotMsg := val.(*skyProtoMessage).msg
 	wantMsg := &pb.MessageV3{
@@ -427,6 +436,8 @@ func TestMessageV3(t *testing.T) {
 				FString: "map_submsg val",
 			},
 		},
+		FToplevelEnum: pb.ToplevelEnumV3_TOPLEVEL_ENUM_V3_B,
+		FNestedEnum: pb.MessageV3_NESTED_ENUM_B,
 	}
 	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
 		t.Fatalf("diff from expected message:\n%s", diff)
@@ -446,6 +457,8 @@ func TestMessageV3(t *testing.T) {
 		"r_submsg":   `[<skycfg.test_proto.MessageV3 f_string:"string in r_submsg" >]`,
 		"map_string": `{"map_string key": "map_string val"}`,
 		"map_submsg": `{"map_submsg key": <skycfg.test_proto.MessageV3 f_string:"map_submsg val" >}`,
+		"f_toplevel_enum": `<skycfg.test_proto.ToplevelEnumV3 TOPLEVEL_ENUM_V3_B=1>`,
+		"f_nested_enum": `<skycfg.test_proto.MessageV3.NestedEnum NESTED_ENUM_B=1>`,
 	}
 	attrs := val.(skylark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {

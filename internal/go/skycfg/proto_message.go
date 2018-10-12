@@ -126,6 +126,7 @@ func (msg *skyProtoMessage) SetField(name string, sky skylark.Value) error {
 	if err := msg.checkMutable("set field of"); err != nil {
 		return err
 	}
+	delete(msg.attrCache, name)
 	goStruct.FieldByName(prop.Name).Set(val)
 	return nil
 }
@@ -175,7 +176,8 @@ func scalarToSkylark(val reflect.Value) skylark.Value {
 		}
 		val = val.Elem()
 	}
-	switch f := val.Interface().(type) {
+	iface := val.Interface()
+	switch f := iface.(type) {
 	case int32:
 		return skylark.MakeInt64(int64(f))
 	case int64:
@@ -192,9 +194,15 @@ func scalarToSkylark(val reflect.Value) skylark.Value {
 		return skylark.String(f)
 	case bool:
 		return skylark.Bool(f)
-	default:
-		return nil
 	}
+	if enum, ok := iface.(protoEnum); ok {
+		return &skyProtoEnumValue{
+			typeName:  enumTypeName(enum),
+			valueName: enum.String(),
+			value:     val.Convert(reflect.TypeOf(int32(0))).Interface().(int32),
+		}
+	}
+	return nil
 }
 
 func valueFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error) {
@@ -218,6 +226,8 @@ func valueFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error) 
 			return reflect.Value{}, typeError(t, sky)
 		}
 		return reflect.Value{}, fmt.Errorf("TypeError: value None can't be assigned to type `%s' in proto3 mode.", t)
+	case *skyProtoEnumValue:
+		return enumFromSkylark(t, sky)
 	case *skyProtoMessage:
 		if reflect.TypeOf(sky.msg) == t {
 			val := reflect.New(t.Elem())
@@ -321,13 +331,36 @@ func scalarFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error)
 	return reflect.Value{}, typeError(t, sky)
 }
 
+func enumFromSkylark(t reflect.Type, sky *skyProtoEnumValue) (reflect.Value, error) {
+	if t.Kind() == reflect.Ptr {
+		val := reflect.New(t.Elem())
+		elem, err := enumFromSkylark(t.Elem(), sky)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+		val.Elem().Set(elem)
+		return val, nil
+	}
+	if t.Kind() == reflect.Int32 {
+		if enum, ok := reflect.Zero(t).Interface().(protoEnum); ok {
+			if enumTypeName(enum) == sky.typeName {
+				return reflect.ValueOf(sky.value).Convert(t), nil
+			}
+		}
+	}
+	return reflect.Value{}, typeError(t, sky)
+}
+
 func typeName(t reflect.Type) string {
 	// Special-case protobuf types to get more useful error messages when
 	// the wrong protobuf type is assigned.
 	typeName := t.String()
 	messageType := reflect.TypeOf((*proto.Message)(nil)).Elem()
+	enumType := reflect.TypeOf((*protoEnum)(nil)).Elem()
 	if t.Implements(messageType) {
 		typeName = proto.MessageName(reflect.Zero(t).Interface().(proto.Message))
+	} else if t.Implements(enumType) {
+		typeName = enumTypeName(reflect.Zero(t).Interface().(protoEnum))
 	}
 	return typeName
 }

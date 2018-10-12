@@ -3,6 +3,7 @@ package skycfg
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/google/skylark"
 )
 
@@ -39,5 +40,12 @@ func (pkg *skyProtoPackage) AttrNames() []string {
 }
 
 func (pkg *skyProtoPackage) Attr(attrName string) (skylark.Value, error) {
-	return newMessageType(pkg.registry, fmt.Sprintf("%s.%s", pkg.name, attrName))
+	fullName := fmt.Sprintf("%s.%s", pkg.name, attrName)
+	if ev := proto.EnumValueMap(fullName); ev != nil {
+		return &skyProtoEnumType{
+			name: fullName,
+			valueMap: ev,
+		}, nil
+	}
+	return newMessageType(pkg.registry, fullName)
 }

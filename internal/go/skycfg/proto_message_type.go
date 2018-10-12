@@ -2,6 +2,7 @@ package skycfg
 
 import (
 	"fmt"
+	"strings"
 	"reflect"
 
 	"github.com/golang/protobuf/descriptor"
@@ -90,7 +91,21 @@ func (mt *skyProtoMessageType) Name() string {
 }
 
 func (mt *skyProtoMessageType) Attr(attrName string) (skylark.Value, error) {
-	return newMessageType(mt.registry, fmt.Sprintf("%s.%s", mt.Name(), attrName))
+	msgName := fmt.Sprintf("%s.%s", mt.msgDesc.GetName(), attrName)
+	enumName := strings.Replace(msgName, ".", "_", -1)
+	if pkg := mt.fileDesc.GetPackage(); pkg != "" {
+		msgName = fmt.Sprintf("%s.%s", pkg, msgName)
+		enumName = fmt.Sprintf("%s.%s", pkg, enumName)
+	}
+
+	if ev := proto.EnumValueMap(enumName); ev != nil {
+		return &skyProtoEnumType{
+			name: msgName, // note: not enumName, use dotted name here
+			valueMap: ev,
+		}, nil
+	}
+
+	return newMessageType(mt.registry, msgName)
 }
 
 func (mt *skyProtoMessageType) AttrNames() []string {
