@@ -2,8 +2,8 @@ package skycfg
 
 import (
 	"fmt"
-	"sort"
 	"reflect"
+	"sort"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -18,6 +18,9 @@ type ProtoRegistry interface {
 	// UNSTABLE lookup from full protobuf message name to a Go type of the
 	// generated message struct.
 	UnstableProtoMessageType(name string) (reflect.Type, error)
+
+	// UNSTABLE lookup from go-protobuf enum name to the name->value map.
+	UnstableEnumValueMap(name string) map[string]int32
 }
 
 func NewProtoModule(registry ProtoRegistry) *ProtoModule {
@@ -39,7 +42,7 @@ func NewProtoModule(registry ProtoRegistry) *ProtoModule {
 
 type ProtoModule struct {
 	Registry ProtoRegistry
-	attrs skylark.StringDict
+	attrs    skylark.StringDict
 }
 
 var _ skylark.HasAttrs = (*ProtoModule)(nil)
@@ -143,7 +146,7 @@ func (mod *ProtoModule) fnProtoPackage(t *skylark.Thread, fn *skylark.Builtin, a
 	}
 	return &skyProtoPackage{
 		registry: mod.Registry,
-		name: packageName,
+		name:     packageName,
 	}, nil
 }
 

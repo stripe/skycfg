@@ -1,6 +1,7 @@
 module github.com/stripe/skycfg
 
 require (
+	github.com/gogo/protobuf v1.1.1
 	github.com/golang/protobuf v1.2.0
 	github.com/google/skylark v0.0.0-20181005144900-2320ce69c4b8
 	github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348

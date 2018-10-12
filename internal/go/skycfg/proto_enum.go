@@ -1,20 +1,20 @@
 package skycfg
 
 import (
-	"sort"
 	"bytes"
-	"strings"
 	"compress/gzip"
-	"io/ioutil"
 	"fmt"
+	"io/ioutil"
+	"sort"
+	"strings"
 
-	"github.com/google/skylark"
 	"github.com/golang/protobuf/proto"
 	descriptor_pb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	"github.com/google/skylark"
 )
 
 type skyProtoEnumType struct {
-	name string
+	name     string
 	valueMap map[string]int32
 }
 
@@ -47,9 +47,9 @@ func (t *skyProtoEnumType) AttrNames() []string {
 }
 
 type skyProtoEnumValue struct {
-	typeName string
+	typeName  string
 	valueName string
-	value int32
+	value     int32
 }
 
 func (v *skyProtoEnumValue) String() string {
@@ -100,7 +100,7 @@ func enumTypeName(enum protoEnum) string {
 		chunks = append(chunks, enumType.GetName())
 	} else {
 		msgDesc := fileDesc.MessageType[path[0]]
-		for ii := 1; ii < len(path) - 1; ii++ {
+		for ii := 1; ii < len(path)-1; ii++ {
 			chunks = append(chunks, msgDesc.GetName())
 			msgDesc = msgDesc.NestedType[path[ii]]
 		}

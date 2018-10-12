@@ -1,10 +1,9 @@
+github.com/gogo/protobuf v1.1.1 h1:72R+M5VuhED/KujmZVcIquuo8mBgX4oVda//DQb3PXo=
+github.com/gogo/protobuf v1.1.1/go.mod h1:r8qH/GZQm5c6nD/R0oafs1akxWv10x8SbQlK7atdtwQ=
 github.com/golang/protobuf v1.2.0 h1:P3YflyNX/ehuJFLhxviNdFxQPkGK5cDcApsge1SqnvM=
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
-github.com/google/skylark v0.0.0-20180918192949-ea6a6cb3d5aa h1:9KHAqoD+4GbuXeWOioTA0vw2VeeZku1j+bJRyRtHb6E=
-github.com/google/skylark v0.0.0-20180918192949-ea6a6cb3d5aa/go.mod h1:CKSX6SxHW1vp20ZNaeGe3TFFBIwCG6vaYrpAiOzX+NA=
 github.com/google/skylark v0.0.0-20181005144900-2320ce69c4b8 h1:yZrNpuy1q9hynqBgg8nZCtYRdoKFQhIRcECVK+KxPnE=
 github.com/google/skylark v0.0.0-20181005144900-2320ce69c4b8/go.mod h1:CKSX6SxHW1vp20ZNaeGe3TFFBIwCG6vaYrpAiOzX+NA=
-github.com/jmillikin-stripe/godebug v0.0.0-20180620173319-8279e1966bc1 h1:JgsVrDAUy59N248f3l4RGZ0hij5u1HTit8iJr1mFSBY=
 github.com/jmillikin-stripe/godebug v0.0.0-20180620173319-8279e1966bc1/go.mod h1:gFqr/IKD8P+Hluq9gThCR944BAu6jUqd5H/R3PrPfuM=
 github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348 h1:MtvEpTB6LX3vkb4ax0b5D2DHbNAUsen0Gx5wZoq3lV4=
 github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348/go.mod h1:B69LEHPfb2qLo0BaaOLcbitczOKLWTsrBG9LczfCD4k=

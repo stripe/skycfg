@@ -36,6 +36,16 @@ func (*protoRegistry) UnstableProtoMessageType(name string) (reflect.Type, error
 	return nil, nil
 }
 
+func (*protoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
+	if ev := proto.EnumValueMap(name); ev != nil {
+		return ev
+	}
+	if ev := gogo_proto.EnumValueMap(name); ev != nil {
+		return ev
+	}
+	return nil
+}
+
 func main() {
 	flag.Parse()
 	argv := flag.Args()

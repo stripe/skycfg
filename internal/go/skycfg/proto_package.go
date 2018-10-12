@@ -14,13 +14,13 @@ import (
 func newProtoPackage(registry ProtoRegistry, name string) skylark.Value {
 	return &skyProtoPackage{
 		registry: registry,
-		name: name,
+		name:     name,
 	}
 }
 
 type skyProtoPackage struct {
 	registry ProtoRegistry
-	name string
+	name     string
 }
 
 func (pkg *skyProtoPackage) String() string      { return fmt.Sprintf("<proto.Package %q>", pkg.name) }
@@ -43,7 +43,7 @@ func (pkg *skyProtoPackage) Attr(attrName string) (skylark.Value, error) {
 	fullName := fmt.Sprintf("%s.%s", pkg.name, attrName)
 	if ev := proto.EnumValueMap(fullName); ev != nil {
 		return &skyProtoEnumType{
-			name: fullName,
+			name:     fullName,
 			valueMap: ev,
 		}, nil
 	}

@@ -2,8 +2,8 @@ package skycfg
 
 import (
 	"fmt"
-	"strings"
 	"reflect"
+	"strings"
 
 	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
@@ -11,20 +11,27 @@ import (
 	"github.com/google/skylark"
 )
 
+type defaultProtoRegistry struct{}
+
+func (*defaultProtoRegistry) UnstableProtoMessageType(name string) (reflect.Type, error) {
+	return proto.MessageType(name), nil
+}
+
+func (*defaultProtoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
+	return proto.EnumValueMap(name)
+}
+
 // NewMessageType creates a Skylark value representing a named Protobuf message type.
 //
 // The message type must have been registered with the protobuf library, and implement
 // the expected interfaces for a generated .pb.go message struct.
 func newMessageType(registry ProtoRegistry, name string) (skylark.Value, error) {
-	var goType reflect.Type
 	if registry == nil {
-		goType = proto.MessageType(name)
-	} else {
-		var err error
-		goType, err = registry.UnstableProtoMessageType(name)
-		if err != nil {
-			return nil, err
-		}
+		registry = &defaultProtoRegistry{}
+	}
+	goType, err := registry.UnstableProtoMessageType(name)
+	if err != nil {
+		return nil, err
 	}
 	if goType == nil {
 		return nil, fmt.Errorf("Protobuf message type %q not found", name)
@@ -98,9 +105,13 @@ func (mt *skyProtoMessageType) Attr(attrName string) (skylark.Value, error) {
 		enumName = fmt.Sprintf("%s.%s", pkg, enumName)
 	}
 
-	if ev := proto.EnumValueMap(enumName); ev != nil {
+	registry := mt.registry
+	if registry == nil {
+		registry = &defaultProtoRegistry{}
+	}
+	if ev := registry.UnstableEnumValueMap(enumName); ev != nil {
 		return &skyProtoEnumType{
-			name: msgName, // note: not enumName, use dotted name here
+			name:     msgName, // note: not enumName, use dotted name here
 			valueMap: ev,
 		}, nil
 	}

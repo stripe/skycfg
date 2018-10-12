@@ -1,0 +1,44 @@
+syntax = "proto2";
+
+package skycfg.test_proto;
+
+import "gogo.proto";
+import "test_proto_v2.proto";
+
+option go_package = "github.com/stripe/skycfg/test_proto";
+
+message MessageGogo {
+  option (gogoproto.sizer) = false;
+  option (gogoproto.marshaler) = false;
+  option (gogoproto.unmarshaler) = false;
+
+  optional int32  f_int32   = 1;
+  optional int64  f_int64   = 2;
+  optional uint32 f_uint32  = 3;
+  optional uint64 f_uint64  = 4;
+  optional float  f_float32 = 5;
+  optional double f_float64 = 6;
+  optional string f_string  = 7 [default="default_str"];;
+  optional bool   f_bool    = 8;
+
+  optional MessageV2 f_submsg = 9 [
+    (gogoproto.nullable) = false
+  ];
+
+  repeated string        r_string = 10;
+  repeated MessageV2     r_submsg = 11 [
+    (gogoproto.nullable) = false
+  ];
+
+  map<string, string>    map_string = 12;
+  map<string, MessageV2> map_submsg = 13;
+
+  enum NestedEnum {
+    NESTED_ENUM_A = 0;
+    NESTED_ENUM_B = 1;
+  }
+  optional ToplevelEnumV2 f_toplevel_enum = 14;
+  optional NestedEnum f_nested_enum = 15;
+
+  // NEXT: 16
+}
