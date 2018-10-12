@@ -50,8 +50,8 @@ func (r *localFileReader) ReadFile(ctx context.Context, path string) ([]byte, er
 
 type Config struct {
 	filename string
-	globals skylark.StringDict
-	locals skylark.StringDict
+	globals  skylark.StringDict
+	locals   skylark.StringDict
 
 	CtxVars skylark.StringDict
 }
@@ -61,8 +61,8 @@ type LoadOption interface {
 }
 
 type loadOptions struct {
-	globals    skylark.StringDict
-	fileReader FileReader
+	globals       skylark.StringDict
+	fileReader    FileReader
 	protoRegistry impl.ProtoRegistry
 }
 
@@ -105,9 +105,10 @@ func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, er
 	parsedOpts := &loadOptions{
 		globals: skylark.StringDict{
 			"fail":   skylark.NewBuiltin("fail", skyFail),
+			"hash":   impl.HashModule(),
+			"json":   impl.JsonModule(),
 			"proto":  protoModule,
 			"struct": skylark.NewBuiltin("struct", skylarkstruct.Make),
-			"json":   impl.JsonModule(),
 			"yaml":   impl.YamlModule(),
 			"url":    impl.UrlModule(),
 		},
@@ -123,8 +124,8 @@ func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, er
 	}
 	return &Config{
 		filename: filename,
-		globals: parsedOpts.globals,
-		locals:  configLocals,
+		globals:  parsedOpts.globals,
+		locals:   configLocals,
 	}, nil
 }
 
