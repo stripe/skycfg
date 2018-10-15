@@ -91,7 +91,7 @@ func main() {
 			args[1].Call("err", err.Error())
 			return
 		}
-		messages, err := config.Main()
+		messages, err := config.Main(context.Background())
 		if err != nil {
 			args[1].Call("err", err.Error())
 			return

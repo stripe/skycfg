@@ -89,10 +89,10 @@ func fnProtoClear(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kw
 // Creates a deep copy of a protobuf.
 func fnProtoClone(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
 	var msg *skyProtoMessage
-	if err := wantSingleProtoMessage("proto.clear", args, kwargs, &msg); err != nil {
+	if err := wantSingleProtoMessage("proto.clone", args, kwargs, &msg); err != nil {
 		return nil, err
 	}
-	return newSkyProtoMessage(proto.Clone(msg.msg)), nil
+	return NewSkyProtoMessage(proto.Clone(msg.msg)), nil
 }
 
 // Implementation of the `proto.merge()` built-in function.

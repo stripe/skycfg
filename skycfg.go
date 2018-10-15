@@ -48,16 +48,22 @@ func (r *localFileReader) ReadFile(ctx context.Context, path string) ([]byte, er
 	return ioutil.ReadFile(path)
 }
 
+func NewProtoMessage(msg proto.Message) skylark.Value {
+	return impl.NewSkyProtoMessage(msg)
+}
+
+func AsProtoMessage(v skylark.Value) (proto.Message, bool) {
+	return impl.ToProtoMessage(v)
+}
+
 type Config struct {
 	filename string
 	globals  skylark.StringDict
 	locals   skylark.StringDict
-
-	CtxVars skylark.StringDict
 }
 
 type LoadOption interface {
-	apply(*loadOptions)
+	applyLoad(*loadOptions)
 }
 
 type loadOptions struct {
@@ -66,13 +72,13 @@ type loadOptions struct {
 	protoRegistry impl.ProtoRegistry
 }
 
+type fnLoadOption func(*loadOptions)
+
+func (fn fnLoadOption) applyLoad(opts *loadOptions) { fn(opts) }
+
 type unstableProtoRegistry interface {
 	impl.ProtoRegistry
 }
-
-type fnLoadOption func(*loadOptions)
-
-func (fn fnLoadOption) apply(opts *loadOptions) { fn(opts) }
 
 func WithGlobals(globals skylark.StringDict) LoadOption {
 	return fnLoadOption(func(opts *loadOptions) {
@@ -115,7 +121,7 @@ func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, er
 		fileReader: LocalFileReader(filepath.Dir(filename)),
 	}
 	for _, opt := range opts {
-		opt.apply(parsedOpts)
+		opt.applyLoad(parsedOpts)
 	}
 	protoModule.Registry = parsedOpts.protoRegistry
 	configLocals, err := loadImpl(ctx, parsedOpts, filename)
@@ -185,7 +191,33 @@ func (c *Config) Locals() skylark.StringDict {
 	return c.locals
 }
 
-func (c *Config) Main() ([]proto.Message, error) {
+type ExecOption interface {
+	applyExec(*execOptions)
+}
+
+type execOptions struct {
+	vars *skylark.Dict
+}
+
+type fnExecOption func(*execOptions)
+
+func (fn fnExecOption) applyExec(opts *execOptions) { fn(opts) }
+
+func WithVars(vars skylark.StringDict) ExecOption {
+	return fnExecOption(func(opts *execOptions) {
+		for key, value := range vars {
+			opts.vars.Set(skylark.String(key), value)
+		}
+	})
+}
+
+func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message, error) {
+	parsedOpts := &execOptions{
+		vars: &skylark.Dict{},
+	}
+	for _, opt := range opts {
+		opt.applyExec(parsedOpts)
+	}
 	mainVal, ok := c.locals["main"]
 	if !ok {
 		return nil, fmt.Errorf("no `main' function found in %q", c.filename)
@@ -195,19 +227,15 @@ func (c *Config) Main() ([]proto.Message, error) {
 		return nil, fmt.Errorf("`main' must be a function (got a %s)", mainVal.Type())
 	}
 
-	vars := &skylark.Dict{}
-	for key, value := range c.CtxVars {
-		vars.Set(skylark.String(key), value)
+	thread := &skylark.Thread{
+		Print: skyPrint,
 	}
+	thread.SetLocal("context", ctx)
 	mainCtx := &impl.Module{
 		Name: "skycfg_ctx",
 		Attrs: skylark.StringDict(map[string]skylark.Value{
-			"vars": vars,
+			"vars": parsedOpts.vars,
 		}),
-	}
-
-	thread := &skylark.Thread{
-		Print: skyPrint,
 	}
 	args := skylark.Tuple([]skylark.Value{mainCtx})
 	mainVal, err := main.Call(thread, args, nil)
@@ -224,7 +252,7 @@ func (c *Config) Main() ([]proto.Message, error) {
 	var msgs []proto.Message
 	for ii := 0; ii < mainList.Len(); ii++ {
 		maybeMsg := mainList.Index(ii)
-		msg, ok := impl.ToProtoMessage(maybeMsg)
+		msg, ok := AsProtoMessage(maybeMsg)
 		if !ok {
 			return nil, fmt.Errorf("`main' returned something that's not a protobuf (a %s)", maybeMsg.Type())
 		}

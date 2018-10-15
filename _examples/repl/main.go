@@ -96,7 +96,7 @@ usage: %s FILENAME
 	}
 
 	var jsonMarshaler = &jsonpb.Marshaler{OrigName: true}
-	protos, err := config.Main()
+	protos, err := config.Main(context.Background())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error evaluating %q: %v\n", config.Filename(), err)
 		os.Exit(1)

@@ -138,7 +138,7 @@ func (mt *skyProtoMessageType) Call(thread *skylark.Thread, args skylark.Tuple, 
 		return nil, err
 	}
 
-	wrapper := newSkyProtoMessage(proto.Clone(mt.emptyMsg))
+	wrapper := NewSkyProtoMessage(proto.Clone(mt.emptyMsg))
 
 	// Parse the kwarg set into a map[string]skylark.Value, containing one
 	// entry for each provided kwarg. Keys are the original protobuf field names.

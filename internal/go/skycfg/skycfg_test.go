@@ -155,8 +155,7 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			}
 		}
 
-		config.CtxVars = testCase.vars
-		protos, err := config.Main()
+		protos, err := config.Main(context.Background(), skycfg.WithVars(testCase.vars))
 
 		if testCase.expExecErr {
 			if err == nil {

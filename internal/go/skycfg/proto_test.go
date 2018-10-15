@@ -754,7 +754,7 @@ func TestListMutation(t *testing.T) {
 			RString: []string{"a", "b", "c"},
 		}
 		globals := skylark.StringDict{
-			"msg": newSkyProtoMessage(msg),
+			"msg": NewSkyProtoMessage(msg),
 		}
 		_, err := skylark.Eval(&skylark.Thread{}, "", test.src, globals)
 		if test.wantErr != "" {
@@ -834,7 +834,7 @@ func TestMapMutation(t *testing.T) {
 			},
 		}
 		globals := skylark.StringDict{
-			"msg": newSkyProtoMessage(msg),
+			"msg": NewSkyProtoMessage(msg),
 		}
 		_, err := skylark.Eval(&skylark.Thread{}, "", test.src, globals)
 		if test.wantErr != "" {
