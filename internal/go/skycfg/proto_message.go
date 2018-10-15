@@ -8,6 +8,7 @@ import (
 
 	"github.com/golang/protobuf/proto"
 	"github.com/google/skylark"
+	"github.com/google/skylark/syntax"
 )
 
 // A Skylark built-in type representing a Protobuf message. Provides attributes
@@ -398,6 +399,7 @@ var _ skylark.Sequence = (*protoRepeated)(nil)
 var _ skylark.Indexable = (*protoRepeated)(nil)
 var _ skylark.HasAttrs = (*protoRepeated)(nil)
 var _ skylark.HasSetIndex = (*protoRepeated)(nil)
+var _ skylark.HasBinary = (*protoRepeated)(nil)
 
 func (r *protoRepeated) Attr(name string) (skylark.Value, error) {
 	wrapper, ok := listMethods[name]
@@ -542,6 +544,27 @@ func (r *protoRepeated) SetIndex(i int, v skylark.Value) error {
 	}
 	r.field.Index(i).Set(goVal)
 	return nil
+}
+
+func (r *protoRepeated) Binary(op syntax.Token, y skylark.Value, side skylark.Side) (skylark.Value, error) {
+	if op == syntax.PLUS {
+		if side == skylark.Left {
+			switch y := y.(type) {
+			case *skylark.List:
+				return skylark.Binary(op, r.list, y)
+			case *protoRepeated:
+				return skylark.Binary(op, r.list, y.list)
+			}
+			return nil, nil
+		}
+		if side == skylark.Right {
+			if _, ok := y.(*skylark.List); ok {
+				return skylark.Binary(op, y, r.list)
+			}
+			return nil, nil
+		}
+	}
+	return nil, nil
 }
 
 type protoMap struct {
