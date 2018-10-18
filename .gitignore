@@ -1,3 +1,4 @@
+.DS_Store
 .vscode
 _examples/repl/repl
 _examples/wasm/wasm
