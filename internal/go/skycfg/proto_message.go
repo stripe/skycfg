@@ -46,6 +46,8 @@ func (msg *skyProtoMessage) Hash() (uint32, error) {
 }
 
 func NewSkyProtoMessage(msg proto.Message) *skyProtoMessage {
+	fmt.Println(">>>>>>>>>>>>>>")
+	fmt.Println(reflect.ValueOf(msg).Elem())
 	wrapper := &skyProtoMessage{
 		msg:       msg,
 		val:       reflect.ValueOf(msg).Elem(),
@@ -56,6 +58,8 @@ func NewSkyProtoMessage(msg proto.Message) *skyProtoMessage {
 			// Skip attributes that don't correspond to a protobuf field.
 			continue
 		}
+		fmt.Println(prop)
+
 		wrapper.fields = append(wrapper.fields, prop)
 	}
 	return wrapper

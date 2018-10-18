@@ -70,11 +70,11 @@ usage: %s FILENAME
 	}
 
 	switch mode {
-	case "repl", "json", "text", "yaml":
+	case "repl", "json", "pb_text", "yaml":
 	default:
 		fmt.Fprintf(
 			os.Stderr,
-			"Unknown subcommand %q: expected `repl', `json', `text, or `yaml'\n", mode,
+			"Unknown subcommand %q: expected `repl', `json', `pb_text, or `yaml'\n", mode,
 		)
 		os.Exit(1)
 	}
@@ -108,16 +108,17 @@ usage: %s FILENAME
 		os.Exit(1)
 	}
 	for _, msg := range protos {
-		if mode == "text" {
-			marshaled := proto.MarshalTextString(msg)
-			fmt.Println(marshaled)
-		}
+		var marshaled, sep string
+		var err error
 
-		marshaled, err := jsonMarshaler.MarshalToString(msg)
-		sep := ""
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "json.Marshal: %v\n", err)
-			continue
+		if mode == "pb_text" {
+			marshaled = proto.MarshalTextString(msg)
+		} else {
+			marshaled, err = jsonMarshaler.MarshalToString(msg)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "json.Marshal: %v\n", err)
+				continue
+			}
 		}
 		if mode == "yaml" {
 			var yamlMap yaml.MapSlice

@@ -1,8 +1,36 @@
+envoy_v2 = proto.package("envoy.api.v2")
+envoy_v2_core = proto.package("envoy.api.v2.core")
 envoy_v2_bootstrap = proto.package("envoy.config.bootstrap.v2")
 
 def main(ctx):
+    a = envoy_v2_core.Address(
+        address = envoy_v2_core.SocketAddress(
+            address = "test-service.my-company.com",
+        ),
+    )
+
+    return [a]
+
     b = envoy_v2_bootstrap.Bootstrap(
-        static_resources = envoy_v2_bootstrap.Bootstrap.StaticResources(),
+        static_resources = envoy_v2_bootstrap.Bootstrap.StaticResources(
+            listeners = [
+
+            ],
+            clusters = [
+                envoy_v2.Cluster(
+                    name = "test_cluster",
+                    type = envoy_v2.Cluster.DiscoveryType.STRICT_DNS,
+                    lb_policy = envoy_v2.Cluster.LbPolicy.LEAST_REQUEST,
+                    hosts = [
+                        envoy_v2_core.Address(
+                            address = envoy_v2_core.SocketAddress(
+                                address = "test-service.my-company.com",
+                            ),
+                        ),
+                    ],
+                ),
+            ],
+        ),
     )
 
     return [b]
