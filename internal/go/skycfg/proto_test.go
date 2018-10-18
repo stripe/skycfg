@@ -35,6 +35,7 @@ func (*gogoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
 }
 
 func skyEval(t *testing.T, src string) skylark.Value {
+	t.Helper()
 	globals := skylark.StringDict{
 		"proto":      NewProtoModule(nil),
 		"gogo_proto": NewProtoModule(&gogoRegistry{}),
@@ -295,6 +296,7 @@ func TestMessageAttrNames(t *testing.T) {
 		"r_submsg",
 		"map_string",
 		"map_submsg",
+		"f_nested_submsg",
 		"f_toplevel_enum",
 		"f_nested_enum",
 	}
@@ -331,6 +333,9 @@ func TestMessageV2(t *testing.T) {
 				f_string = "map_submsg val",
 			),
 		},
+		f_nested_submsg = proto.package("skycfg.test_proto").MessageV2.NestedMessage(
+			f_string = "nested_submsg val",
+		),
 		f_toplevel_enum = proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B,
 		f_nested_enum = proto.package("skycfg.test_proto").MessageV2.NestedEnum.NESTED_ENUM_B,
 	)`)
@@ -359,6 +364,9 @@ func TestMessageV2(t *testing.T) {
 				FString: proto.String("map_submsg val"),
 			},
 		},
+		FNestedSubmsg: &pb.MessageV2_NestedMessage{
+			FString: proto.String("nested_submsg val"),
+		},
 		FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_B.Enum(),
 		FNestedEnum:   pb.MessageV2_NESTED_ENUM_B.Enum(),
 	}
@@ -380,6 +388,7 @@ func TestMessageV2(t *testing.T) {
 		"r_submsg":        `[<skycfg.test_proto.MessageV2 f_string:"string in r_submsg" >]`,
 		"map_string":      `{"map_string key": "map_string val"}`,
 		"map_submsg":      `{"map_submsg key": <skycfg.test_proto.MessageV2 f_string:"map_submsg val" >}`,
+		"f_nested_submsg": `<skycfg.test_proto.MessageV2.NestedMessage f_string:"nested_submsg val" >`,
 		"f_toplevel_enum": `<skycfg.test_proto.ToplevelEnumV2 TOPLEVEL_ENUM_V2_B=1>`,
 		"f_nested_enum":   `<skycfg.test_proto.MessageV2.NestedEnum NESTED_ENUM_B=1>`,
 	}
@@ -423,6 +432,9 @@ func TestMessageV3(t *testing.T) {
 				f_string = "map_submsg val",
 			),
 		},
+		f_nested_submsg = proto.package("skycfg.test_proto").MessageV3.NestedMessage(
+			f_string = "nested_submsg val",
+		),
 		f_toplevel_enum = proto.package("skycfg.test_proto").ToplevelEnumV3.TOPLEVEL_ENUM_V3_B,
 		f_nested_enum = proto.package("skycfg.test_proto").MessageV3.NestedEnum.NESTED_ENUM_B,
 	)`)
@@ -451,6 +463,9 @@ func TestMessageV3(t *testing.T) {
 				FString: "map_submsg val",
 			},
 		},
+		FNestedSubmsg: &pb.MessageV3_NestedMessage{
+			FString: "nested_submsg val",
+		},
 		FToplevelEnum: pb.ToplevelEnumV3_TOPLEVEL_ENUM_V3_B,
 		FNestedEnum:   pb.MessageV3_NESTED_ENUM_B,
 	}
@@ -472,6 +487,7 @@ func TestMessageV3(t *testing.T) {
 		"r_submsg":        `[<skycfg.test_proto.MessageV3 f_string:"string in r_submsg" >]`,
 		"map_string":      `{"map_string key": "map_string val"}`,
 		"map_submsg":      `{"map_submsg key": <skycfg.test_proto.MessageV3 f_string:"map_submsg val" >}`,
+		"f_nested_submsg": `<skycfg.test_proto.MessageV3.NestedMessage f_string:"nested_submsg val" >`,
 		"f_toplevel_enum": `<skycfg.test_proto.ToplevelEnumV3 TOPLEVEL_ENUM_V3_B=1>`,
 		"f_nested_enum":   `<skycfg.test_proto.MessageV3.NestedEnum NESTED_ENUM_B=1>`,
 	}
@@ -515,6 +531,9 @@ func TestMessageGogo(t *testing.T) {
 				f_string = "map_submsg val",
 			),
 		},
+		f_nested_submsg = gogo_proto.package("skycfg.test_proto").MessageGogo.NestedMessage(
+			f_string = "nested_submsg val",
+		),
 		f_toplevel_enum = proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B,
 		f_nested_enum = gogo_proto.package("skycfg.test_proto").MessageGogo.NestedEnum.NESTED_ENUM_B,
 	)`)
@@ -543,6 +562,9 @@ func TestMessageGogo(t *testing.T) {
 				FString: proto.String("map_submsg val"),
 			},
 		},
+		FNestedSubmsg: &pb.MessageGogo_NestedMessage{
+			FString: proto.String("nested_submsg val"),
+		},
 		FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_B.Enum(),
 		FNestedEnum:   pb.MessageGogo_NESTED_ENUM_B.Enum(),
 	}
@@ -564,6 +586,7 @@ func TestMessageGogo(t *testing.T) {
 		"r_submsg":        `[<skycfg.test_proto.MessageV2 f_string:"string in r_submsg" >]`,
 		"map_string":      `{"map_string key": "map_string val"}`,
 		"map_submsg":      `{"map_submsg key": <skycfg.test_proto.MessageV2 f_string:"map_submsg val" >}`,
+		"f_nested_submsg": `<skycfg.test_proto.MessageGogo.NestedMessage f_string:"nested_submsg val" >`,
 		"f_toplevel_enum": `<skycfg.test_proto.ToplevelEnumV2 TOPLEVEL_ENUM_V2_B=1>`,
 		"f_nested_enum":   `<skycfg.test_proto.MessageGogo.NestedEnum NESTED_ENUM_B=1>`,
 	}

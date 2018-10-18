@@ -1,14 +1,10 @@
 package skycfg
 
 import (
-	"bytes"
-	"compress/gzip"
 	"fmt"
-	"io/ioutil"
 	"sort"
 	"strings"
 
-	"github.com/golang/protobuf/proto"
 	descriptor_pb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"github.com/google/skylark"
 )
@@ -70,22 +66,7 @@ type protoEnum interface {
 
 func enumDescriptor(enum protoEnum) (*descriptor_pb.FileDescriptorProto, []int) {
 	gzBytes, path := enum.EnumDescriptor()
-	gz, err := gzip.NewReader(bytes.NewReader(gzBytes))
-	if err != nil {
-		panic(fmt.Sprintf("EnumDescriptor: %v", err))
-	}
-	defer gz.Close()
-
-	fileDescBytes, err := ioutil.ReadAll(gz)
-	if err != nil {
-		panic(fmt.Sprintf("EnumDescriptor: %v", err))
-	}
-
-	fileDesc := &descriptor_pb.FileDescriptorProto{}
-	if err := proto.Unmarshal(fileDescBytes, fileDesc); err != nil {
-		panic(fmt.Sprintf("EnumDescriptor: %v", err))
-	}
-	return fileDesc, path
+	return mustParseFileDescriptor(gzBytes), path
 }
 
 func enumTypeName(enum protoEnum) string {

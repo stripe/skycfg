@@ -21,6 +21,11 @@ message MessageV3 {
   map<string, string>    map_string = 12;
   map<string, MessageV3> map_submsg = 13;
 
+  message NestedMessage {
+    string f_string = 1;
+  }
+  NestedMessage f_nested_submsg = 16;
+
   enum NestedEnum {
     NESTED_ENUM_A = 0;
     NESTED_ENUM_B = 1;
@@ -29,7 +34,7 @@ message MessageV3 {
   ToplevelEnumV3 f_toplevel_enum = 14;
   NestedEnum f_nested_enum = 15;
 
-  // NEXT: 16
+  // NEXT: 17
 }
 
 enum ToplevelEnumV3 {

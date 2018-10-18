@@ -91,10 +91,7 @@ func (mt *skyProtoMessageType) Hash() (uint32, error) {
 }
 
 func (mt *skyProtoMessageType) Name() string {
-	if mt.fileDesc.GetPackage() == "" {
-		return mt.msgDesc.GetName()
-	}
-	return fmt.Sprintf("%s.%s", mt.fileDesc.GetPackage(), mt.msgDesc.GetName())
+	return messageTypeName(mt.emptyMsg)
 }
 
 func (mt *skyProtoMessageType) Attr(attrName string) (skylark.Value, error) {
