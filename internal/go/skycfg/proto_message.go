@@ -29,7 +29,7 @@ var _ skylark.HasSetField = (*skyProtoMessage)(nil)
 func (msg *skyProtoMessage) String() string {
 	return fmt.Sprintf("<%s %s>", msg.Type(), proto.CompactTextString(msg.msg))
 }
-func (msg *skyProtoMessage) Type() string        { return proto.MessageName(msg.msg) }
+func (msg *skyProtoMessage) Type() string        { return messageTypeName(msg.msg) }
 func (msg *skyProtoMessage) Truth() skylark.Bool { return skylark.True }
 
 func (msg *skyProtoMessage) Freeze() {
@@ -376,7 +376,7 @@ func typeName(t reflect.Type) string {
 	messageType := reflect.TypeOf((*proto.Message)(nil)).Elem()
 	enumType := reflect.TypeOf((*protoEnum)(nil)).Elem()
 	if t.Implements(messageType) {
-		typeName = proto.MessageName(reflect.Zero(t).Interface().(proto.Message))
+		typeName = messageTypeName(reflect.Zero(t).Interface().(proto.Message))
 	} else if t.Implements(enumType) {
 		typeName = enumTypeName(reflect.Zero(t).Interface().(protoEnum))
 	}
