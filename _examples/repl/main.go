@@ -16,6 +16,9 @@ import (
 	yaml "gopkg.in/yaml.v2"
 
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
+	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	_ "github.com/envoyproxy/go-control-plane/envoy/config/bootstrap/v2"
 	_ "k8s.io/api/apps/v1"
 	_ "k8s.io/api/batch/v1"
 	_ "k8s.io/api/core/v1"
@@ -61,15 +64,18 @@ func main() {
 		fmt.Fprintf(os.Stderr, `Demo REPL for Skycfg, a library for building complex typed configs.
 
 usage: %s FILENAME
-       %s [ repl | json | yaml ] FILENAME
+       %s [ repl | json | text | yaml ] FILENAME
 `, os.Args[0], os.Args[0])
 		os.Exit(1)
 	}
 
 	switch mode {
-	case "repl", "json", "yaml":
+	case "repl", "json", "text", "yaml":
 	default:
-		fmt.Fprintf(os.Stderr, "Unknown subcommand %q: expected `repl', `json', or `yaml'\n")
+		fmt.Fprintf(
+			os.Stderr,
+			"Unknown subcommand %q: expected `repl', `json', `text, or `yaml'\n", mode,
+		)
 		os.Exit(1)
 	}
 
@@ -102,6 +108,11 @@ usage: %s FILENAME
 		os.Exit(1)
 	}
 	for _, msg := range protos {
+		if mode == "text" {
+			marshaled := proto.MarshalTextString(msg)
+			fmt.Println(marshaled)
+		}
+
 		marshaled, err := jsonMarshaler.MarshalToString(msg)
 		sep := ""
 		if err != nil {

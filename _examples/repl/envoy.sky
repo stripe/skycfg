@@ -1,0 +1,15 @@
+envoy_v2 = proto.package("envoy.api.v2")
+envoy_v2_auth = proto.package("envoy.api.v2.auth")
+envoy_v2_core = proto.package("envoy.api.v2.core")
+envoy_v2_bootstrap = proto.package("envoy.config.bootstrap.v2")
+
+def main(ctx):
+    b = envoy_v2_bootstrap.Bootstrap(
+        static_resources = envoy_v2_bootstrap.Bootstrap.StaticResources(),
+    )
+    c = envoy_v2.Cluster(
+        name = "test_cluster",
+        lb_policy = envoy_v2.Cluster.LbPolicy.RING_HASH,
+    )
+
+    return [b, c]
