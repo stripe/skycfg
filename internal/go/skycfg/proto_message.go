@@ -17,6 +17,7 @@ type skyProtoMessage struct {
 	msg    proto.Message
 	val    reflect.Value
 	fields []*proto.Properties
+	oneofs map[string]*proto.OneofProperties
 	frozen bool
 
 	// lets the message wrapper keep track of per-field wrappers, for freezing.
@@ -49,14 +50,21 @@ func NewSkyProtoMessage(msg proto.Message) *skyProtoMessage {
 	wrapper := &skyProtoMessage{
 		msg:       msg,
 		val:       reflect.ValueOf(msg).Elem(),
+		oneofs:    make(map[string]*proto.OneofProperties),
 		attrCache: make(map[string]skylark.Value),
 	}
-	for _, prop := range proto.GetProperties(wrapper.val.Type()).Prop {
+
+	protoProps := protoGetProperties(wrapper.val.Type())
+	for _, prop := range protoProps.Prop {
 		if prop.Tag == 0 {
 			// Skip attributes that don't correspond to a protobuf field.
 			continue
 		}
 		wrapper.fields = append(wrapper.fields, prop)
+	}
+	for fieldName, prop := range protoProps.OneofTypes {
+		wrapper.fields = append(wrapper.fields, prop.Prop)
+		wrapper.oneofs[fieldName] = prop
 	}
 	return wrapper
 }
@@ -83,7 +91,12 @@ func (msg *skyProtoMessage) Attr(name string) (skylark.Value, error) {
 		if field.OrigName != name {
 			continue
 		}
-		out := valueToSkylark(msg.val.FieldByName(field.Name))
+		var out skylark.Value
+		if oneofProp, isOneof := msg.oneofs[name]; isOneof {
+			out = msg.getOneofField(name, oneofProp)
+		} else {
+			out = valueToSkylark(msg.val.FieldByName(field.Name))
+		}
 		if msg.frozen {
 			out.Freeze()
 		}
@@ -91,6 +104,17 @@ func (msg *skyProtoMessage) Attr(name string) (skylark.Value, error) {
 		return out, nil
 	}
 	return nil, nil
+}
+
+func (msg *skyProtoMessage) getOneofField(name string, prop *proto.OneofProperties) skylark.Value {
+	ifaceField := msg.val.Field(prop.Field)
+	if ifaceField.IsNil() {
+		return skylark.None
+	}
+	if ifaceField.Elem().Type() == prop.Type {
+		return valueToSkylark(ifaceField.Elem().Elem().Field(0))
+	}
+	return skylark.None
 }
 
 func (msg *skyProtoMessage) AttrNames() []string {
@@ -114,10 +138,42 @@ func (msg *skyProtoMessage) SetField(name string, sky skylark.Value) error {
 	if prop == nil {
 		return fmt.Errorf("AttributeError: `%s' value has no field %q", msg.Type(), name)
 	}
-	goStruct := reflect.ValueOf(msg.msg).Elem()
-	field, ok := goStruct.Type().FieldByName(prop.Name)
+	if oneofProp, isOneof := msg.oneofs[name]; isOneof {
+		return msg.setOneofField(name, oneofProp, sky)
+	}
+	return msg.setSingleField(name, prop, sky)
+}
+
+func (msg *skyProtoMessage) setOneofField(name string, prop *proto.OneofProperties, sky skylark.Value) error {
+	// Oneofs are stored in a two-part format, where `msg.val` has a field of an intermediate interface
+	// type that can be constructed from the property type.
+	ifaceField := msg.val.Field(prop.Field)
+
+	field, ok := prop.Type.Elem().FieldByName(prop.Prop.Name)
 	if !ok {
-		return fmt.Errorf("InternalError: field %q not found in generated type %v", prop.OrigName, goStruct.Type())
+		return fmt.Errorf("InternalError: field %q not found in generated type %v", name, prop.Type)
+	}
+	val, err := valueFromSkylark(field.Type, sky)
+	if err != nil {
+		return err
+	}
+	if err := msg.checkMutable("set field of"); err != nil {
+		return err
+	}
+
+	// Construct the intermediate per-field struct.
+	box := reflect.New(prop.Type.Elem())
+	box.Elem().Field(0).Set(val)
+
+	delete(msg.attrCache, name)
+	ifaceField.Set(box)
+	return nil
+}
+
+func (msg *skyProtoMessage) setSingleField(name string, prop *proto.Properties, sky skylark.Value) error {
+	field, ok := msg.val.Type().FieldByName(prop.Name)
+	if !ok {
+		return fmt.Errorf("InternalError: field %q not found in generated type %v", prop.OrigName, msg.val.Type())
 	}
 
 	val, err := valueFromSkylark(field.Type, sky)
@@ -128,7 +184,7 @@ func (msg *skyProtoMessage) SetField(name string, sky skylark.Value) error {
 		return err
 	}
 	delete(msg.attrCache, name)
-	goStruct.FieldByName(prop.Name).Set(val)
+	msg.val.FieldByName(prop.Name).Set(val)
 	return nil
 }
 
