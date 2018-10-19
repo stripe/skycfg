@@ -34,7 +34,12 @@ message MessageV3 {
   ToplevelEnumV3 f_toplevel_enum = 14;
   NestedEnum f_nested_enum = 15;
 
-  // NEXT: 17
+  oneof f_oneof {
+    string f_oneof_a = 17;
+    string f_oneof_b = 18;
+  }
+
+  // NEXT: 19
 }
 
 enum ToplevelEnumV3 {

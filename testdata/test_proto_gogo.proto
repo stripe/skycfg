@@ -45,5 +45,10 @@ message MessageGogo {
   optional ToplevelEnumV2 f_toplevel_enum = 14;
   optional NestedEnum f_nested_enum = 15;
 
-  // NEXT: 17
+  oneof f_oneof {
+    string f_oneof_a = 17;
+    string f_oneof_b = 18;
+  }
+
+  // NEXT: 19
 }

@@ -299,6 +299,8 @@ func TestMessageAttrNames(t *testing.T) {
 		"f_nested_submsg",
 		"f_toplevel_enum",
 		"f_nested_enum",
+		"f_oneof_a",
+		"f_oneof_b",
 	}
 	sort.Strings(want)
 	if !reflect.DeepEqual(want, got) {
@@ -338,6 +340,7 @@ func TestMessageV2(t *testing.T) {
 		),
 		f_toplevel_enum = proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B,
 		f_nested_enum = proto.package("skycfg.test_proto").MessageV2.NestedEnum.NESTED_ENUM_B,
+		f_oneof_a = "string in oneof",
 	)`)
 	gotMsg := val.(*skyProtoMessage).msg
 	wantMsg := &pb.MessageV2{
@@ -369,6 +372,7 @@ func TestMessageV2(t *testing.T) {
 		},
 		FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_B.Enum(),
 		FNestedEnum:   pb.MessageV2_NESTED_ENUM_B.Enum(),
+		FOneof:        &pb.MessageV2_FOneofA{"string in oneof"},
 	}
 	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
 		t.Fatalf("diff from expected message:\n%s", diff)
@@ -391,6 +395,8 @@ func TestMessageV2(t *testing.T) {
 		"f_nested_submsg": `<skycfg.test_proto.MessageV2.NestedMessage f_string:"nested_submsg val" >`,
 		"f_toplevel_enum": `<skycfg.test_proto.ToplevelEnumV2 TOPLEVEL_ENUM_V2_B=1>`,
 		"f_nested_enum":   `<skycfg.test_proto.MessageV2.NestedEnum NESTED_ENUM_B=1>`,
+		"f_oneof_a":       `"string in oneof"`,
+		"f_oneof_b":       `None`,
 	}
 	attrs := val.(skylark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {
@@ -437,6 +443,7 @@ func TestMessageV3(t *testing.T) {
 		),
 		f_toplevel_enum = proto.package("skycfg.test_proto").ToplevelEnumV3.TOPLEVEL_ENUM_V3_B,
 		f_nested_enum = proto.package("skycfg.test_proto").MessageV3.NestedEnum.NESTED_ENUM_B,
+		f_oneof_a = "string in oneof",
 	)`)
 	gotMsg := val.(*skyProtoMessage).msg
 	wantMsg := &pb.MessageV3{
@@ -468,6 +475,7 @@ func TestMessageV3(t *testing.T) {
 		},
 		FToplevelEnum: pb.ToplevelEnumV3_TOPLEVEL_ENUM_V3_B,
 		FNestedEnum:   pb.MessageV3_NESTED_ENUM_B,
+		FOneof:        &pb.MessageV3_FOneofA{"string in oneof"},
 	}
 	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
 		t.Fatalf("diff from expected message:\n%s", diff)
@@ -490,6 +498,8 @@ func TestMessageV3(t *testing.T) {
 		"f_nested_submsg": `<skycfg.test_proto.MessageV3.NestedMessage f_string:"nested_submsg val" >`,
 		"f_toplevel_enum": `<skycfg.test_proto.ToplevelEnumV3 TOPLEVEL_ENUM_V3_B=1>`,
 		"f_nested_enum":   `<skycfg.test_proto.MessageV3.NestedEnum NESTED_ENUM_B=1>`,
+		"f_oneof_a":       `"string in oneof"`,
+		"f_oneof_b":       `None`,
 	}
 	attrs := val.(skylark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {
