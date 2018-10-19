@@ -53,17 +53,18 @@ func NewSkyProtoMessage(msg proto.Message) *skyProtoMessage {
 		oneofs:    make(map[string]*proto.OneofProperties),
 		attrCache: make(map[string]skylark.Value),
 	}
-	for fieldName, prop := range proto.GetProperties(wrapper.val.Type()).OneofTypes {
-		wrapper.fields = append(wrapper.fields, prop.Prop)
-		wrapper.oneofs[fieldName] = prop
-	}
 
-	for _, prop := range proto.GetProperties(wrapper.val.Type()).Prop {
+	protoProps := protoGetProperties(wrapper.val.Type())
+	for _, prop := range protoProps.Prop {
 		if prop.Tag == 0 {
 			// Skip attributes that don't correspond to a protobuf field.
 			continue
 		}
 		wrapper.fields = append(wrapper.fields, prop)
+	}
+	for fieldName, prop := range protoProps.OneofTypes {
+		wrapper.fields = append(wrapper.fields, prop.Prop)
+		wrapper.oneofs[fieldName] = prop
 	}
 	return wrapper
 }
