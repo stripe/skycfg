@@ -908,3 +908,30 @@ func TestUnsetProto2Fields(t *testing.T) {
 		t.Fatalf("field set to None should be returned as None")
 	}
 }
+
+func TestProtoFromText(t *testing.T) {
+	val := skyEval(t, `proto.from_text(proto.package("skycfg.test_proto").MessageV3, "f_int32: 1010").f_int32`)
+	got := val.String()
+	want := "1010"
+	if want != got {
+		t.Fatalf("from_text: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoFromJson(t *testing.T) {
+	val := skyEval(t, `proto.from_json(proto.package("skycfg.test_proto").MessageV3, "{\"f_int32\": 1010}").f_int32`)
+	got := val.String()
+	want := "1010"
+	if want != got {
+		t.Fatalf("from_json: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoFromYaml(t *testing.T) {
+	val := skyEval(t, `proto.from_yaml(proto.package("skycfg.test_proto").MessageV3, "f_int32: 1010").f_int32`)
+	got := val.String()
+	want := "1010"
+	if want != got {
+		t.Fatalf("from_yaml: wanted %q, got %q", want, got)
+	}
+}

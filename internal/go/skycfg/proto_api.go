@@ -1,6 +1,7 @@
 package skycfg
 
 import (
+	"encoding/json"
 	"fmt"
 	"reflect"
 	"sort"
@@ -29,11 +30,14 @@ func NewProtoModule(registry ProtoRegistry) *ProtoModule {
 		attrs: skylark.StringDict{
 			"clear":        skylark.NewBuiltin("proto.clear", fnProtoClear),
 			"clone":        skylark.NewBuiltin("proto.clone", fnProtoClone),
+			"from_json":    skylark.NewBuiltin("proto.from_json", fnProtoFromJson),
+			"from_text":    skylark.NewBuiltin("proto.from_text", fnProtoFromText),
+			"from_yaml":    skylark.NewBuiltin("proto.from_yaml", fnProtoFromYaml),
 			"merge":        skylark.NewBuiltin("proto.merge", fnProtoMerge),
 			"set_defaults": skylark.NewBuiltin("proto.set_defaults", fnProtoSetDefaults),
 			"to_json":      skylark.NewBuiltin("proto.to_json", fnProtoToJson),
 			"to_text":      skylark.NewBuiltin("proto.to_text", fnProtoToText),
-			"to_yaml":      skylark.NewBuiltin("proto.to_json", fnProtoToYaml),
+			"to_yaml":      skylark.NewBuiltin("proto.to_yaml", fnProtoToYaml),
 		},
 	}
 	mod.attrs["package"] = skylark.NewBuiltin("proto.package", mod.fnProtoPackage)
@@ -232,4 +236,105 @@ func fnProtoToYaml(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 		return nil, err
 	}
 	return skylark.String(yamlData), nil
+}
+
+// Implementation of the `proto.from_text()` built-in function.
+// Returns the Protobuf message for text-formatted content.
+func fnProtoFromText(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var msgType skylark.Value
+	var value skylark.String
+	if err := skylark.UnpackPositionalArgs("proto.from_text", args, kwargs, 2, &msgType, &value); err != nil {
+		return nil, err
+	}
+	protoMsgType, ok := msgType.(*skyProtoMessageType)
+	if !ok {
+		return nil, fmt.Errorf("%s: for parameter 2: got %s, want proto.MessageType", "proto.from_text", msgType.Type())
+	}
+	msg := proto.Clone(protoMsgType.emptyMsg)
+	msg.Reset()
+	if err := proto.UnmarshalText(string(value), msg); err != nil {
+		return nil, err
+	}
+	return NewSkyProtoMessage(msg), nil
+}
+
+// Implementation of the `proto.from_json()` built-in function.
+// Returns the Protobuf message for JSON-formatted content.
+func fnProtoFromJson(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var msgType skylark.Value
+	var value skylark.String
+	if err := skylark.UnpackPositionalArgs("proto.from_json", args, kwargs, 2, &msgType, &value); err != nil {
+		return nil, err
+	}
+	protoMsgType, ok := msgType.(*skyProtoMessageType)
+	if !ok {
+		return nil, fmt.Errorf("%s: for parameter 2: got %s, want proto.MessageType", "proto.from_json", msgType.Type())
+	}
+	msg := proto.Clone(protoMsgType.emptyMsg)
+	msg.Reset()
+	if err := jsonpb.UnmarshalString(string(value), msg); err != nil {
+		return nil, err
+	}
+	return NewSkyProtoMessage(msg), nil
+}
+
+// Implementation of the `proto.from_yaml()` built-in function.
+// Returns the Protobuf message for YAML-formatted content.
+func fnProtoFromYaml(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+	var msgType skylark.Value
+	var value skylark.String
+	if err := skylark.UnpackPositionalArgs("proto.from_yaml", args, kwargs, 2, &msgType, &value); err != nil {
+		return nil, err
+	}
+	protoMsgType, ok := msgType.(*skyProtoMessageType)
+	if !ok {
+		return nil, fmt.Errorf("%s: for parameter 2: got %s, want proto.MessageType", "proto.from_yaml", msgType.Type())
+	}
+	var msgBody interface{}
+	if err := yaml.Unmarshal([]byte(value), &msgBody); err != nil {
+		return nil, err
+	}
+	msgBody, err := convertMapStringInterface("proto.from_yaml", msgBody)
+	if err != nil {
+		return nil, err
+	}
+	jsonData, err := json.Marshal(msgBody)
+	if err != nil {
+		return nil, err
+	}
+	msg := proto.Clone(protoMsgType.emptyMsg)
+	msg.Reset()
+	if err := jsonpb.UnmarshalString(string(jsonData), msg); err != nil {
+		return nil, err
+	}
+	return NewSkyProtoMessage(msg), nil
+}
+
+// Coverts map[interface{}]interface{} into map[string]interface{} for json.Marshaler
+func convertMapStringInterface(fnName string, val interface{}) (interface{}, error) {
+	switch items := val.(type) {
+	case map[interface{}]interface{}:
+		result := map[string]interface{}{}
+		for k, v := range items {
+			key, ok := k.(string)
+			if !ok {
+				return nil, fmt.Errorf("%s: TypeError: value %s (type `%s') can't be assigned to type 'string'.", fnName, k, reflect.TypeOf(k))
+			}
+			value, err := convertMapStringInterface(fnName, v)
+			if err != nil {
+				return nil, err
+			}
+			result[key] = value
+		}
+		return result, nil
+	case []interface{}:
+		for k, v := range items {
+			value, err := convertMapStringInterface(fnName, v)
+			if err != nil {
+				return nil, err
+			}
+			items[k] = value
+		}
+	}
+	return val, nil
 }
