@@ -8,8 +8,8 @@ import (
 	"os"
 	"reflect"
 
+	"github.com/gogo/protobuf/jsonpb"
 	gogo_proto "github.com/gogo/protobuf/proto"
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/skylark"
 	"github.com/google/skylark/repl"
