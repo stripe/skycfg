@@ -683,7 +683,7 @@ func TestAttrValidation(t *testing.T) {
 		},
 		{
 			src:     `MessageV3(map_submsg = {'': 456})`,
-			wantErr: "TypeError: value 456 (type `int') can't be assigned to type `test_proto.MessageV3'.",
+			wantErr: "TypeError: value 456 (type `int') can't be assigned to type `skycfg.test_proto.MessageV3'.",
 		},
 		{
 			src:     `MessageV3(f_submsg = proto.package("skycfg.test_proto").MessageV2())`,

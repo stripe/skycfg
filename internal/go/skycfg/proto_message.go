@@ -359,7 +359,8 @@ func scalarFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error)
 		val := reflect.New(t.Elem())
 		elem, err := scalarFromSkylark(t.Elem(), sky)
 		if err != nil {
-			return reflect.Value{}, err
+			// Recompute the type error based on the pointer type.
+			return reflect.Value{}, typeError(t, sky)
 		}
 		val.Elem().Set(elem)
 		return val, nil
@@ -441,6 +442,9 @@ func typeName(t reflect.Type) string {
 	enumType := reflect.TypeOf((*protoEnum)(nil)).Elem()
 	if t.Implements(enumType) {
 		return enumTypeName(reflect.Zero(t).Interface().(protoEnum))
+	}
+	if t.PkgPath() == "" {
+		return t.String()
 	}
 	return fmt.Sprintf("%q.%s", t.PkgPath(), t.Name())
 }
