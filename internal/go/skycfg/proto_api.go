@@ -1,6 +1,7 @@
 package skycfg
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -197,21 +198,22 @@ func fnProtoToJson(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 	if err := wantSingleProtoMessage("proto.to_json", args, []skylark.Tuple{}, &msg); err != nil {
 		return nil, err
 	}
-	var jsonMarshaler = &jsonpb.Marshaler{OrigName: true}
+	compact := true
 	if len(kwargs) > 0 {
-		compact := true
 		if err := skylark.UnpackArgs("proto.to_json", nil, kwargs, "compact", &compact); err != nil {
 			return nil, err
 		}
-		if compact {
-			jsonMarshaler.Indent = ""
-		} else {
-			jsonMarshaler.Indent = "\t"
-		}
 	}
-	jsonData, err := (jsonMarshaler).MarshalToString(msg.msg)
+	jsonData, err := msg.MarshalJSON()
 	if err != nil {
 		return nil, err
+	}
+	if !compact {
+		var buf bytes.Buffer
+		if err := json.Indent(&buf, jsonData, "", "\t"); err != nil {
+			return nil, err
+		}
+		jsonData = buf.Bytes()
 	}
 	return skylark.String(jsonData), nil
 }

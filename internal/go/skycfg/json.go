@@ -80,6 +80,15 @@ func fnYamlMarshal(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 // Adapted from struct-specific JSON function:
 // https://github.com/google/skylark/blob/67717b5898061eb621519a94a4b89cedede9bca0/skylarkstruct/struct.go#L321
 func writeJSON(out *bytes.Buffer, v skylark.Value) error {
+	if marshaler, ok := v.(json.Marshaler); ok {
+		jsonData, err := marshaler.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		out.Write(jsonData)
+		return nil
+	}
+
 	switch v := v.(type) {
 	case skylark.NoneType:
 		out.WriteString("null")
@@ -127,7 +136,7 @@ func writeJSON(out *bytes.Buffer, v skylark.Value) error {
 		}
 		out.WriteByte('}')
 	default:
-		return fmt.Errorf("cannot convert %s to JSON", v.Type())
+		return fmt.Errorf("TypeError: value %s (type `%s') can't be converted to JSON.", v.String(), v.Type())
 	}
 	return nil
 }

@@ -659,6 +659,10 @@ func TestAttrValidation(t *testing.T) {
 			src:     `MessageV3(f_bool = '')`,
 			wantErr: "TypeError: value \"\" (type `string') can't be assigned to type `bool'.",
 		},
+		{
+			src:     `MessageV3(f_toplevel_enum = 0)`,
+			wantErr: "TypeError: value 0 (type `int') can't be assigned to type `skycfg.test_proto.ToplevelEnumV3'.",
+		},
 
 		// Non-scalar type mismatch
 		{

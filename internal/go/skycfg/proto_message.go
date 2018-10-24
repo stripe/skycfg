@@ -1,11 +1,14 @@
 package skycfg
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"reflect"
 	"sort"
+	"strings"
 
+	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/google/skylark"
 	"github.com/google/skylark/syntax"
@@ -44,6 +47,24 @@ func (msg *skyProtoMessage) Freeze() {
 
 func (msg *skyProtoMessage) Hash() (uint32, error) {
 	return 0, fmt.Errorf("skyProtoMessage.Hash: TODO")
+}
+
+func (msg *skyProtoMessage) MarshalJSON() ([]byte, error) {
+	if msg.looksLikeKubernetesGogo() {
+		return json.Marshal(msg.msg)
+	}
+
+	var jsonMarshaler = &jsonpb.Marshaler{OrigName: true}
+	jsonData, err := jsonMarshaler.MarshalToString(msg.msg)
+	if err != nil {
+		return nil, err
+	}
+	return []byte(jsonData), nil
+}
+
+func (msg *skyProtoMessage) looksLikeKubernetesGogo() bool {
+	path := msg.val.Type().PkgPath()
+	return strings.HasPrefix(path, "k8s.io/api/") || strings.HasPrefix(path, "k8s.io/apimachinery/")
 }
 
 func NewSkyProtoMessage(msg proto.Message) *skyProtoMessage {
@@ -284,7 +305,7 @@ func valueFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error) 
 
 		// Handle the use of typedefs in Kubernetes
 		if scalarType := scalar.Type(); !scalarType.AssignableTo(t) {
-			if !scalarType.ConvertibleTo(t) {
+			if scalarType.Kind() != reflect.String || !scalarType.ConvertibleTo(t) {
 				return reflect.Value{}, typeError(t, sky)
 			}
 			scalar = scalar.Convert(t)
