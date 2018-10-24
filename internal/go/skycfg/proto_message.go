@@ -276,14 +276,20 @@ func scalarToSkylark(val reflect.Value) skylark.Value {
 
 func valueFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error) {
 	switch sky := sky.(type) {
-	case skylark.Int:
-		return scalarFromSkylark(t, sky)
-	case skylark.Float:
-		return scalarFromSkylark(t, sky)
-	case skylark.String:
-		return scalarFromSkylark(t, sky)
-	case skylark.Bool:
-		return scalarFromSkylark(t, sky)
+	case skylark.Int, skylark.Float, skylark.String, skylark.Bool:
+		scalar, err := scalarFromSkylark(t, sky)
+		if err != nil {
+			return reflect.Value{}, err
+		}
+
+		// Handle the use of typedefs in Kubernetes
+		if scalarType := scalar.Type(); !scalarType.AssignableTo(t) {
+			if !scalarType.ConvertibleTo(t) {
+				return reflect.Value{}, typeError(t, sky)
+			}
+			scalar = scalar.Convert(t)
+		}
+		return scalar, nil
 	case skylark.NoneType:
 		if t.Kind() == reflect.Ptr {
 			return reflect.Zero(t), nil
@@ -428,15 +434,15 @@ func enumFromSkylark(t reflect.Type, sky *skyProtoEnumValue) (reflect.Value, err
 func typeName(t reflect.Type) string {
 	// Special-case protobuf types to get more useful error messages when
 	// the wrong protobuf type is assigned.
-	typeName := t.String()
 	messageType := reflect.TypeOf((*proto.Message)(nil)).Elem()
-	enumType := reflect.TypeOf((*protoEnum)(nil)).Elem()
 	if t.Implements(messageType) {
-		typeName = messageTypeName(reflect.Zero(t).Interface().(proto.Message))
-	} else if t.Implements(enumType) {
-		typeName = enumTypeName(reflect.Zero(t).Interface().(protoEnum))
+		return messageTypeName(reflect.Zero(t).Interface().(proto.Message))
 	}
-	return typeName
+	enumType := reflect.TypeOf((*protoEnum)(nil)).Elem()
+	if t.Implements(enumType) {
+		return enumTypeName(reflect.Zero(t).Interface().(protoEnum))
+	}
+	return fmt.Sprintf("%q.%s", t.PkgPath(), t.Name())
 }
 
 func typeError(t reflect.Type, sky skylark.Value) error {
