@@ -7,7 +7,6 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/gogo/protobuf/jsonpb"
 	gogo_proto "github.com/gogo/protobuf/proto"
@@ -90,18 +89,14 @@ func k8sRun(gvk schema.GroupVersionKind, namespace string, json string, delete b
 		return "", fmt.Errorf("failed to build rest config: %v", err)
 	}
 
-	dynamicClient, err := dynamic.NewForConfig(restConfig)
+	dc := discovery.NewDiscoveryClientForConfigOrDie(restConfig)
+	gr, err := restmapper.GetAPIGroupResources(dc)
 	if err != nil {
-		return "", fmt.Errorf("failed to initialize dynamic REST client: %v", err)
+		return "", err
 	}
-
-	dc, err := discovery.NewCachedDiscoveryClientForConfig(restConfig, "", "", 1*time.Minute)
+	rm, err := restmapper.NewDiscoveryRESTMapper(gr).RESTMapping(gvk.GroupKind(), gvk.Version)
 	if err != nil {
-		return "", fmt.Errorf("failed to initialize discovery client: %v", err)
-	}
-	rm, err := restmapper.NewDeferredDiscoveryRESTMapper(dc).RESTMapping(gvk.GroupKind(), gvk.Version)
-	if err != nil {
-		return "", fmt.Errorf("failed to obtain a REST mapping: %v", err)
+		return "", err
 	}
 
 	obj := runtime.Unknown{
@@ -113,6 +108,11 @@ func k8sRun(gvk schema.GroupVersionKind, namespace string, json string, delete b
 		return "", err
 	}
 	un := &unstructured.Unstructured{objMap}
+
+	dynamicClient, err := dynamic.NewForConfig(restConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to initialize dynamic REST client: %v", err)
+	}
 
 	r := dynamicClient.Resource(rm.Resource).Namespace(namespace)
 	if delete {
