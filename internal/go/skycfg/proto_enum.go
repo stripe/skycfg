@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	descriptor_pb "github.com/golang/protobuf/protoc-gen-go/descriptor"
-	"github.com/google/skylark"
+	"go.starlark.net/starlark"
 )
 
 type skyProtoEnumType struct {
@@ -14,19 +14,19 @@ type skyProtoEnumType struct {
 	valueMap map[string]int32
 }
 
-var _ skylark.HasAttrs = (*skyProtoEnumType)(nil)
+var _ starlark.HasAttrs = (*skyProtoEnumType)(nil)
 
 func (t *skyProtoEnumType) String() string {
 	return fmt.Sprintf("<proto.EnumType %q>", t.name)
 }
-func (t *skyProtoEnumType) Type() string        { return "proto.EnumType" }
-func (t *skyProtoEnumType) Freeze()             {}
-func (t *skyProtoEnumType) Truth() skylark.Bool { return skylark.True }
+func (t *skyProtoEnumType) Type() string         { return "proto.EnumType" }
+func (t *skyProtoEnumType) Freeze()              {}
+func (t *skyProtoEnumType) Truth() starlark.Bool { return starlark.True }
 func (t *skyProtoEnumType) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: %s", t.Type())
 }
 
-func (t *skyProtoEnumType) Attr(attrName string) (skylark.Value, error) {
+func (t *skyProtoEnumType) Attr(attrName string) (starlark.Value, error) {
 	if value, ok := t.valueMap[attrName]; ok {
 		return &skyProtoEnumValue{t.name, attrName, value}, nil
 	}
@@ -51,11 +51,11 @@ type skyProtoEnumValue struct {
 func (v *skyProtoEnumValue) String() string {
 	return fmt.Sprintf("<%s %s=%d>", v.typeName, v.valueName, v.value)
 }
-func (v *skyProtoEnumValue) Type() string        { return v.typeName }
-func (v *skyProtoEnumValue) Freeze()             {}
-func (v *skyProtoEnumValue) Truth() skylark.Bool { return skylark.True }
+func (v *skyProtoEnumValue) Type() string         { return v.typeName }
+func (v *skyProtoEnumValue) Freeze()              {}
+func (v *skyProtoEnumValue) Truth() starlark.Bool { return starlark.True }
 func (v *skyProtoEnumValue) Hash() (uint32, error) {
-	return skylark.MakeInt64(int64(v.value)).Hash()
+	return starlark.MakeInt64(int64(v.value)).Hash()
 }
 
 // Interface for generated enum types.

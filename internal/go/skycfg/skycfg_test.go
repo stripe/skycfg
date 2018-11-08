@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/skylark"
+	"go.starlark.net/starlark"
 
 	"github.com/stripe/skycfg"
 	pb "github.com/stripe/skycfg/test_proto"
@@ -88,7 +88,7 @@ func (loader *testLoader) ReadFile(ctx context.Context, path string) ([]byte, er
 type endToEndTestCase struct {
 	caseName   string
 	fileToLoad string
-	vars       skylark.StringDict
+	vars       starlark.StringDict
 	expLoadErr bool
 	expExecErr bool
 	expProtos  []proto.Message
@@ -102,8 +102,8 @@ func TestSkycfgEndToEnd(t *testing.T) {
 		endToEndTestCase{
 			caseName:   "all good",
 			fileToLoad: "test1.sky",
-			vars: skylark.StringDict{
-				"var_key": skylark.String("var_value"),
+			vars: starlark.StringDict{
+				"var_key": starlark.String("var_value"),
 			},
 			expProtos: []proto.Message{
 				&pb.MessageV2{

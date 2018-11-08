@@ -10,11 +10,11 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/skylark"
-	"github.com/google/skylark/syntax"
+	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
-// A Skylark built-in type representing a Protobuf message. Provides attributes
+// A Starlark built-in type representing a Protobuf message. Provides attributes
 // for accessing message fields using their original protobuf names.
 type skyProtoMessage struct {
 	msg    proto.Message
@@ -24,17 +24,17 @@ type skyProtoMessage struct {
 	frozen bool
 
 	// lets the message wrapper keep track of per-field wrappers, for freezing.
-	attrCache map[string]skylark.Value
+	attrCache map[string]starlark.Value
 }
 
-var _ skylark.HasAttrs = (*skyProtoMessage)(nil)
-var _ skylark.HasSetField = (*skyProtoMessage)(nil)
+var _ starlark.HasAttrs = (*skyProtoMessage)(nil)
+var _ starlark.HasSetField = (*skyProtoMessage)(nil)
 
 func (msg *skyProtoMessage) String() string {
 	return fmt.Sprintf("<%s %s>", msg.Type(), proto.CompactTextString(msg.msg))
 }
-func (msg *skyProtoMessage) Type() string        { return messageTypeName(msg.msg) }
-func (msg *skyProtoMessage) Truth() skylark.Bool { return skylark.True }
+func (msg *skyProtoMessage) Type() string         { return messageTypeName(msg.msg) }
+func (msg *skyProtoMessage) Truth() starlark.Bool { return starlark.True }
 
 func (msg *skyProtoMessage) Freeze() {
 	if !msg.frozen {
@@ -72,7 +72,7 @@ func NewSkyProtoMessage(msg proto.Message) *skyProtoMessage {
 		msg:       msg,
 		val:       reflect.ValueOf(msg).Elem(),
 		oneofs:    make(map[string]*proto.OneofProperties),
-		attrCache: make(map[string]skylark.Value),
+		attrCache: make(map[string]starlark.Value),
 	}
 
 	protoProps := protoGetProperties(wrapper.val.Type())
@@ -90,7 +90,7 @@ func NewSkyProtoMessage(msg proto.Message) *skyProtoMessage {
 	return wrapper
 }
 
-func ToProtoMessage(val skylark.Value) (proto.Message, bool) {
+func ToProtoMessage(val starlark.Value) (proto.Message, bool) {
 	if msg, ok := val.(*skyProtoMessage); ok {
 		return msg.msg, true
 	}
@@ -104,7 +104,7 @@ func (msg *skyProtoMessage) checkMutable(verb string) error {
 	return nil
 }
 
-func (msg *skyProtoMessage) Attr(name string) (skylark.Value, error) {
+func (msg *skyProtoMessage) Attr(name string) (starlark.Value, error) {
 	if attr, ok := msg.attrCache[name]; ok {
 		return attr, nil
 	}
@@ -112,11 +112,11 @@ func (msg *skyProtoMessage) Attr(name string) (skylark.Value, error) {
 		if field.OrigName != name {
 			continue
 		}
-		var out skylark.Value
+		var out starlark.Value
 		if oneofProp, isOneof := msg.oneofs[name]; isOneof {
 			out = msg.getOneofField(name, oneofProp)
 		} else {
-			out = valueToSkylark(msg.val.FieldByName(field.Name))
+			out = valueToStarlark(msg.val.FieldByName(field.Name))
 		}
 		if msg.frozen {
 			out.Freeze()
@@ -127,15 +127,15 @@ func (msg *skyProtoMessage) Attr(name string) (skylark.Value, error) {
 	return nil, nil
 }
 
-func (msg *skyProtoMessage) getOneofField(name string, prop *proto.OneofProperties) skylark.Value {
+func (msg *skyProtoMessage) getOneofField(name string, prop *proto.OneofProperties) starlark.Value {
 	ifaceField := msg.val.Field(prop.Field)
 	if ifaceField.IsNil() {
-		return skylark.None
+		return starlark.None
 	}
 	if ifaceField.Elem().Type() == prop.Type {
-		return valueToSkylark(ifaceField.Elem().Elem().Field(0))
+		return valueToStarlark(ifaceField.Elem().Elem().Field(0))
 	}
-	return skylark.None
+	return starlark.None
 }
 
 func (msg *skyProtoMessage) AttrNames() []string {
@@ -147,7 +147,7 @@ func (msg *skyProtoMessage) AttrNames() []string {
 	return names
 }
 
-func (msg *skyProtoMessage) SetField(name string, sky skylark.Value) error {
+func (msg *skyProtoMessage) SetField(name string, sky starlark.Value) error {
 	var prop *proto.Properties
 	for _, fieldProp := range msg.fields {
 		if name != fieldProp.OrigName {
@@ -165,7 +165,7 @@ func (msg *skyProtoMessage) SetField(name string, sky skylark.Value) error {
 	return msg.setSingleField(name, prop, sky)
 }
 
-func (msg *skyProtoMessage) setOneofField(name string, prop *proto.OneofProperties, sky skylark.Value) error {
+func (msg *skyProtoMessage) setOneofField(name string, prop *proto.OneofProperties, sky starlark.Value) error {
 	// Oneofs are stored in a two-part format, where `msg.val` has a field of an intermediate interface
 	// type that can be constructed from the property type.
 	ifaceField := msg.val.Field(prop.Field)
@@ -174,7 +174,7 @@ func (msg *skyProtoMessage) setOneofField(name string, prop *proto.OneofProperti
 	if !ok {
 		return fmt.Errorf("InternalError: field %q not found in generated type %v", name, prop.Type)
 	}
-	val, err := valueFromSkylark(field.Type, sky)
+	val, err := valueFromStarlark(field.Type, sky)
 	if err != nil {
 		return err
 	}
@@ -191,13 +191,13 @@ func (msg *skyProtoMessage) setOneofField(name string, prop *proto.OneofProperti
 	return nil
 }
 
-func (msg *skyProtoMessage) setSingleField(name string, prop *proto.Properties, sky skylark.Value) error {
+func (msg *skyProtoMessage) setSingleField(name string, prop *proto.Properties, sky starlark.Value) error {
 	field, ok := msg.val.Type().FieldByName(prop.Name)
 	if !ok {
 		return fmt.Errorf("InternalError: field %q not found in generated type %v", prop.OrigName, msg.val.Type())
 	}
 
-	val, err := valueFromSkylark(field.Type, sky)
+	val, err := valueFromStarlark(field.Type, sky)
 	if err != nil {
 		return err
 	}
@@ -209,8 +209,8 @@ func (msg *skyProtoMessage) setSingleField(name string, prop *proto.Properties, 
 	return nil
 }
 
-func valueToSkylark(val reflect.Value) skylark.Value {
-	if scalar := scalarToSkylark(val); scalar != nil {
+func valueToStarlark(val reflect.Value) starlark.Value {
+	if scalar := scalarToStarlark(val); scalar != nil {
 		return scalar
 	}
 	iface := val.Interface()
@@ -230,23 +230,23 @@ func valueToSkylark(val reflect.Value) skylark.Value {
 		}
 	}
 	if val.Type().Kind() == reflect.Slice {
-		var items []skylark.Value
+		var items []starlark.Value
 		for ii := 0; ii < val.Len(); ii++ {
-			items = append(items, valueToSkylark(val.Index(ii)))
+			items = append(items, valueToStarlark(val.Index(ii)))
 		}
 		return &protoRepeated{
 			field: val,
-			list:  skylark.NewList(items),
+			list:  starlark.NewList(items),
 		}
 	}
 	if val.Type().Kind() == reflect.Map {
-		dict := &skylark.Dict{}
+		dict := &starlark.Dict{}
 		for _, keyVal := range val.MapKeys() {
 			elemVal := val.MapIndex(keyVal)
-			key := valueToSkylark(keyVal)
-			elem := valueToSkylark(elemVal)
-			if err := dict.Set(key, elem); err != nil {
-				panic(fmt.Sprintf("dict.Set(%s, %s): %v", key, elem, err))
+			key := valueToStarlark(keyVal)
+			elem := valueToStarlark(elemVal)
+			if err := dict.SetKey(key, elem); err != nil {
+				panic(fmt.Sprintf("dict.SetKey(%s, %s): %v", key, elem, err))
 			}
 		}
 		return &protoMap{
@@ -256,34 +256,34 @@ func valueToSkylark(val reflect.Value) skylark.Value {
 	}
 	// This should be impossible, because the set of types present
 	// in a generated protobuf struct is small and limited.
-	panic(fmt.Errorf("valueToSkylark: unknown type %v", val.Type()))
+	panic(fmt.Errorf("valueToStarlark: unknown type %v", val.Type()))
 }
 
-func scalarToSkylark(val reflect.Value) skylark.Value {
+func scalarToStarlark(val reflect.Value) starlark.Value {
 	if val.Kind() == reflect.Ptr {
 		if val.IsNil() {
-			return skylark.None
+			return starlark.None
 		}
 		val = val.Elem()
 	}
 	iface := val.Interface()
 	switch f := iface.(type) {
 	case int32:
-		return skylark.MakeInt64(int64(f))
+		return starlark.MakeInt64(int64(f))
 	case int64:
-		return skylark.MakeInt64(f)
+		return starlark.MakeInt64(f)
 	case uint32:
-		return skylark.MakeUint64(uint64(f))
+		return starlark.MakeUint64(uint64(f))
 	case uint64:
-		return skylark.MakeUint64(f)
+		return starlark.MakeUint64(f)
 	case float32:
-		return skylark.Float(f)
+		return starlark.Float(f)
 	case float64:
-		return skylark.Float(f)
+		return starlark.Float(f)
 	case string:
-		return skylark.String(f)
+		return starlark.String(f)
 	case bool:
-		return skylark.Bool(f)
+		return starlark.Bool(f)
 	}
 	if enum, ok := iface.(protoEnum); ok {
 		return &skyProtoEnumValue{
@@ -295,10 +295,10 @@ func scalarToSkylark(val reflect.Value) skylark.Value {
 	return nil
 }
 
-func valueFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error) {
+func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error) {
 	switch sky := sky.(type) {
-	case skylark.Int, skylark.Float, skylark.String, skylark.Bool:
-		scalar, err := scalarFromSkylark(t, sky)
+	case starlark.Int, starlark.Float, starlark.String, starlark.Bool:
+		scalar, err := scalarFromStarlark(t, sky)
 		if err != nil {
 			return reflect.Value{}, err
 		}
@@ -311,7 +311,7 @@ func valueFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error) 
 			scalar = scalar.Convert(t)
 		}
 		return scalar, nil
-	case skylark.NoneType:
+	case starlark.NoneType:
 		if t.Kind() == reflect.Ptr {
 			return reflect.Zero(t), nil
 		}
@@ -323,7 +323,7 @@ func valueFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error) 
 		}
 		return reflect.Value{}, fmt.Errorf("TypeError: value None can't be assigned to type `%s' in proto3 mode.", t)
 	case *skyProtoEnumValue:
-		return enumFromSkylark(t, sky)
+		return enumFromStarlark(t, sky)
 	case *skyProtoMessage:
 		if reflect.TypeOf(sky.msg) == t {
 			val := reflect.New(t.Elem())
@@ -336,13 +336,13 @@ func valueFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error) 
 			return val.Elem(), nil
 		}
 	case *protoRepeated:
-		return valueFromSkylark(t, sky.list)
-	case *skylark.List:
+		return valueFromStarlark(t, sky.list)
+	case *starlark.List:
 		if t.Kind() == reflect.Slice {
 			elemType := t.Elem()
 			val := reflect.MakeSlice(t, sky.Len(), sky.Len())
 			for ii := 0; ii < sky.Len(); ii++ {
-				elem, err := valueFromSkylark(elemType, sky.Index(ii))
+				elem, err := valueFromStarlark(elemType, sky.Index(ii))
 				if err != nil {
 					return reflect.Value{}, err
 				}
@@ -351,18 +351,18 @@ func valueFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error) 
 			return val, nil
 		}
 	case *protoMap:
-		return valueFromSkylark(t, sky.dict)
-	case *skylark.Dict:
+		return valueFromStarlark(t, sky.dict)
+	case *starlark.Dict:
 		if t.Kind() == reflect.Map {
 			keyType := t.Key()
 			elemType := t.Elem()
 			val := reflect.MakeMapWithSize(t, sky.Len())
 			for _, item := range sky.Items() {
-				key, err := valueFromSkylark(keyType, item[0])
+				key, err := valueFromStarlark(keyType, item[0])
 				if err != nil {
 					return reflect.Value{}, err
 				}
-				elem, err := valueFromSkylark(elemType, item[1])
+				elem, err := valueFromStarlark(elemType, item[1])
 				if err != nil {
 					return reflect.Value{}, err
 				}
@@ -374,11 +374,11 @@ func valueFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error) 
 	return reflect.Value{}, typeError(t, sky)
 }
 
-func scalarFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error) {
+func scalarFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error) {
 	switch t.Kind() {
 	case reflect.Ptr:
 		val := reflect.New(t.Elem())
-		elem, err := scalarFromSkylark(t.Elem(), sky)
+		elem, err := scalarFromStarlark(t.Elem(), sky)
 		if err != nil {
 			// Recompute the type error based on the pointer type.
 			return reflect.Value{}, typeError(t, sky)
@@ -386,44 +386,44 @@ func scalarFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error)
 		val.Elem().Set(elem)
 		return val, nil
 	case reflect.Bool:
-		if val, ok := sky.(skylark.Bool); ok {
+		if val, ok := sky.(starlark.Bool); ok {
 			return reflect.ValueOf(bool(val)), nil
 		}
 	case reflect.String:
-		if val, ok := sky.(skylark.String); ok {
+		if val, ok := sky.(starlark.String); ok {
 			return reflect.ValueOf(string(val)), nil
 		}
 	case reflect.Float64:
-		if val, ok := skylark.AsFloat(sky); ok {
+		if val, ok := starlark.AsFloat(sky); ok {
 			return reflect.ValueOf(val), nil
 		}
 	case reflect.Float32:
-		if val, ok := skylark.AsFloat(sky); ok {
+		if val, ok := starlark.AsFloat(sky); ok {
 			return reflect.ValueOf(float32(val)), nil
 		}
 	case reflect.Int64:
-		if skyInt, ok := sky.(skylark.Int); ok {
+		if skyInt, ok := sky.(starlark.Int); ok {
 			if val, ok := skyInt.Int64(); ok {
 				return reflect.ValueOf(val), nil
 			}
 			return reflect.Value{}, fmt.Errorf("ValueError: value %v overflows type `int64'.", skyInt)
 		}
 	case reflect.Uint64:
-		if skyInt, ok := sky.(skylark.Int); ok {
+		if skyInt, ok := sky.(starlark.Int); ok {
 			if val, ok := skyInt.Uint64(); ok {
 				return reflect.ValueOf(val), nil
 			}
 			return reflect.Value{}, fmt.Errorf("ValueError: value %v overflows type `uint64'.", skyInt)
 		}
 	case reflect.Int32:
-		if skyInt, ok := sky.(skylark.Int); ok {
+		if skyInt, ok := sky.(starlark.Int); ok {
 			if val, ok := skyInt.Int64(); ok && val >= math.MinInt32 && val <= math.MaxInt32 {
 				return reflect.ValueOf(int32(val)), nil
 			}
 			return reflect.Value{}, fmt.Errorf("ValueError: value %v overflows type `int32'.", skyInt)
 		}
 	case reflect.Uint32:
-		if skyInt, ok := sky.(skylark.Int); ok {
+		if skyInt, ok := sky.(starlark.Int); ok {
 			if val, ok := skyInt.Uint64(); ok && val <= math.MaxUint32 {
 				return reflect.ValueOf(uint32(val)), nil
 			}
@@ -433,10 +433,10 @@ func scalarFromSkylark(t reflect.Type, sky skylark.Value) (reflect.Value, error)
 	return reflect.Value{}, typeError(t, sky)
 }
 
-func enumFromSkylark(t reflect.Type, sky *skyProtoEnumValue) (reflect.Value, error) {
+func enumFromStarlark(t reflect.Type, sky *skyProtoEnumValue) (reflect.Value, error) {
 	if t.Kind() == reflect.Ptr {
 		val := reflect.New(t.Elem())
-		elem, err := enumFromSkylark(t.Elem(), sky)
+		elem, err := enumFromStarlark(t.Elem(), sky)
 		if err != nil {
 			return reflect.Value{}, err
 		}
@@ -470,25 +470,25 @@ func typeName(t reflect.Type) string {
 	return fmt.Sprintf("%q.%s", t.PkgPath(), t.Name())
 }
 
-func typeError(t reflect.Type, sky skylark.Value) error {
+func typeError(t reflect.Type, sky starlark.Value) error {
 	return fmt.Errorf("TypeError: value %s (type `%s') can't be assigned to type `%s'.", sky.String(), sky.Type(), typeName(t))
 }
 
 type protoRepeated struct {
 	// var x []T; reflect.ValueOf(x)
 	field reflect.Value
-	list  *skylark.List
+	list  *starlark.List
 }
 
-var _ skylark.Value = (*protoRepeated)(nil)
-var _ skylark.Iterable = (*protoRepeated)(nil)
-var _ skylark.Sequence = (*protoRepeated)(nil)
-var _ skylark.Indexable = (*protoRepeated)(nil)
-var _ skylark.HasAttrs = (*protoRepeated)(nil)
-var _ skylark.HasSetIndex = (*protoRepeated)(nil)
-var _ skylark.HasBinary = (*protoRepeated)(nil)
+var _ starlark.Value = (*protoRepeated)(nil)
+var _ starlark.Iterable = (*protoRepeated)(nil)
+var _ starlark.Sequence = (*protoRepeated)(nil)
+var _ starlark.Indexable = (*protoRepeated)(nil)
+var _ starlark.HasAttrs = (*protoRepeated)(nil)
+var _ starlark.HasSetIndex = (*protoRepeated)(nil)
+var _ starlark.HasBinary = (*protoRepeated)(nil)
 
-func (r *protoRepeated) Attr(name string) (skylark.Value, error) {
+func (r *protoRepeated) Attr(name string) (starlark.Value, error) {
 	wrapper, ok := listMethods[name]
 	if !ok {
 		return nil, nil
@@ -499,62 +499,62 @@ func (r *protoRepeated) Attr(name string) (skylark.Value, error) {
 	return r.list.Attr(name)
 }
 
-func (r *protoRepeated) AttrNames() []string                { return r.list.AttrNames() }
-func (r *protoRepeated) Freeze()                            { r.list.Freeze() }
-func (r *protoRepeated) Hash() (uint32, error)              { return r.list.Hash() }
-func (r *protoRepeated) Index(i int) skylark.Value          { return r.list.Index(i) }
-func (r *protoRepeated) Iterate() skylark.Iterator          { return r.list.Iterate() }
-func (r *protoRepeated) Len() int                           { return r.list.Len() }
-func (r *protoRepeated) Slice(x, y, step int) skylark.Value { return r.list.Slice(x, y, step) }
-func (r *protoRepeated) String() string                     { return r.list.String() }
-func (r *protoRepeated) Truth() skylark.Bool                { return r.list.Truth() }
+func (r *protoRepeated) AttrNames() []string                 { return r.list.AttrNames() }
+func (r *protoRepeated) Freeze()                             { r.list.Freeze() }
+func (r *protoRepeated) Hash() (uint32, error)               { return r.list.Hash() }
+func (r *protoRepeated) Index(i int) starlark.Value          { return r.list.Index(i) }
+func (r *protoRepeated) Iterate() starlark.Iterator          { return r.list.Iterate() }
+func (r *protoRepeated) Len() int                            { return r.list.Len() }
+func (r *protoRepeated) Slice(x, y, step int) starlark.Value { return r.list.Slice(x, y, step) }
+func (r *protoRepeated) String() string                      { return r.list.String() }
+func (r *protoRepeated) Truth() starlark.Bool                { return r.list.Truth() }
 
 func (r *protoRepeated) Type() string {
 	return fmt.Sprintf("list<%s>", typeName(r.field.Type().Elem()))
 }
 
-func (r *protoRepeated) wrapClear() skylark.Value {
-	impl := func(thread *skylark.Thread, b *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-		if err := skylark.UnpackPositionalArgs("clear", args, kwargs, 0); err != nil {
+func (r *protoRepeated) wrapClear() starlark.Value {
+	impl := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		if err := starlark.UnpackPositionalArgs("clear", args, kwargs, 0); err != nil {
 			return nil, err
 		}
 		if err := r.Clear(); err != nil {
 			return nil, err
 		}
-		return skylark.None, nil
+		return starlark.None, nil
 	}
-	return skylark.NewBuiltin("clear", impl).BindReceiver(r)
+	return starlark.NewBuiltin("clear", impl).BindReceiver(r)
 }
 
-func (r *protoRepeated) wrapAppend() skylark.Value {
-	impl := func(thread *skylark.Thread, b *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-		var val skylark.Value
-		if err := skylark.UnpackPositionalArgs("append", args, kwargs, 1, &val); err != nil {
+func (r *protoRepeated) wrapAppend() starlark.Value {
+	impl := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var val starlark.Value
+		if err := starlark.UnpackPositionalArgs("append", args, kwargs, 1, &val); err != nil {
 			return nil, err
 		}
 		if err := r.Append(val); err != nil {
 			return nil, err
 		}
-		return skylark.None, nil
+		return starlark.None, nil
 	}
-	return skylark.NewBuiltin("append", impl).BindReceiver(r)
+	return starlark.NewBuiltin("append", impl).BindReceiver(r)
 }
 
-func (r *protoRepeated) wrapExtend() skylark.Value {
-	impl := func(thread *skylark.Thread, b *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-		var val skylark.Iterable
-		if err := skylark.UnpackPositionalArgs("extend", args, kwargs, 1, &val); err != nil {
+func (r *protoRepeated) wrapExtend() starlark.Value {
+	impl := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var val starlark.Iterable
+		if err := starlark.UnpackPositionalArgs("extend", args, kwargs, 1, &val); err != nil {
 			return nil, err
 		}
 		if err := r.implExtend(thread, val); err != nil {
 			return nil, err
 		}
-		return skylark.None, nil
+		return starlark.None, nil
 	}
-	return skylark.NewBuiltin("extend", impl).BindReceiver(r)
+	return starlark.NewBuiltin("extend", impl).BindReceiver(r)
 }
 
-var listMethods = map[string]func(*protoRepeated) skylark.Value{
+var listMethods = map[string]func(*protoRepeated) starlark.Value{
 	"clear":  (*protoRepeated).wrapClear,
 	"append": (*protoRepeated).wrapAppend,
 	"extend": (*protoRepeated).wrapExtend,
@@ -571,12 +571,12 @@ func (r *protoRepeated) Clear() error {
 	return nil
 }
 
-func (r *protoRepeated) Append(v skylark.Value) error {
+func (r *protoRepeated) Append(v starlark.Value) error {
 	itemType := r.field.Type().Elem()
-	if v == skylark.None {
+	if v == starlark.None {
 		return typeError(itemType, v)
 	}
-	goVal, err := valueFromSkylark(itemType, v)
+	goVal, err := valueFromStarlark(itemType, v)
 	if err != nil {
 		return err
 	}
@@ -587,18 +587,18 @@ func (r *protoRepeated) Append(v skylark.Value) error {
 	return nil
 }
 
-func (r *protoRepeated) implExtend(t *skylark.Thread, iterable skylark.Iterable) error {
+func (r *protoRepeated) implExtend(t *starlark.Thread, iterable starlark.Iterable) error {
 	itemType := r.field.Type().Elem()
-	var skyValues []skylark.Value
+	var skyValues []starlark.Value
 	var goValues []reflect.Value
 	iter := iterable.Iterate()
 	defer iter.Done()
-	var skyVal skylark.Value
+	var skyVal starlark.Value
 	for iter.Next(&skyVal) {
-		if skyVal == skylark.None {
+		if skyVal == starlark.None {
 			return typeError(itemType, skyVal)
 		}
-		goVal, err := valueFromSkylark(itemType, skyVal)
+		goVal, err := valueFromStarlark(itemType, skyVal)
 		if err != nil {
 			return err
 		}
@@ -607,22 +607,22 @@ func (r *protoRepeated) implExtend(t *skylark.Thread, iterable skylark.Iterable)
 	}
 
 	listExtend, _ := r.list.Attr("extend")
-	args := skylark.Tuple([]skylark.Value{
-		skylark.NewList(skyValues),
+	args := starlark.Tuple([]starlark.Value{
+		starlark.NewList(skyValues),
 	})
-	if _, err := listExtend.(*skylark.Builtin).Call(t, args, nil); err != nil {
+	if _, err := starlark.Call(t, listExtend, args, nil); err != nil {
 		return err
 	}
 	r.field.Set(reflect.Append(r.field, goValues...))
 	return nil
 }
 
-func (r *protoRepeated) SetIndex(i int, v skylark.Value) error {
+func (r *protoRepeated) SetIndex(i int, v starlark.Value) error {
 	itemType := r.field.Type().Elem()
-	if v == skylark.None {
+	if v == starlark.None {
 		return typeError(itemType, v)
 	}
-	goVal, err := valueFromSkylark(itemType, v)
+	goVal, err := valueFromStarlark(itemType, v)
 	if err != nil {
 		return err
 	}
@@ -633,20 +633,20 @@ func (r *protoRepeated) SetIndex(i int, v skylark.Value) error {
 	return nil
 }
 
-func (r *protoRepeated) Binary(op syntax.Token, y skylark.Value, side skylark.Side) (skylark.Value, error) {
+func (r *protoRepeated) Binary(op syntax.Token, y starlark.Value, side starlark.Side) (starlark.Value, error) {
 	if op == syntax.PLUS {
-		if side == skylark.Left {
+		if side == starlark.Left {
 			switch y := y.(type) {
-			case *skylark.List:
-				return skylark.Binary(op, r.list, y)
+			case *starlark.List:
+				return starlark.Binary(op, r.list, y)
 			case *protoRepeated:
-				return skylark.Binary(op, r.list, y.list)
+				return starlark.Binary(op, r.list, y.list)
 			}
 			return nil, nil
 		}
-		if side == skylark.Right {
-			if _, ok := y.(*skylark.List); ok {
-				return skylark.Binary(op, y, r.list)
+		if side == starlark.Right {
+			if _, ok := y.(*starlark.List); ok {
+				return starlark.Binary(op, y, r.list)
 			}
 			return nil, nil
 		}
@@ -656,16 +656,16 @@ func (r *protoRepeated) Binary(op syntax.Token, y skylark.Value, side skylark.Si
 
 type protoMap struct {
 	field reflect.Value
-	dict  *skylark.Dict
+	dict  *starlark.Dict
 }
 
-var _ skylark.Value = (*protoMap)(nil)
-var _ skylark.Iterable = (*protoMap)(nil)
-var _ skylark.Sequence = (*protoMap)(nil)
-var _ skylark.HasAttrs = (*protoMap)(nil)
-var _ skylark.HasSetKey = (*protoMap)(nil)
+var _ starlark.Value = (*protoMap)(nil)
+var _ starlark.Iterable = (*protoMap)(nil)
+var _ starlark.Sequence = (*protoMap)(nil)
+var _ starlark.HasAttrs = (*protoMap)(nil)
+var _ starlark.HasSetKey = (*protoMap)(nil)
 
-func (m *protoMap) Attr(name string) (skylark.Value, error) {
+func (m *protoMap) Attr(name string) (starlark.Value, error) {
 	wrapper, ok := dictMethods[name]
 	if !ok {
 		return nil, nil
@@ -676,38 +676,38 @@ func (m *protoMap) Attr(name string) (skylark.Value, error) {
 	return m.dict.Attr(name)
 }
 
-func (m *protoMap) AttrNames() []string                              { return m.dict.AttrNames() }
-func (m *protoMap) Freeze()                                          { m.dict.Freeze() }
-func (m *protoMap) Hash() (uint32, error)                            { return m.dict.Hash() }
-func (m *protoMap) Get(k skylark.Value) (skylark.Value, bool, error) { return m.dict.Get(k) }
-func (m *protoMap) Iterate() skylark.Iterator                        { return m.dict.Iterate() }
-func (m *protoMap) Len() int                                         { return m.dict.Len() }
-func (m *protoMap) String() string                                   { return m.dict.String() }
-func (m *protoMap) Truth() skylark.Bool                              { return m.dict.Truth() }
+func (m *protoMap) AttrNames() []string                                { return m.dict.AttrNames() }
+func (m *protoMap) Freeze()                                            { m.dict.Freeze() }
+func (m *protoMap) Hash() (uint32, error)                              { return m.dict.Hash() }
+func (m *protoMap) Get(k starlark.Value) (starlark.Value, bool, error) { return m.dict.Get(k) }
+func (m *protoMap) Iterate() starlark.Iterator                         { return m.dict.Iterate() }
+func (m *protoMap) Len() int                                           { return m.dict.Len() }
+func (m *protoMap) String() string                                     { return m.dict.String() }
+func (m *protoMap) Truth() starlark.Bool                               { return m.dict.Truth() }
 
 func (m *protoMap) Type() string {
 	t := m.field.Type()
 	return fmt.Sprintf("map<%s, %s>", typeName(t.Key()), typeName(t.Elem()))
 }
 
-func (m *protoMap) wrapClear() skylark.Value {
-	impl := func(thread *skylark.Thread, b *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-		if err := skylark.UnpackPositionalArgs("clear", args, kwargs, 0); err != nil {
+func (m *protoMap) wrapClear() starlark.Value {
+	impl := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		if err := starlark.UnpackPositionalArgs("clear", args, kwargs, 0); err != nil {
 			return nil, err
 		}
 		if err := m.dict.Clear(); err != nil {
 			return nil, err
 		}
 		m.field.Set(reflect.MakeMap(m.field.Type()))
-		return skylark.None, nil
+		return starlark.None, nil
 	}
-	return skylark.NewBuiltin("clear", impl).BindReceiver(m)
+	return starlark.NewBuiltin("clear", impl).BindReceiver(m)
 }
 
-func (m *protoMap) wrapSetDefault() skylark.Value {
-	impl := func(thread *skylark.Thread, b *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-		var key, defaultValue skylark.Value = nil, skylark.None
-		if err := skylark.UnpackPositionalArgs("setdefault", args, kwargs, 1, &key, &defaultValue); err != nil {
+func (m *protoMap) wrapSetDefault() starlark.Value {
+	impl := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var key, defaultValue starlark.Value = nil, starlark.None
+		if err := starlark.UnpackPositionalArgs("setdefault", args, kwargs, 1, &key, &defaultValue); err != nil {
 			return nil, err
 		}
 		if val, ok, err := m.dict.Get(key); err != nil {
@@ -717,30 +717,30 @@ func (m *protoMap) wrapSetDefault() skylark.Value {
 		}
 		return defaultValue, m.SetKey(key, defaultValue)
 	}
-	return skylark.NewBuiltin("setdefault", impl).BindReceiver(m)
+	return starlark.NewBuiltin("setdefault", impl).BindReceiver(m)
 }
 
-func (m *protoMap) wrapUpdate() skylark.Value {
+func (m *protoMap) wrapUpdate() starlark.Value {
 	keyType := m.field.Type().Key()
 	itemType := m.field.Type().Elem()
-	impl := func(thread *skylark.Thread, b *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-		// Use the underlying Skylark `dict.update()` to get a Dict containing
+	impl := func(thread *starlark.Thread, b *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		// Use the underlying starlark `dict.update()` to get a Dict containing
 		// all the new values, so we don't have to recreate the API here. After
 		// the temp dict is constructed, type check.
-		tempDict := &skylark.Dict{}
+		tempDict := &starlark.Dict{}
 		tempUpdate, _ := tempDict.Attr("update")
-		if _, err := tempUpdate.(*skylark.Builtin).Call(thread, args, kwargs); err != nil {
+		if _, err := starlark.Call(thread, tempUpdate, args, kwargs); err != nil {
 			return nil, err
 		}
 		for _, item := range tempDict.Items() {
-			if item[0] == skylark.None {
+			if item[0] == starlark.None {
 				return nil, typeError(keyType, item[0])
 			}
-			if item[1] == skylark.None {
+			if item[1] == starlark.None {
 				return nil, typeError(itemType, item[1])
 			}
 		}
-		tempMap, err := valueFromSkylark(m.field.Type(), tempDict)
+		tempMap, err := valueFromStarlark(m.field.Type(), tempDict)
 		if err != nil {
 			return nil, err
 		}
@@ -759,25 +759,25 @@ func (m *protoMap) wrapUpdate() skylark.Value {
 		for _, key := range tempMap.MapKeys() {
 			m.field.SetMapIndex(key, tempMap.MapIndex(key))
 		}
-		return skylark.None, nil
+		return starlark.None, nil
 	}
-	return skylark.NewBuiltin("update", impl).BindReceiver(m)
+	return starlark.NewBuiltin("update", impl).BindReceiver(m)
 }
 
-func (m *protoMap) SetKey(k, v skylark.Value) error {
+func (m *protoMap) SetKey(k, v starlark.Value) error {
 	keyType := m.field.Type().Key()
 	itemType := m.field.Type().Elem()
-	if k == skylark.None {
+	if k == starlark.None {
 		return typeError(keyType, k)
 	}
-	if v == skylark.None {
+	if v == starlark.None {
 		return typeError(itemType, v)
 	}
-	goKey, err := valueFromSkylark(keyType, k)
+	goKey, err := valueFromStarlark(keyType, k)
 	if err != nil {
 		return err
 	}
-	goVal, err := valueFromSkylark(itemType, v)
+	goVal, err := valueFromStarlark(itemType, v)
 	if err != nil {
 		return err
 	}
@@ -791,7 +791,7 @@ func (m *protoMap) SetKey(k, v skylark.Value) error {
 	return nil
 }
 
-var dictMethods = map[string]func(*protoMap) skylark.Value{
+var dictMethods = map[string]func(*protoMap) starlark.Value{
 	"clear": (*protoMap).wrapClear,
 	"get":   nil,
 	"items": nil,

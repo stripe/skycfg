@@ -10,9 +10,9 @@ import (
 
 	gogo_proto "github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/skylark"
-	"github.com/google/skylark/resolve"
 	"github.com/kylelemons/godebug/pretty"
+	"go.starlark.net/resolve"
+	"go.starlark.net/starlark"
 
 	pb "github.com/stripe/skycfg/test_proto"
 )
@@ -34,13 +34,13 @@ func (*gogoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
 	return gogo_proto.EnumValueMap(name)
 }
 
-func skyEval(t *testing.T, src string) skylark.Value {
+func skyEval(t *testing.T, src string) starlark.Value {
 	t.Helper()
-	globals := skylark.StringDict{
+	globals := starlark.StringDict{
 		"proto":      NewProtoModule(nil),
 		"gogo_proto": NewProtoModule(&gogoRegistry{}),
 	}
-	val, err := skylark.Eval(&skylark.Thread{}, "", src, globals)
+	val, err := starlark.Eval(&starlark.Thread{}, "", src, globals)
 	if err != nil {
 		t.Fatalf("eval(%q): %v", src, err)
 	}
@@ -189,10 +189,10 @@ func TestProtoMergeV3(t *testing.T) {
 
 func TestProtoMergeDiffTypes(t *testing.T) {
 	errorMsg := "proto.merge: types are not the same: got skycfg.test_proto.MessageV3 and skycfg.test_proto.MessageV2"
-	globals := skylark.StringDict{
+	globals := starlark.StringDict{
 		"proto": NewProtoModule(nil),
 	}
-	src, err := skylark.Eval(&skylark.Thread{}, "",
+	src, err := starlark.Eval(&starlark.Thread{}, "",
 		`proto.merge(proto.package("skycfg.test_proto").MessageV2(), proto.package("skycfg.test_proto").MessageV3())`, globals)
 	if err == nil {
 		t.Errorf("expected error, got %q", src)
@@ -206,7 +206,7 @@ func TestProtoToText(t *testing.T) {
 	val := skyEval(t, `proto.to_text(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	))`)
-	got := string(val.(skylark.String))
+	got := string(val.(starlark.String))
 	want := "f_string:\"some string\" "
 	if want != got {
 		t.Fatalf("to_text: wanted %q, got %q", want, got)
@@ -217,7 +217,7 @@ func TestProtoToTextCompact(t *testing.T) {
 	val := skyEval(t, `proto.to_text(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	), compact=True)`)
-	got := string(val.(skylark.String))
+	got := string(val.(starlark.String))
 	want := "f_string:\"some string\" "
 	if want != got {
 		t.Fatalf("to_text_compact: wanted %q, got %q", want, got)
@@ -228,7 +228,7 @@ func TestProtoToTextFull(t *testing.T) {
 	val := skyEval(t, `proto.to_text(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	), compact=False)`)
-	got := string(val.(skylark.String))
+	got := string(val.(starlark.String))
 	want := "f_string: \"some string\"\n"
 	if want != got {
 		t.Fatalf("to_text_full: wanted %q, got %q", want, got)
@@ -239,7 +239,7 @@ func TestProtoToJson(t *testing.T) {
 	val := skyEval(t, `proto.to_json(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	))`)
-	got := string(val.(skylark.String))
+	got := string(val.(starlark.String))
 	want := `{"f_string":"some string"}`
 	if want != got {
 		t.Fatalf("to_json: wanted %q, got %q", want, got)
@@ -250,7 +250,7 @@ func TestProtoToJsonCompact(t *testing.T) {
 	val := skyEval(t, `proto.to_json(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	), compact=True)`)
-	got := string(val.(skylark.String))
+	got := string(val.(starlark.String))
 	want := `{"f_string":"some string"}`
 	if want != got {
 		t.Fatalf("to_json_compact: wanted %q, got %q", want, got)
@@ -261,7 +261,7 @@ func TestProtoToJsonFull(t *testing.T) {
 	val := skyEval(t, `proto.to_json(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	), compact=False)`)
-	got := string(val.(skylark.String))
+	got := string(val.(starlark.String))
 	want := "{\n\t\"f_string\": \"some string\"\n}"
 	if want != got {
 		t.Fatalf("to_json_full: wanted %q, got %q", want, got)
@@ -272,7 +272,7 @@ func TestProtoToYaml(t *testing.T) {
 	val := skyEval(t, `proto.to_yaml(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	))`)
-	got := string(val.(skylark.String))
+	got := string(val.(starlark.String))
 	want := "f_string: some string\n"
 	if want != got {
 		t.Fatalf("to_yaml: wanted %q, got %q", want, got)
@@ -281,7 +281,7 @@ func TestProtoToYaml(t *testing.T) {
 
 func TestMessageAttrNames(t *testing.T) {
 	val := skyEval(t, `proto.package("skycfg.test_proto").MessageV3()`)
-	got := val.(skylark.HasAttrs).AttrNames()
+	got := val.(starlark.HasAttrs).AttrNames()
 	want := []string{
 		"f_int32",
 		"f_int64",
@@ -398,7 +398,7 @@ func TestMessageV2(t *testing.T) {
 		"f_oneof_a":       `"string in oneof"`,
 		"f_oneof_b":       `None`,
 	}
-	attrs := val.(skylark.HasAttrs)
+	attrs := val.(starlark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {
 		attr, err := attrs.Attr(attrName)
 		if err != nil {
@@ -501,7 +501,7 @@ func TestMessageV3(t *testing.T) {
 		"f_oneof_a":       `"string in oneof"`,
 		"f_oneof_b":       `None`,
 	}
-	attrs := val.(skylark.HasAttrs)
+	attrs := val.(starlark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {
 		attr, err := attrs.Attr(attrName)
 		if err != nil {
@@ -604,7 +604,7 @@ func TestMessageGogo(t *testing.T) {
 		"f_oneof_a":       `"string in oneof"`,
 		"f_oneof_b":       `None`,
 	}
-	attrs := val.(skylark.HasAttrs)
+	attrs := val.(starlark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {
 		attr, err := attrs.Attr(attrName)
 		if err != nil {
@@ -618,7 +618,7 @@ func TestMessageGogo(t *testing.T) {
 }
 
 func TestAttrValidation(t *testing.T) {
-	globals := skylark.StringDict{
+	globals := starlark.StringDict{
 		"proto": NewProtoModule(nil),
 	}
 	tests := []struct {
@@ -744,7 +744,7 @@ func TestAttrValidation(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		_, err := skylark.Eval(&skylark.Thread{}, "", `proto.package("skycfg.test_proto").`+test.src, globals)
+		_, err := starlark.Eval(&starlark.Thread{}, "", `proto.package("skycfg.test_proto").`+test.src, globals)
 		if err == nil {
 			t.Errorf("eval(%q): expected error", test.src)
 			continue
@@ -794,10 +794,10 @@ func TestListMutation(t *testing.T) {
 		msg := &pb.MessageV2{
 			RString: []string{"a", "b", "c"},
 		}
-		globals := skylark.StringDict{
+		globals := starlark.StringDict{
 			"msg": NewSkyProtoMessage(msg),
 		}
-		_, err := skylark.Eval(&skylark.Thread{}, "", test.src, globals)
+		_, err := starlark.Eval(&starlark.Thread{}, "", test.src, globals)
 		if test.wantErr != "" {
 			if err == nil {
 				t.Errorf("eval(%q): expected error", test.src)
@@ -874,10 +874,10 @@ func TestMapMutation(t *testing.T) {
 				"c": "C",
 			},
 		}
-		globals := skylark.StringDict{
+		globals := starlark.StringDict{
 			"msg": NewSkyProtoMessage(msg),
 		}
-		_, err := skylark.Eval(&skylark.Thread{}, "", test.src, globals)
+		_, err := starlark.Eval(&starlark.Thread{}, "", test.src, globals)
 		if test.wantErr != "" {
 			if err == nil {
 				t.Errorf("eval(%q): expected error", test.src)
@@ -904,11 +904,11 @@ func TestUnsetProto2Fields(t *testing.T) {
 		t.Fatalf("wanted %q, got %q", want, got)
 	}
 
-	field, err := msg.(skylark.HasAttrs).Attr("f_string")
+	field, err := msg.(starlark.HasAttrs).Attr("f_string")
 	if err != nil {
 		t.Fatalf(`msg.Attr("f_string"): %v`, err)
 	}
-	if _, isNone := field.(skylark.NoneType); !isNone {
+	if _, isNone := field.(starlark.NoneType); !isNone {
 		t.Fatalf("field set to None should be returned as None")
 	}
 }

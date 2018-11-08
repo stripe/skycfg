@@ -11,8 +11,8 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 	gogo_proto "github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/proto"
-	"github.com/google/skylark"
-	"github.com/google/skylark/repl"
+	"go.starlark.net/repl"
+	"go.starlark.net/starlark"
 	yaml "gopkg.in/yaml.v2"
 
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2"
@@ -81,8 +81,8 @@ usage: %s FILENAME
 
 	if mode == "repl" {
 		fmt.Printf("Entering Skycfg REPL for %s\n", config.Filename())
-		thread := &skylark.Thread{}
-		globals := make(skylark.StringDict)
+		thread := &starlark.Thread{}
+		globals := make(starlark.StringDict)
 		globals["help"] = &replHelp{config}
 		globals["exit"] = &replExit{}
 		for key, value := range config.Globals() {
@@ -130,7 +130,7 @@ type replHelp struct {
 
 func (*replHelp) Type() string               { return "skycfg_repl_help" }
 func (*replHelp) Freeze()                    {}
-func (*replHelp) Truth() skylark.Bool        { return skylark.True }
+func (*replHelp) Truth() starlark.Bool       { return starlark.True }
 func (help *replHelp) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable type: %s", help.Type()) }
 
 func (help *replHelp) String() string {
@@ -157,16 +157,16 @@ type replExit struct{}
 
 func (*replExit) Type() string               { return "skycfg_repl_exit" }
 func (*replExit) Freeze()                    {}
-func (*replExit) Truth() skylark.Bool        { return skylark.True }
+func (*replExit) Truth() starlark.Bool       { return starlark.True }
 func (exit *replExit) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable type: %s", exit.Type()) }
 func (*replExit) String() string             { return "Use exit() or Ctrl-D (i.e. EOF) to exit" }
 func (*replExit) Name() string               { return "exit" }
 
-func (*replExit) Call(_ *skylark.Thread, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	if err := skylark.UnpackPositionalArgs("exit", args, kwargs, 0); err != nil {
+func (*replExit) Call(_ *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if err := starlark.UnpackPositionalArgs("exit", args, kwargs, 0); err != nil {
 		return nil, err
 	}
 	fmt.Printf("\n")
 	os.Exit(0)
-	return skylark.None, nil
+	return starlark.None, nil
 }

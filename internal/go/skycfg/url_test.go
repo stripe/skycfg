@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/skylark"
+	"go.starlark.net/starlark"
 )
 
 type UrlTestCase struct {
@@ -15,8 +15,8 @@ type UrlTestCase struct {
 }
 
 func TestEncodeQuery(t *testing.T) {
-	thread := new(skylark.Thread)
-	env := skylark.StringDict{
+	thread := new(starlark.Thread)
+	env := starlark.StringDict{
 		"url": UrlModule(),
 	}
 
@@ -44,7 +44,7 @@ func TestEncodeQuery(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		v, err := skylark.Eval(
+		v, err := starlark.Eval(
 			thread,
 			"<expr>",
 			fmt.Sprintf("url.encode_query(%s)", testCase.skyExpr),
@@ -64,7 +64,7 @@ func TestEncodeQuery(t *testing.T) {
 					"\nExpected nil",
 					"\nGot", err)
 			}
-			exp := skylark.String(testCase.expOutput)
+			exp := starlark.String(testCase.expOutput)
 			if v != exp {
 				t.Error(
 					"Bad return value for case", testCase.name,
