@@ -1,10 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
+	"path"
 	"reflect"
 	"strings"
 
@@ -13,12 +18,11 @@ import (
 	"github.com/golang/protobuf/proto"
 	yaml "gopkg.in/yaml.v2"
 
-	meta_v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/discovery"
-	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/rest"
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 
@@ -33,8 +37,10 @@ import (
 )
 
 var (
-	dryRun    = flag.Bool("dry_run", false, "Dry-run mode.")
-	namespace = flag.String("namespace", "default", "Namespace to create/delete objects in.")
+	dryRun     = flag.Bool("dry_run", false, "Dry-run mode (alpha feature that must be enabled (https://k8s.io/docs/reference/using-api/api-concepts/#dry-run).")
+	debug      = flag.Bool("debug", false, "Print objects rendered by Skycfg and don't do anything.")
+	namespace  = flag.String("namespace", "default", "Namespace to create/delete objects in.")
+	configPath = flag.String("kubeconfig", os.Getenv("HOME")+"/.kube/config", "Kubernetes client config path.")
 )
 
 type protoRegistry struct{}
@@ -59,86 +65,242 @@ func (*protoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
 	return nil
 }
 
+var k8sProtoMagic = []byte("k8s\x00")
+
+// marshal wraps msg into runtime.Unknown object and prepends magic sequence
+// to conform with Kubernetes protobuf content type.
+func marshal(msg proto.Message) ([]byte, error) {
+	msgBytes, err := proto.Marshal(msg)
+	if err != nil {
+		return nil, err
+	}
+	unknownBytes, err := proto.Marshal(&runtime.Unknown{Raw: msgBytes})
+	if err != nil {
+		return nil, err
+	}
+	return append(k8sProtoMagic, unknownBytes...), nil
+}
+
+// pathForResource returns absolute URL path to access a gvr under a namespace.
+func pathForResource(namespace string, gvr schema.GroupVersionResource) string {
+	return pathForResourceWithName("", namespace, gvr)
+}
+
+// pathForResourceWithName is same as pathForResource but with name segment.
+func pathForResourceWithName(name, namespace string, gvr schema.GroupVersionResource) string {
+	segments := []string{"/apis"}
+
+	if gvr.Group == "" {
+		segments = []string{"/api", gvr.Version}
+	} else {
+		segments = append(segments, gvr.Group, gvr.Version)
+	}
+
+	if namespace != "" {
+		segments = append(segments, "namespaces", namespace)
+	}
+
+	if gvr.Resource != "" { // Skip explicit resource for namespaces.
+		segments = append(segments, gvr.Resource)
+	}
+
+	if name != "" {
+		segments = append(segments, name)
+	}
+
+	return path.Join(segments...)
+}
+
+// k8sAPIPrefix is a prefix for all Kubernetes types.
 const k8sAPIPrefix = "k8s.io.api."
 
-// gvkFromMessageType assembles schema.GroupVersionKind based on Protobuf
+// gvkFromMsgType assembles schema.GroupVersionKind based on Protobuf
 // message type.
-// e.g "k8s.io.api.core.v1.Pod" turned into "GV=v1, Kind=Pod".
-// Panics if message is not prefix with k8sAPIPerfix.
-func gvkFromMessageType(m proto.Message) schema.GroupVersionKind {
+// e.g "k8s.io.api.core.v1.Pod" turned into "", "v1", "Pod".
+// Returns error if message is not prefixed with k8sAPIPerfix.
+func gvkFromMsgType(m proto.Message) (group, version, kind string, err error) {
 	t := gogo_proto.MessageName(m)
 	if !strings.HasPrefix(t, k8sAPIPrefix) {
-		panic("Unexpected message type: " + t)
+		err = errors.New("unexpected message type: " + t)
+		return
 	}
 	ss := strings.Split(t[len(k8sAPIPrefix):], ".")
 	if ss[0] == "core" { // Is there a better way?
 		ss[0] = ""
 	}
-	return schema.GroupVersionKind{
-		Group:   ss[0],
-		Version: ss[1],
-		Kind:    ss[2],
-	}
+	group, version, kind = ss[0], ss[1], ss[2]
+	return
 }
 
-// k8sRun creates or deletes json object for gvk in namespace.
-// Returns object name or error.
-func k8sRun(gvk schema.GroupVersionKind, namespace string, json string, delete bool) (string, error) {
-	restConfig, err := clientcmd.BuildConfigFromFlags("", os.Getenv("KUBECONFIG"))
+type kube struct {
+	dClient    discovery.DiscoveryInterface
+	httpClient *http.Client
+	// host:port of the master.
+	Master string
+	dryRun bool
+}
+
+// resourceForMsg extract type information from msg and discovers appropriate
+// gvr for it using discovery client.
+func (k *kube) resourceForMsg(msg proto.Message) (*schema.GroupVersionResource, error) {
+	g, v, kind, err := gvkFromMsgType(msg)
 	if err != nil {
-		return "", fmt.Errorf("failed to build rest config: %v", err)
+		return nil, err
 	}
 
-	dc := discovery.NewDiscoveryClientForConfigOrDie(restConfig)
-	gr, err := restmapper.GetAPIGroupResources(dc)
+	gr, err := restmapper.GetAPIGroupResources(k.dClient)
+	if err != nil {
+		return nil, err
+	}
+
+	mapping, err := restmapper.NewDiscoveryRESTMapper(gr).RESTMapping(schema.GroupKind{g, kind}, v)
+	if err != nil {
+		return nil, err
+	}
+	return &mapping.Resource, nil
+}
+
+// httpError extracts error info and body from r.
+func httpError(r *http.Response) (raw []byte, err error) {
+	raw, err = ioutil.ReadAll(r.Body)
+	if err != nil {
+		raw = []byte("could not read body")
+	}
+	if r.StatusCode < 200 || r.StatusCode >= 300 {
+		err = fmt.Errorf("api returned error (code: %d): %s", r.StatusCode, string(raw))
+	}
+	return
+}
+
+func decodeRaw(raw []byte) (string, error) {
+	obj, err := runtime.Decode(unstructured.UnstructuredJSONScheme, raw)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode response: %v", err)
+	}
+	un := obj.(*unstructured.Unstructured)
+	gvk := un.GroupVersionKind()
+
+	if gvk.Kind == "Status" {
+		ds, found, err := unstructured.NestedStringMap(un.Object, "details")
+		if err != nil {
+			return "", err
+		}
+		if !found {
+			return "", errors.New("`details' map is missing from Status")
+		}
+		return fmt.Sprintf("%s.%s `%s'", ds["kind"], ds["group"], ds["name"]), nil
+	}
+
+	return fmt.Sprintf("%s.%s `%s'", strings.ToLower(gvk.Kind), gvk.Group, un.GetName()), nil
+}
+
+// Up creates msg object in Kubernetes. Determines the path based on msg
+// registered type. Object by the same path must not already exist.
+func (k *kube) Up(ctx context.Context, namespace string, msg proto.Message) (string, error) {
+	gvr, err := k.resourceForMsg(msg)
 	if err != nil {
 		return "", err
 	}
-	rm, err := restmapper.NewDiscoveryRESTMapper(gr).RESTMapping(gvk.GroupKind(), gvk.Version)
+	uri := pathForResource(namespace, *gvr)
+	bs, err := marshal(msg)
 	if err != nil {
 		return "", err
 	}
 
-	obj := runtime.Unknown{
-		Raw: []byte(json),
+	url := k.Master + uri
+	req, err := http.NewRequest("POST", url, bytes.NewReader(bs))
+
+	// NB: Will not work for CRDs (only json encoding is supported).
+	// Set body type as marshalled Protobuf.
+	req.Header.Set("Content-Type", "application/vnd.kubernetes.protobuf")
+	// Set reply type to accept Protobuf as well.
+	//req.Header.Set("Accept", "application/vnd.kubernetes.protobuf")
+
+	if k.dryRun {
+		q := req.URL.Query()
+		// Empty is default modifying behavior.
+		// TODO(dilyevsky): Consider also supporting "All".
+		// (https://k8s.io/docs/reference/using-api/api-concepts).
+		q.Add("dryRun", "")
+		req.URL.RawQuery = q.Encode()
 	}
-	//obj.SetGroupVersionKind(gvk)
-	objMap, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&obj)
+
+	resp, err := k.httpClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return "", err
 	}
-	un := &unstructured.Unstructured{objMap}
-
-	dynamicClient, err := dynamic.NewForConfig(restConfig)
+	raw, err := httpError(resp)
 	if err != nil {
-		return "", fmt.Errorf("failed to initialize dynamic REST client: %v", err)
+		return "", err
 	}
 
-	r := dynamicClient.Resource(rm.Resource).Namespace(namespace)
-	if delete {
-		err = r.Delete(un.GetName(), nil)
-	} else {
-		_, err = r.Create(un, meta_v1.CreateOptions{})
-	}
+	return decodeRaw(raw)
+}
+
+// Down delete objects name in namespace. Resource is computes based on msh
+// registered type.
+func (k *kube) Down(ctx context.Context, name, namespace string, msg proto.Message) (string, error) {
+	gvr, err := k.resourceForMsg(msg)
 	if err != nil {
-		return "", fmt.Errorf("failed to mutate resource: %v", err)
+		return "", err
 	}
-	return un.GetName(), err
+
+	url := k.Master + pathForResourceWithName(name, namespace, *gvr)
+	req, err := http.NewRequest("DELETE", url, nil)
+
+	if k.dryRun {
+		q := req.URL.Query()
+		// Empty is default modifying behavior.
+		// TODO(dilyevsky): Consider also supporting "All".
+		// (https://k8s.io/docs/reference/using-api/api-concepts).
+		q.Add("dryRun", "")
+		req.URL.RawQuery = q.Encode()
+	}
+
+	resp, err := k.httpClient.Do(req.WithContext(ctx))
+	if err != nil {
+		return "", err
+	}
+	raw, err := httpError(resp)
+	if err != nil {
+		return "", err
+	}
+
+	return decodeRaw(raw)
 }
 
 func main() {
 	flag.Parse()
 	argv := flag.Args()
 
-	if len(argv) != 2 {
+	if len(argv) != 3 {
 		fmt.Fprintf(os.Stderr, `Demo Kubernetes CLI for Skycfg, a library for building complex typed configs.
 
-usage: %s [ up | down ] FILENAME
-`, os.Args[0], os.Args[0])
+usage: %s [ up | down ] NAME FILENAME
+`, os.Args[0])
 		os.Exit(1)
 	}
+	action, name, filename := argv[0], argv[1], argv[2]
 
-	action, filename := argv[0], argv[1]
+	restConfig, err := clientcmd.BuildConfigFromFlags("", *configPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build rest config: %v\n", err)
+		os.Exit(1)
+	}
+	dc := discovery.NewDiscoveryClientForConfigOrDie(restConfig)
+	t, err := rest.TransportFor(restConfig)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to build HTTP roundtripper: %v\n", err)
+		os.Exit(1)
+	}
+	k := &kube{
+		httpClient: &http.Client{
+			Transport: t,
+		},
+		Master:  restConfig.Host,
+		dClient: dc,
+		dryRun:  *dryRun,
+	}
 
 	config, err := skycfg.Load(context.Background(), filename, skycfg.WithProtoRegistry(&protoRegistry{}))
 	if err != nil {
@@ -153,14 +315,13 @@ usage: %s [ up | down ] FILENAME
 		os.Exit(1)
 	}
 	for _, msg := range protos {
-		marshaled, err := jsonMarshaler.MarshalToString(msg)
-		sep := ""
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "json.Marshal: %v\n", err)
-			continue
-		}
-
-		if *dryRun {
+		if *debug {
+			marshaled, err := jsonMarshaler.MarshalToString(msg)
+			sep := ""
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "json.Marshal: %v\n", err)
+				continue
+			}
 			var yamlMap yaml.MapSlice
 			if err := yaml.Unmarshal([]byte(marshaled), &yamlMap); err != nil {
 				panic(fmt.Sprintf("yaml.Unmarshal: %v", err))
@@ -172,21 +333,22 @@ usage: %s [ up | down ] FILENAME
 			marshaled = string(yamlMarshaled)
 			sep = "---\n"
 			fmt.Printf("%s%s\n", sep, marshaled)
-			return
+			continue
 		}
 
+		ctx := context.Background()
 		switch action {
 		case "up":
-			if n, err := k8sRun(gvkFromMessageType(msg), *namespace, marshaled, false); err != nil {
+			if n, err := k.Up(ctx, *namespace, msg); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			} else {
-				fmt.Printf("%s/%s created.\n", *namespace, n)
+				fmt.Printf("%s: %s created.\n", *namespace, n)
 			}
 		case "down":
-			if n, err := k8sRun(gvkFromMessageType(msg), *namespace, marshaled, true); err != nil {
+			if n, err := k.Down(ctx, name, *namespace, msg); err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			} else {
-				fmt.Printf("%s/%s deleted.\n", *namespace, n)
+				fmt.Printf("%s: %s deleted.\n", *namespace, n)
 			}
 		default:
 			panic("Unknown action: " + action)
