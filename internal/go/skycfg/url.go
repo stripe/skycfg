@@ -4,31 +4,31 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/google/skylark"
+	"go.starlark.net/starlark"
 )
 
-// UrlModule returns a Skylark module for URL helpers.
-func UrlModule() skylark.Value {
+// UrlModule returns a Starlark module for URL helpers.
+func UrlModule() starlark.Value {
 	return &Module{
 		Name: "url",
-		Attrs: skylark.StringDict{
+		Attrs: starlark.StringDict{
 			"encode_query": urlEncodeQuery(),
 		},
 	}
 }
 
-// urlEncodeQuery returns a Skylark function for encoding URL query strings.
+// urlEncodeQuery returns a Starlark function for encoding URL query strings.
 //
 //  def url.encode_query(query: dict[str, str]) -> str
 //
-// Query items will be encoded in Skylark iteration order.
-func urlEncodeQuery() skylark.Callable {
-	return skylark.NewBuiltin("url.encode_query", fnEncodeQuery)
+// Query items will be encoded in starlark iteration order.
+func urlEncodeQuery() starlark.Callable {
+	return starlark.NewBuiltin("url.encode_query", fnEncodeQuery)
 }
 
-func fnEncodeQuery(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
-	var d *skylark.Dict
-	if err := skylark.UnpackArgs(fn.Name(), args, kwargs, "query", &d); err != nil {
+func fnEncodeQuery(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var d *starlark.Dict
+	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "query", &d); err != nil {
 		return nil, err
 	}
 
@@ -38,12 +38,12 @@ func fnEncodeQuery(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 		key := itemPair[0]
 		value := itemPair[1]
 
-		keyStr, keyIsStr := key.(skylark.String)
+		keyStr, keyIsStr := key.(starlark.String)
 		if !keyIsStr {
 			return nil, fmt.Errorf("Key is not string: %+v", key)
 		}
 
-		valStr, valIsStr := value.(skylark.String)
+		valStr, valIsStr := value.(starlark.String)
 		if !valIsStr {
 			return nil, fmt.Errorf("Value is not string: %+v", value)
 		}
@@ -51,5 +51,5 @@ func fnEncodeQuery(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, k
 		urlVals.Add(string(keyStr), string(valStr))
 	}
 
-	return skylark.String(urlVals.Encode()), nil
+	return starlark.String(urlVals.Encode()), nil
 }

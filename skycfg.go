@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/google/skylark"
-	"github.com/google/skylark/skylarkstruct"
+	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 
 	impl "github.com/stripe/skycfg/internal/go/skycfg"
 )
@@ -48,18 +48,18 @@ func (r *localFileReader) ReadFile(ctx context.Context, path string) ([]byte, er
 	return ioutil.ReadFile(path)
 }
 
-func NewProtoMessage(msg proto.Message) skylark.Value {
+func NewProtoMessage(msg proto.Message) starlark.Value {
 	return impl.NewSkyProtoMessage(msg)
 }
 
-func AsProtoMessage(v skylark.Value) (proto.Message, bool) {
+func AsProtoMessage(v starlark.Value) (proto.Message, bool) {
 	return impl.ToProtoMessage(v)
 }
 
 type Config struct {
 	filename string
-	globals  skylark.StringDict
-	locals   skylark.StringDict
+	globals  starlark.StringDict
+	locals   starlark.StringDict
 }
 
 type LoadOption interface {
@@ -67,7 +67,7 @@ type LoadOption interface {
 }
 
 type loadOptions struct {
-	globals       skylark.StringDict
+	globals       starlark.StringDict
 	fileReader    FileReader
 	protoRegistry impl.ProtoRegistry
 }
@@ -80,7 +80,7 @@ type unstableProtoRegistry interface {
 	impl.ProtoRegistry
 }
 
-func WithGlobals(globals skylark.StringDict) LoadOption {
+func WithGlobals(globals starlark.StringDict) LoadOption {
 	return fnLoadOption(func(opts *loadOptions) {
 		for key, value := range globals {
 			opts.globals[key] = value
@@ -109,12 +109,12 @@ func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
 func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, error) {
 	protoModule := impl.NewProtoModule(nil /* TODO: registry from options */)
 	parsedOpts := &loadOptions{
-		globals: skylark.StringDict{
-			"fail":   skylark.NewBuiltin("fail", skyFail),
+		globals: starlark.StringDict{
+			"fail":   starlark.NewBuiltin("fail", skyFail),
 			"hash":   impl.HashModule(),
 			"json":   impl.JsonModule(),
 			"proto":  protoModule,
-			"struct": skylark.NewBuiltin("struct", skylarkstruct.Make),
+			"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 			"yaml":   impl.YamlModule(),
 			"url":    impl.UrlModule(),
 		},
@@ -135,17 +135,17 @@ func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, er
 	}, nil
 }
 
-func loadImpl(ctx context.Context, opts *loadOptions, filename string) (skylark.StringDict, error) {
+func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark.StringDict, error) {
 	reader := opts.fileReader
 
 	type cacheEntry struct {
-		globals skylark.StringDict
+		globals starlark.StringDict
 		err     error
 	}
 	cache := make(map[string]*cacheEntry)
 
-	var load func(thread *skylark.Thread, moduleName string) (skylark.StringDict, error)
-	load = func(thread *skylark.Thread, moduleName string) (skylark.StringDict, error) {
+	var load func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error)
+	load = func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error) {
 		var fromPath string
 		if thread.TopFrame() != nil {
 			fromPath = thread.TopFrame().Position().Filename()
@@ -169,11 +169,11 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (skylark.
 		}
 
 		cache[modulePath] = nil
-		globals, err := skylark.ExecFile(thread, modulePath, moduleSource, opts.globals)
+		globals, err := starlark.ExecFile(thread, modulePath, moduleSource, opts.globals)
 		cache[modulePath] = &cacheEntry{globals, err}
 		return globals, err
 	}
-	return load(&skylark.Thread{
+	return load(&starlark.Thread{
 		Print: skyPrint,
 		Load:  load,
 	}, filename)
@@ -183,11 +183,11 @@ func (c *Config) Filename() string {
 	return c.filename
 }
 
-func (c *Config) Globals() skylark.StringDict {
+func (c *Config) Globals() starlark.StringDict {
 	return c.globals
 }
 
-func (c *Config) Locals() skylark.StringDict {
+func (c *Config) Locals() starlark.StringDict {
 	return c.locals
 }
 
@@ -196,24 +196,24 @@ type ExecOption interface {
 }
 
 type execOptions struct {
-	vars *skylark.Dict
+	vars *starlark.Dict
 }
 
 type fnExecOption func(*execOptions)
 
 func (fn fnExecOption) applyExec(opts *execOptions) { fn(opts) }
 
-func WithVars(vars skylark.StringDict) ExecOption {
+func WithVars(vars starlark.StringDict) ExecOption {
 	return fnExecOption(func(opts *execOptions) {
 		for key, value := range vars {
-			opts.vars.Set(skylark.String(key), value)
+			opts.vars.SetKey(starlark.String(key), value)
 		}
 	})
 }
 
 func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message, error) {
 	parsedOpts := &execOptions{
-		vars: &skylark.Dict{},
+		vars: &starlark.Dict{},
 	}
 	for _, opt := range opts {
 		opt.applyExec(parsedOpts)
@@ -222,29 +222,29 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 	if !ok {
 		return nil, fmt.Errorf("no `main' function found in %q", c.filename)
 	}
-	main, ok := mainVal.(skylark.Callable)
+	main, ok := mainVal.(starlark.Callable)
 	if !ok {
 		return nil, fmt.Errorf("`main' must be a function (got a %s)", mainVal.Type())
 	}
 
-	thread := &skylark.Thread{
+	thread := &starlark.Thread{
 		Print: skyPrint,
 	}
 	thread.SetLocal("context", ctx)
 	mainCtx := &impl.Module{
 		Name: "skycfg_ctx",
-		Attrs: skylark.StringDict(map[string]skylark.Value{
+		Attrs: starlark.StringDict(map[string]starlark.Value{
 			"vars": parsedOpts.vars,
 		}),
 	}
-	args := skylark.Tuple([]skylark.Value{mainCtx})
-	mainVal, err := main.Call(thread, args, nil)
+	args := starlark.Tuple([]starlark.Value{mainCtx})
+	mainVal, err := starlark.Call(thread, main, args, nil)
 	if err != nil {
 		return nil, err
 	}
-	mainList, ok := mainVal.(*skylark.List)
+	mainList, ok := mainVal.(*starlark.List)
 	if !ok {
-		if _, isNone := mainVal.(skylark.NoneType); isNone {
+		if _, isNone := mainVal.(starlark.NoneType); isNone {
 			return nil, nil
 		}
 		return nil, fmt.Errorf("`main' didn't return a list (got a %s)", mainVal.Type())
@@ -261,13 +261,13 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 	return msgs, nil
 }
 
-func skyPrint(t *skylark.Thread, msg string) {
+func skyPrint(t *starlark.Thread, msg string) {
 	fmt.Fprintf(os.Stderr, "[%v] %s\n", t.Caller().Position(), msg)
 }
 
-func skyFail(t *skylark.Thread, fn *skylark.Builtin, args skylark.Tuple, kwargs []skylark.Tuple) (skylark.Value, error) {
+func skyFail(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var msg string
-	if err := skylark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &msg); err != nil {
+	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &msg); err != nil {
 		return nil, err
 	}
 	var buf bytes.Buffer

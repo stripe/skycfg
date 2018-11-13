@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/skylark"
+	"go.starlark.net/starlark"
 )
 
 type TestCase struct {
@@ -13,8 +13,8 @@ type TestCase struct {
 }
 
 func TestSkyToJson(t *testing.T) {
-	thread := new(skylark.Thread)
-	env := skylark.StringDict{
+	thread := new(starlark.Thread)
+	env := starlark.StringDict{
 		"json": JsonModule(),
 	}
 
@@ -34,7 +34,7 @@ func TestSkyToJson(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		v, err := skylark.Eval(
+		v, err := starlark.Eval(
 			thread,
 			"<expr>",
 			fmt.Sprintf("json.marshal(%s)", testCase.skyExpr),
@@ -43,7 +43,7 @@ func TestSkyToJson(t *testing.T) {
 		if err != nil {
 			t.Error("Error from eval", "\nExpected nil", "\nGot", err)
 		}
-		exp := skylark.String(testCase.expOutput)
+		exp := starlark.String(testCase.expOutput)
 		if v != exp {
 			t.Error(
 				"Bad return value from json.marshal",
@@ -57,8 +57,8 @@ func TestSkyToJson(t *testing.T) {
 }
 
 func TestSkyToYaml(t *testing.T) {
-	thread := new(skylark.Thread)
-	env := skylark.StringDict{
+	thread := new(starlark.Thread)
+	env := starlark.StringDict{
 		"yaml": YamlModule(),
 	}
 
@@ -92,7 +92,7 @@ k:
 	}
 
 	for _, testCase := range testCases {
-		v, err := skylark.Eval(
+		v, err := starlark.Eval(
 			thread,
 			"<expr>",
 			fmt.Sprintf("yaml.marshal(%s)", testCase.skyExpr),
@@ -101,7 +101,7 @@ k:
 		if err != nil {
 			t.Error("Error from eval", "\nExpected nil", "\nGot", err)
 		}
-		exp := skylark.String(testCase.expOutput)
+		exp := starlark.String(testCase.expOutput)
 		if v != exp {
 			t.Error(
 				"Bad return value from yaml.marshal",

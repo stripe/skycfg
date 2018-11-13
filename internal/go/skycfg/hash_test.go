@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/google/skylark"
+	"go.starlark.net/starlark"
 )
 
 type hashTestCase struct {
@@ -14,8 +14,8 @@ type hashTestCase struct {
 }
 
 func TestHashes(t *testing.T) {
-	thread := new(skylark.Thread)
-	env := skylark.StringDict{
+	thread := new(starlark.Thread)
+	env := starlark.StringDict{
 		"hash": HashModule(),
 	}
 
@@ -38,7 +38,7 @@ func TestHashes(t *testing.T) {
 	}
 
 	for _, testCase := range testCases {
-		v, err := skylark.Eval(
+		v, err := starlark.Eval(
 			thread,
 			"<expr>",
 			fmt.Sprintf(`hash.%s("%s")`, testCase.hashFunc, testCase.input),
@@ -46,10 +46,10 @@ func TestHashes(t *testing.T) {
 		)
 		if err != nil {
 			t.Error("Error from eval", "\nExpected nil", "\nGot", err)
-		} else if v != skylark.String(testCase.expOutput) {
+		} else if v != starlark.String(testCase.expOutput) {
 			t.Error(
 				"Bad result from func", testCase.hashFunc,
-				"\nExpected", skylark.String(testCase.expOutput),
+				"\nExpected", starlark.String(testCase.expOutput),
 				"\nGot", v,
 			)
 		}

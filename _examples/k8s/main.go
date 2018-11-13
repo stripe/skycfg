@@ -237,7 +237,7 @@ func (k *kube) Up(ctx context.Context, namespace string, msg proto.Message) (str
 	return decodeRaw(raw)
 }
 
-// Down delete objects name in namespace. Resource is computes based on msh
+// Down deletes object name in namespace. Resource is computed based on msg
 // registered type.
 func (k *kube) Down(ctx context.Context, name, namespace string, msg proto.Message) (string, error) {
 	gvr, err := k.resourceForMsg(msg)

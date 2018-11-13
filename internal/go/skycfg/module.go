@@ -4,24 +4,24 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/google/skylark"
+	"go.starlark.net/starlark"
 )
 
-// A Skylark module, for namespacing of built-in functions.
+// A Starlark module, for namespacing of built-in functions.
 type Module struct {
 	Name  string
-	Attrs skylark.StringDict
+	Attrs starlark.StringDict
 }
 
-var _ skylark.HasAttrs = (*Module)(nil)
+var _ starlark.HasAttrs = (*Module)(nil)
 
 func (mod *Module) String() string        { return fmt.Sprintf("<module %q>", mod.Name) }
 func (mod *Module) Type() string          { return "module" }
 func (mod *Module) Freeze()               { mod.Attrs.Freeze() }
-func (mod *Module) Truth() skylark.Bool   { return skylark.True }
+func (mod *Module) Truth() starlark.Bool  { return starlark.True }
 func (mod *Module) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable type: %s", mod.Type()) }
 
-func (mod *Module) Attr(name string) (skylark.Value, error) {
+func (mod *Module) Attr(name string) (starlark.Value, error) {
 	if val, ok := mod.Attrs[name]; ok {
 		return val, nil
 	}
