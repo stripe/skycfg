@@ -68,6 +68,8 @@ github.com/spf13/pflag v1.0.3/go.mod h1:DYY7MBk1bdzusC3SYhjObp+wFpr4gzcvqqNjLnIn
 go.opencensus.io v0.17.0/go.mod h1:mp1VrMQxhlqqDpKvH4UcQUa4YwlzNmymAjPrDdfxNpI=
 go.opencensus.io v0.18.0 h1:Mk5rgZcggtbvtAun5aJzAtjKKN/t0R3jJPlWILlv938=
 go.opencensus.io v0.18.0/go.mod h1:vKdFvxhtzZ9onBp9VKHK8z/sRpBMnKAsufL7wlDrCOA=
+go.starlark.net v0.0.0-20181108041844-f4938bde4080 h1:PynO3TmUXWWlWQ1FHArWPoFcoQR3oCaMm0l+d6rbjeo=
+go.starlark.net v0.0.0-20181108041844-f4938bde4080/go.mod h1:c1/X6cHgvdXj6pUlmWKMkuqRnW4K8x2vwt6JAaaircg=
 golang.org/x/crypto v0.0.0-20181029103014-dab2b1051b5d h1:5JyY8HlzxzYI+qHOOciM8s2lJbIEaefMUdtYt7dRDrg=
 golang.org/x/crypto v0.0.0-20181029103014-dab2b1051b5d/go.mod h1:6SG95UA2DQfeDnfUPMdvaQW0Q7yPrPDi9nlGo2tz2b4=
 golang.org/x/lint v0.0.0-20180702182130-06c8688daad7/go.mod h1:UVdnD1Gm6xHRNCYTkRU2/jEulfH38KcIWyp/GAMgvoE=
@@ -110,5 +112,6 @@ k8s.io/api v0.0.0-20181027024800-9fcf73cc980b h1:ojgIGmjzUSwsug8H2yVCoueRAGy0Ish
 k8s.io/api v0.0.0-20181027024800-9fcf73cc980b/go.mod h1:iuAfoD4hCxJ8Onx9kaTIt30j7jUFS00AXQi6QMi99vA=
 k8s.io/apimachinery v0.0.0-20181026144617-b7f9f1fa80ae h1:QV0MJn7lF87qcyC3Y+On2zKM62Erf99uoORoQbu7lag=
 k8s.io/apimachinery v0.0.0-20181026144617-b7f9f1fa80ae/go.mod h1:ccL7Eh7zubPUSh9A3USN90/OzHNSVN6zxzde07TDCL0=
+k8s.io/apimachinery v0.0.0-20181110190943-2a7c93004028 h1:5i4gnQYlGFIWZp34j0qnt3eeCEFs2ymFzRhzFOPG5/U=
 k8s.io/client-go v9.0.0+incompatible h1:/PdJjifJTjMFe0G4ESclZDcwF1+bFePTJ2xf+MXjcvs=
 k8s.io/client-go v9.0.0+incompatible/go.mod h1:7vJpHMYJwNQCWgzmNV+VYUl1zCObLyodBc8nIyt8L5s=

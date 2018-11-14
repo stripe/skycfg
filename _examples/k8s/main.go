@@ -18,6 +18,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	yaml "gopkg.in/yaml.v2"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -37,8 +38,7 @@ import (
 )
 
 var (
-	dryRun     = flag.Bool("dry_run", false, "Dry-run mode (alpha feature that must be enabled (https://k8s.io/docs/reference/using-api/api-concepts/#dry-run).")
-	debug      = flag.Bool("debug", false, "Print objects rendered by Skycfg and don't do anything.")
+	dryRun     = flag.Bool("dry_run", false, "Print objects rendered by Skycfg and don't do anything.")
 	namespace  = flag.String("namespace", "default", "Namespace to create/delete objects in.")
 	configPath = flag.String("kubeconfig", os.Getenv("HOME")+"/.kube/config", "Kubernetes client config path.")
 )
@@ -160,23 +160,25 @@ func (k *kube) resourceForMsg(msg proto.Message) (*schema.GroupVersionResource, 
 	return &mapping.Resource, nil
 }
 
-// httpError extracts error info and body from r.
-func httpError(r *http.Response) (raw []byte, err error) {
-	raw, err = ioutil.ReadAll(r.Body)
+// parseResponse parses response body to extract unstructred.Unstructured
+// and extracts http error code.
+// Returns status message on success and error on failure (includes HTTP
+// response codes not in 2XX).
+func parseResponse(r *http.Response) (status string, err error) {
+	raw, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		raw = []byte("could not read body")
+		return "", fmt.Errorf("failed to read body (response code: %d): %v", r.StatusCode, err)
 	}
-	if r.StatusCode < 200 || r.StatusCode >= 300 {
-		err = fmt.Errorf("api returned error (code: %d): %s", r.StatusCode, string(raw))
-	}
-	return
-}
 
-func decodeRaw(raw []byte) (string, error) {
 	obj, err := runtime.Decode(unstructured.UnstructuredJSONScheme, raw)
 	if err != nil {
-		return "", fmt.Errorf("failed to decode response: %v", err)
+		return "", fmt.Errorf("failed to parse Status (response code: %d): %v", r.StatusCode, err)
 	}
+
+	if r.StatusCode < 200 || r.StatusCode >= 300 {
+		return "", fmt.Errorf("%s (response code: %d)", apierrors.FromObject(obj).Error(), r.StatusCode)
+	}
+
 	un := obj.(*unstructured.Unstructured)
 	gvk := un.GroupVersionKind()
 
@@ -208,6 +210,10 @@ func (k *kube) Up(ctx context.Context, namespace string, msg proto.Message) (str
 	}
 
 	url := k.Master + uri
+	if k.dryRun {
+		return "POST to " + url, nil
+	}
+
 	req, err := http.NewRequest("POST", url, bytes.NewReader(bs))
 
 	// NB: Will not work for CRDs (only json encoding is supported).
@@ -216,25 +222,16 @@ func (k *kube) Up(ctx context.Context, namespace string, msg proto.Message) (str
 	// Set reply type to accept Protobuf as well.
 	//req.Header.Set("Accept", "application/vnd.kubernetes.protobuf")
 
-	if k.dryRun {
-		q := req.URL.Query()
-		// Empty is default modifying behavior.
-		// TODO(dilyevsky): Consider also supporting "All".
-		// (https://k8s.io/docs/reference/using-api/api-concepts).
-		q.Add("dryRun", "")
-		req.URL.RawQuery = q.Encode()
-	}
-
 	resp, err := k.httpClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return "", err
 	}
-	raw, err := httpError(resp)
+
+	rMsg, err := parseResponse(resp)
 	if err != nil {
 		return "", err
 	}
-
-	return decodeRaw(raw)
+	return rMsg + " created", nil
 }
 
 // Down deletes object name in namespace. Resource is computed based on msg
@@ -246,27 +243,22 @@ func (k *kube) Down(ctx context.Context, name, namespace string, msg proto.Messa
 	}
 
 	url := k.Master + pathForResourceWithName(name, namespace, *gvr)
-	req, err := http.NewRequest("DELETE", url, nil)
-
 	if k.dryRun {
-		q := req.URL.Query()
-		// Empty is default modifying behavior.
-		// TODO(dilyevsky): Consider also supporting "All".
-		// (https://k8s.io/docs/reference/using-api/api-concepts).
-		q.Add("dryRun", "")
-		req.URL.RawQuery = q.Encode()
+		return "POST to " + url, nil
 	}
+
+	req, err := http.NewRequest("DELETE", url, nil)
 
 	resp, err := k.httpClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return "", err
 	}
-	raw, err := httpError(resp)
+
+	rMsg, err := parseResponse(resp)
 	if err != nil {
 		return "", err
 	}
-
-	return decodeRaw(raw)
+	return rMsg + " deleted", nil
 }
 
 func main() {
@@ -315,7 +307,25 @@ usage: %s [ up | down ] NAME FILENAME
 		os.Exit(1)
 	}
 	for _, msg := range protos {
-		if *debug {
+		ctx := context.Background()
+		var err error
+		var reply string
+		switch action {
+		case "up":
+			reply, err = k.Up(ctx, *namespace, msg)
+		case "down":
+			reply, err = k.Down(ctx, name, *namespace, msg)
+		default:
+			panic("Unknown action: " + action)
+		}
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+		} else {
+			fmt.Printf("%s\n", reply)
+		}
+
+		if *dryRun {
 			marshaled, err := jsonMarshaler.MarshalToString(msg)
 			sep := ""
 			if err != nil {
@@ -333,25 +343,6 @@ usage: %s [ up | down ] NAME FILENAME
 			marshaled = string(yamlMarshaled)
 			sep = "---\n"
 			fmt.Printf("%s%s\n", sep, marshaled)
-			continue
-		}
-
-		ctx := context.Background()
-		switch action {
-		case "up":
-			if n, err := k.Up(ctx, *namespace, msg); err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			} else {
-				fmt.Printf("%s: %s created.\n", *namespace, n)
-			}
-		case "down":
-			if n, err := k.Down(ctx, name, *namespace, msg); err != nil {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
-			} else {
-				fmt.Printf("%s: %s deleted.\n", *namespace, n)
-			}
-		default:
-			panic("Unknown action: " + action)
 		}
 
 	}
