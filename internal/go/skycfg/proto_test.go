@@ -24,6 +24,9 @@ func init() {
 type gogoRegistry struct{}
 
 func (*gogoRegistry) UnstableProtoMessageType(name string) (reflect.Type, error) {
+	if t := proto.MessageType(name); t != nil {
+		return t, nil
+	}
 	if t := gogo_proto.MessageType(name); t != nil {
 		return t, nil
 	}
@@ -31,7 +34,13 @@ func (*gogoRegistry) UnstableProtoMessageType(name string) (reflect.Type, error)
 }
 
 func (*gogoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
-	return gogo_proto.EnumValueMap(name)
+	if ev := proto.EnumValueMap(name); ev != nil {
+		return ev
+	}
+	if ev := gogo_proto.EnumValueMap(name); ev != nil {
+		return ev
+	}
+	return nil
 }
 
 func skyEval(t *testing.T, src string) starlark.Value {
@@ -558,11 +567,11 @@ func TestMessageGogo(t *testing.T) {
 		FFloat64: proto.Float64(10.60),
 		FString:  proto.String("some string"),
 		FBool:    proto.Bool(true),
-		FSubmsg: pb.MessageV2{
+		FSubmsg: &pb.MessageV2{
 			FString: proto.String("string in submsg"),
 		},
 		RString: []string{"r_string1", "r_string2"},
-		RSubmsg: []pb.MessageV2{{
+		RSubmsg: []*pb.MessageV2{{
 			FString: proto.String("string in r_submsg"),
 		}},
 		MapString: map[string]string{
