@@ -27,4 +27,4 @@ install:
 script:
   - go test -v ./...
   - ( cd _examples/repl && go build . )
-  - ( cd _examples/wasm && GOOS=js GOARCH=wasm go build -o skycfg.wasm . )
+  - if [[ "$TRAVIS_GO_VERSION" != "master" ]]; then ( cd _examples/wasm && GOOS=js GOARCH=wasm go build -o skycfg.wasm . ); fi
