@@ -1,13 +1,147 @@
 <html>
 	<head>
 		<meta charset="utf-8">
+		<style>
+html, body {
+	margin: 0;
+	height: 100%;
+	font-size: 16px;
+	font-family: Menlo, Monaco, source-code-pro, monospace;
+}
+
+pre {
+	margin: 0;
+}
+
+#left-panel {
+	width: 50%;
+	height: 100%;
+	position: absolute;
+	left: 0;
+	top: 0;
+}
+
+#skycfg-input {
+	width: 100%;
+	height: 100%;
+}
+
+#skycfg-error {
+	width: 90%;
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	border: 3px solid #CC1F1A;
+	background-color: #F9ACAA;
+	padding: 5px;
+	margin: 5px;
+	display: none;
+}
+
+#right-panel {
+	width: 50%;
+	height: 100%;
+	position: absolute;
+	right: 0;
+	top: 0;
+}
+
+#skycfg-output {
+	margin: 5px;
+}
+
+		</style>
 		<script src="wasm_exec.js"></script>
 		<script>
 			const go = new Go();
-			WebAssembly.instantiateStreaming(fetch("skycfg.wasm"), go.importObject).then((result) => {
-				go.run(result.instance);
-			});
+			let loaded = new Promise(function(resolve, reject) {
+				WebAssembly.instantiateStreaming(fetch("skycfg.wasm"), go.importObject).then((result) => {
+					resolve();
+					go.run(result.instance);
+				});
+			})
 		</script>
 	</head>
-	<body></body>
+	<body>
+		<div id="left-panel">
+			<textarea id="skycfg-input">
+tutorial = proto.package("tutorial")
+
+def phone_number(number, type = tutorial.Person.PhoneType.HOME):
+	return tutorial.Person.PhoneNumber(number = number, type = type)
+
+def main(ctx):
+	jdoe = tutorial.Person(
+		id = 1234,
+		name = "John Doe",
+		email = "jdoe@example.com",
+		phones = [phone_number("555-4321")]
+	)
+	return [jdoe]
+</textarea>
+			<pre id="skycfg-error"></pre>
+		</div>
+		<div id="right-panel">
+			<div style="padding: 5px">
+				<label for="output-format">Output format:</label>
+				<select id="output-format">
+					<option value="yaml">YAML</option>
+					<option value="json">JSON</option>
+					<option value="proto">Protobuf</option>
+				</select>
+			</div>
+			<pre id="skycfg-output"></pre>
+		</div>
+	</body>
+	<script>
+		(function() {
+			const input = document.getElementById("skycfg-input");
+			const output = document.getElementById("skycfg-output");
+			const outputFormat = document.getElementById("output-format");
+			const error = document.getElementById("skycfg-error");
+
+			let result = null;
+
+			const refresh = function() {
+				if (result === null) {
+					return;
+				}
+				let newText = "";
+				result.forEach((item) => {
+					if (newText !== "") {
+						if (outputFormat.value === "yaml") {
+							newText += "---\n";
+						} else {
+							newText += "\n";
+						}
+					}
+					newText += item[outputFormat.value];
+				});
+				output.innerText = newText;
+			};
+
+			const input_changed = function() {
+				window.skycfg_main(input.value, {
+					err: function(err) {
+						output.innerText = "";
+						error.innerText = err;
+						error.style = "display: block";
+					},
+					ok: function(newResult) {
+						result = newResult;
+						error.innerText = "";
+						error.style = "";
+						refresh();
+					},
+				});
+			}
+
+			input.addEventListener('input', input_changed);
+			outputFormat.addEventListener('change', function() {
+				refresh();
+			});
+
+			loaded.then(function(value) { input_changed() });
+		})();
+	</script>
 </html>
