@@ -27,7 +27,6 @@ import (
 	"k8s.io/client-go/restmapper"
 	"k8s.io/client-go/tools/clientcmd"
 
-	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	_ "k8s.io/api/apps/v1"
 	_ "k8s.io/api/batch/v1"
 	_ "k8s.io/api/core/v1"
