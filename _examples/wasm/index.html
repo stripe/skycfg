@@ -49,7 +49,6 @@ pre {
 #skycfg-output {
 	margin: 5px;
 }
-
 		</style>
 		<script src="wasm_exec.js"></script>
 		<script>
@@ -102,12 +101,12 @@ def main(ctx):
 
 			let result = null;
 
-			const refresh = function() {
+			const refresh = () => {
 				if (result === null) {
 					return;
 				}
 				let newText = "";
-				result.forEach((item) => {
+				for (let item of result) {
 					if (newText !== "") {
 						if (outputFormat.value === "yaml") {
 							newText += "---\n";
@@ -116,18 +115,18 @@ def main(ctx):
 						}
 					}
 					newText += item[outputFormat.value];
-				});
+				};
 				output.innerText = newText;
 			};
 
-			const input_changed = function() {
+			const input_changed = () => {
 				window.skycfg_main(input.value, {
-					err: function(err) {
+					err: (err) => {
 						output.innerText = "";
 						error.innerText = err;
 						error.style = "display: block";
 					},
-					ok: function(newResult) {
+					ok: (newResult) => {
 						result = newResult;
 						error.innerText = "";
 						error.style = "";
@@ -136,12 +135,12 @@ def main(ctx):
 				});
 			}
 
-			input.addEventListener('input', input_changed);
-			outputFormat.addEventListener('change', function() {
+			input.addEventListener("input", input_changed);
+			outputFormat.addEventListener("change", () => {
 				refresh();
 			});
 
-			loaded.then(function(value) { input_changed() });
+			loaded.then((value) => { input_changed() });
 		})();
 	</script>
 </html>
