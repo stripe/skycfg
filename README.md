@@ -13,5 +13,6 @@ $ godoc -http 'localhost:8080'
 
 ```
 $ protoc --go_out="${GOPATH}/src" --proto_path=testdata test_proto_v2.proto test_proto_v3.proto
+$ protoc --gogofast_out="${GOPATH}/src" --proto_path=testdata test_proto_gogo.proto
 $ go test -v ./...
 ```
