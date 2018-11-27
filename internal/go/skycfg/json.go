@@ -2,8 +2,6 @@ package skycfg
 
 import (
 	"bytes"
-	"encoding/json"
-	"fmt"
 
 	"go.starlark.net/starlark"
 	yaml "gopkg.in/yaml.v2"
