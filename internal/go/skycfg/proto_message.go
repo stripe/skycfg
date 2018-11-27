@@ -303,15 +303,7 @@ func scalarToStarlark(val reflect.Value) starlark.Value {
 func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error) {
 	switch sky := sky.(type) {
 	case starlark.Int, starlark.Float, starlark.String, starlark.Bool:
-		var scalar reflect.Value
-		var err error
-		// If dst is []byte ([]Uint8) and src is string, attempt to
-		// convert value below.
-		if t.Kind() == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
-			scalar, err = scalarFromStarlark(reflect.TypeOf(""), sky)
-		} else {
-			scalar, err = scalarFromStarlark(t, sky)
-		}
+		scalar, err := scalarFromStarlark(t, sky)
 		if err != nil {
 			return reflect.Value{}, err
 		}
@@ -389,7 +381,18 @@ func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error
 }
 
 func scalarFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error) {
-	switch t.Kind() {
+	k := t.Kind()
+	// Handling special case of Starlark string to []byte (aka []uint8 aka
+	// proto "bytes") assigment.
+	if k == reflect.Slice && t.Elem().Kind() == reflect.Uint8 {
+		val, ok := sky.(starlark.String)
+		if !ok {
+			return reflect.Value{}, typeError(t, sky)
+		}
+		return reflect.ValueOf([]byte(val)), nil
+	}
+
+	switch k {
 	case reflect.Ptr:
 		val := reflect.New(t.Elem())
 		elem, err := scalarFromStarlark(t.Elem(), sky)

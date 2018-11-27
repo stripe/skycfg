@@ -554,6 +554,7 @@ func TestMessageGogo(t *testing.T) {
 		f_toplevel_enum = proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B,
 		f_nested_enum = gogo_proto.package("skycfg.test_proto").MessageGogo.NestedEnum.NESTED_ENUM_B,
 		f_oneof_a = "string in oneof",
+		f_bytes = "also some string",
 	)`)
 	gotMsg := val.(*skyProtoMessage).msg
 	wantMsg := &pb.MessageGogo{
@@ -586,6 +587,7 @@ func TestMessageGogo(t *testing.T) {
 		FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_B.Enum(),
 		FNestedEnum:   pb.MessageGogo_NESTED_ENUM_B.Enum(),
 		FOneof:        &pb.MessageGogo_FOneofA{"string in oneof"},
+		FBytes:        []byte("also some string"),
 	}
 	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
 		t.Fatalf("diff from expected message:\n%s", diff)
@@ -610,6 +612,7 @@ func TestMessageGogo(t *testing.T) {
 		"f_nested_enum":   `<skycfg.test_proto.MessageGogo.NestedEnum NESTED_ENUM_B=1>`,
 		"f_oneof_a":       `"string in oneof"`,
 		"f_oneof_b":       `None`,
+		"f_bytes":         `"also some string"`,
 	}
 	attrs := val.(starlark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {
