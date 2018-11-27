@@ -50,5 +50,7 @@ message MessageGogo {
     string f_oneof_b = 18;
   }
 
-  // NEXT: 19
+  optional bytes f_bytes = 19;
+
+  // NEXT: 20
 }
