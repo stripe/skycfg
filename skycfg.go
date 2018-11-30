@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-// Package skycfg  is an extension library for the Starlark language that adds support
+// Package skycfg is an extension library for the Starlark language that adds support
 // for constructing Protocol Buffer messages.
 package skycfg
 
@@ -90,7 +90,7 @@ func AsProtoMessage(v starlark.Value) (proto.Message, bool) {
 	return impl.ToProtoMessage(v)
 }
 
-// A Config is Skycfg config file that has been fully loaded and is ready
+// A Config is a Skycfg config file that has been fully loaded and is ready
 // for execution.
 type Config struct {
 	filename string
