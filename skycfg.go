@@ -149,25 +149,42 @@ func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
 	})
 }
 
+// UnstablePredeclaredModules returns a Starlark string dictionary with
+// predeclared Skycfg modules which can be used in starlark.ExecFile.
+//
+// Takes in unstableProtoRegistry as required param (if nil will use standard
+// proto registry).
+//
+// Currently provides these modules (see REAMDE for more detailed description):
+//  * fail   - interrupts execution and prints a stacktrace.
+//  * hash   - supports md5, sha1 and sha245 functions.
+//  * json   - marshal plaing values (dicts, lists, etc) to JSON.
+//  * proto  - package for constructing Protobuf messages.
+//  * struct - experimental Starlark struct support.
+//  * yaml   - same as "json" package but for YAML.
+//  * url    - utility package for encoding URL query string.
+func UnstablePredeclaredModules(r unstableProtoRegistry) starlark.StringDict {
+	protoModule := impl.NewProtoModule(r)
+	return starlark.StringDict{
+		"fail":   starlark.NewBuiltin("fail", skyFail),
+		"hash":   impl.HashModule(),
+		"json":   impl.JsonModule(),
+		"proto":  protoModule,
+		"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
+		"yaml":   impl.YamlModule(),
+		"url":    impl.UrlModule(),
+	}
+}
+
 // Load reads a Skycfg config file from the filesystem.
 func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, error) {
-	protoModule := impl.NewProtoModule(nil /* TODO: registry from options */)
-	parsedOpts := &loadOptions{
-		globals: starlark.StringDict{
-			"fail":   starlark.NewBuiltin("fail", skyFail),
-			"hash":   impl.HashModule(),
-			"json":   impl.JsonModule(),
-			"proto":  protoModule,
-			"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
-			"yaml":   impl.YamlModule(),
-			"url":    impl.UrlModule(),
-		},
-		fileReader: LocalFileReader(filepath.Dir(filename)),
-	}
+	parsedOpts := &loadOptions{}
 	for _, opt := range opts {
 		opt.applyLoad(parsedOpts)
 	}
-	protoModule.Registry = parsedOpts.protoRegistry
+	parsedOpts.globals = UnstablePredeclaredModules(parsedOpts.protoRegistry)
+	parsedOpts.fileReader = LocalFileReader(filepath.Dir(filename))
+
 	configLocals, err := loadImpl(ctx, parsedOpts, filename)
 	if err != nil {
 		return nil, err
