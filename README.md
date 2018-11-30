@@ -8,12 +8,6 @@ At present, only the Go implementation of Starlark is supported.
 [![Build Status](https://travis-ci.org/stripe/skycfg.svg?branch=master)](https://travis-ci.org/stripe/skycfg)
 [![Test Coverage](https://coveralls.io/repos/github/stripe/skycfg/badge.svg?branch=master)](https://coveralls.io/github/stripe/skycfg?branch=master)
 
-## Stability
-
-Skycfg depends on internal details of the go-protobuf generated code, and as such it may need to be updated to work with future versions of go-protobuf. We will release Skycfg v1.0 after all dependencies on go-protobuf implementation details have been fixed, which will be after the "api-v2" branch lands in a stable release of go-protobuf.
-
-Our existing public APIs are expected to be stable even before the v1.0 release. Symbols that will change before v1.0 are hidden from the public docs and named `Unstable*`.
-
 ## Getting Started
 
 The entry point to Skycfg is the [`skycfg.Load()`](https://godoc.org/pkg/github.com/stripe/skycfg/#Load) function, which reads a config file from local disk. As the implementation stabilizes we expect to expand the public API surface so that Skycfg can be combined with other Starlark extensions.
@@ -61,6 +55,11 @@ $
 ```
 
 Success!
+
+For more in-depth examples covering specific topics, see the `_examples/` directory:
+* [`_examples/repl`](https://github.com/stripe/skycfg/tree/master/_examples/repl): Interactive evaluation of a Skycfg file
+* [`_examples/k8s`](https://github.com/stripe/skycfg/tree/master/_examples/k8s): Basic Kubernetes integration
+* [`_examples/wasm`](https://github.com/stripe/skycfg/tree/master/_examples/wasm): Skycfg in the browser with WebAssembly
 
 ## Why use Skycfg?
 
@@ -167,3 +166,9 @@ $ ./test-skycfg
 ## Contributing
 
 We welcome contributions from the community. For small simple changes, go ahead and open a pull request. Larger changes should start out in the issue tracker, so we can make sure they fit into the roadmap. Changes to the Starlark language itself (such as new primitive types or syntax) should be applied to https://github.com/google/starlark-go.
+
+## Stability
+
+Skycfg depends on internal details of the go-protobuf generated code, and as such it may need to be updated to work with future versions of go-protobuf. We will release Skycfg v1.0 after all dependencies on go-protobuf implementation details have been fixed, which will be after the "api-v2" branch lands in a stable release of go-protobuf.
+
+Our existing public APIs are expected to be stable even before the v1.0 release. Symbols that will change before v1.0 are hidden from the public docs and named `Unstable*`.
