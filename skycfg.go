@@ -14,6 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
+// Package skycfg  is an extension library for the Starlark language that adds support
+// for constructing Protocol Buffer messages.
 package skycfg
 
 import (
@@ -33,8 +35,17 @@ import (
 	impl "github.com/stripe/skycfg/internal/go/skycfg"
 )
 
+// A FileReader controls how load() calls resolve and read other modules.
 type FileReader interface {
+	// Resolve parses the "name" part of load("name", "symbol") to a path. This
+	// is not required to correspond to a true path on the filesystem, but should
+	// be "absolute" within the semantics of this FileReader.
+	//
+	// fromPath will be empty when loading the root module passed to Load().
 	Resolve(ctx context.Context, name, fromPath string) (path string, err error)
+
+	// ReadFile reads the content of the file at the given path, which was
+	// returned from Resolve().
 	ReadFile(ctx context.Context, path string) ([]byte, error)
 }
 
@@ -42,6 +53,8 @@ type localFileReader struct {
 	root string
 }
 
+// LocalFileReader returns a FileReader that resolves and loads files from
+// within a given filesystem directory.
 func LocalFileReader(root string) FileReader {
 	if root == "" {
 		panic("LocalFileReader: empty root path")
@@ -64,20 +77,28 @@ func (r *localFileReader) ReadFile(ctx context.Context, path string) ([]byte, er
 	return ioutil.ReadFile(path)
 }
 
+// NewProtoMessage returns a Starlark value representing the given Protobuf
+// message. It can be returned back to a proto.Message() via AsProtoMessage().
 func NewProtoMessage(msg proto.Message) starlark.Value {
 	return impl.NewSkyProtoMessage(msg)
 }
 
+// AsProtoMessage returns a Protobuf message underlying the given Starlark
+// value, which must have been created by NewProtoMessage(). Returns
+// (_, false) if the value is not a valid message.
 func AsProtoMessage(v starlark.Value) (proto.Message, bool) {
 	return impl.ToProtoMessage(v)
 }
 
+// A Config is Skycfg config file that has been fully loaded and is ready
+// for execution.
 type Config struct {
 	filename string
 	globals  starlark.StringDict
 	locals   starlark.StringDict
 }
 
+// A LoadOption adjusts details of how Skycfg configs are loaded.
 type LoadOption interface {
 	applyLoad(*loadOptions)
 }
@@ -96,6 +117,8 @@ type unstableProtoRegistry interface {
 	impl.ProtoRegistry
 }
 
+// WithGlobals adds additional global symbols to the Starlark environment
+// when loading a Skycfg config.
 func WithGlobals(globals starlark.StringDict) LoadOption {
 	return fnLoadOption(func(opts *loadOptions) {
 		for key, value := range globals {
@@ -104,6 +127,8 @@ func WithGlobals(globals starlark.StringDict) LoadOption {
 	})
 }
 
+// WithFileReader changes the implementation of load() when loading a
+// Skycfg config.
 func WithFileReader(r FileReader) LoadOption {
 	if r == nil {
 		panic("WithFileReader: nil reader")
@@ -113,6 +138,8 @@ func WithFileReader(r FileReader) LoadOption {
 	})
 }
 
+// WithProtoRegistry is an EXPERIMENTAL and UNSTABLE option to override
+// how Protobuf message type names are mapped to Go types.
 func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
 	if r == nil {
 		panic("WithProtoRegistry: nil registry")
@@ -122,6 +149,7 @@ func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
 	})
 }
 
+// Load reads a Skycfg config file from the filesystem.
 func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, error) {
 	protoModule := impl.NewProtoModule(nil /* TODO: registry from options */)
 	parsedOpts := &loadOptions{
@@ -195,18 +223,25 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 	}, filename)
 }
 
+// Filename returns the original filename passed to Load().
 func (c *Config) Filename() string {
 	return c.filename
 }
 
+// Globals returns the set of variables in the Starlark global namespace,
+// including any added to the config loader by WithGlobals().
 func (c *Config) Globals() starlark.StringDict {
 	return c.globals
 }
 
+// Locals returns the set of variables in the Starlark local namespace for
+// the top-level module.
 func (c *Config) Locals() starlark.StringDict {
 	return c.locals
 }
 
+// An ExecOption adjusts details of how a Skycfg config's main function is
+// executed.
 type ExecOption interface {
 	applyExec(*execOptions)
 }
@@ -219,6 +254,7 @@ type fnExecOption func(*execOptions)
 
 func (fn fnExecOption) applyExec(opts *execOptions) { fn(opts) }
 
+// WithVars adds key:value pairs to the ctx.vars dict passed to main().
 func WithVars(vars starlark.StringDict) ExecOption {
 	return fnExecOption(func(opts *execOptions) {
 		for key, value := range vars {
@@ -227,6 +263,8 @@ func WithVars(vars starlark.StringDict) ExecOption {
 	})
 }
 
+// Main executes main() from the top-level Skycfg config module, which is
+// expected to return either None or a list of Protobuf messages.
 func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message, error) {
 	parsedOpts := &execOptions{
 		vars: &starlark.Dict{},
