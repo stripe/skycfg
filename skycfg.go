@@ -152,24 +152,23 @@ func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
 // UnstablePredeclaredModules returns a Starlark string dictionary with
 // predeclared Skycfg modules which can be used in starlark.ExecFile.
 //
-// Takes in unstableProtoRegistry as required param (if nil will use standard
-// proto registry).
+// Takes in unstableProtoRegistry as param (if nil will use standard proto
+// registry).
 //
 // Currently provides these modules (see REAMDE for more detailed description):
 //  * fail   - interrupts execution and prints a stacktrace.
 //  * hash   - supports md5, sha1 and sha245 functions.
-//  * json   - marshal plaing values (dicts, lists, etc) to JSON.
+//  * json   - marshals plain values (dicts, lists, etc) to JSON.
 //  * proto  - package for constructing Protobuf messages.
 //  * struct - experimental Starlark struct support.
 //  * yaml   - same as "json" package but for YAML.
 //  * url    - utility package for encoding URL query string.
 func UnstablePredeclaredModules(r unstableProtoRegistry) starlark.StringDict {
-	protoModule := impl.NewProtoModule(r)
 	return starlark.StringDict{
 		"fail":   starlark.NewBuiltin("fail", skyFail),
 		"hash":   impl.HashModule(),
 		"json":   impl.JsonModule(),
-		"proto":  protoModule,
+		"proto":  impl.NewProtoModule(r),
 		"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 		"yaml":   impl.YamlModule(),
 		"url":    impl.UrlModule(),
@@ -178,12 +177,19 @@ func UnstablePredeclaredModules(r unstableProtoRegistry) starlark.StringDict {
 
 // Load reads a Skycfg config file from the filesystem.
 func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, error) {
-	parsedOpts := &loadOptions{}
+	parsedOpts := &loadOptions{
+		globals:    UnstablePredeclaredModules(nil),
+		fileReader: LocalFileReader(filepath.Dir(filename)),
+	}
+
 	for _, opt := range opts {
 		opt.applyLoad(parsedOpts)
 	}
-	parsedOpts.globals = UnstablePredeclaredModules(parsedOpts.protoRegistry)
-	parsedOpts.fileReader = LocalFileReader(filepath.Dir(filename))
+
+	// Set the proto registy option if proto package was configured.
+	if p, ok := parsedOpts.globals["proto"]; ok {
+		p.(*impl.ProtoModule).Registry = parsedOpts.protoRegistry
+	}
 
 	configLocals, err := loadImpl(ctx, parsedOpts, filename)
 	if err != nil {
