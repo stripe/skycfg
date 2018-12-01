@@ -186,7 +186,7 @@ func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, er
 		opt.applyLoad(parsedOpts)
 	}
 
-	// Set the proto registy option if proto package was configured.
+	// Set the proto registry option if proto package was configured.
 	if p, ok := parsedOpts.globals["proto"]; ok {
 		p.(*impl.ProtoModule).Registry = parsedOpts.protoRegistry
 	}
