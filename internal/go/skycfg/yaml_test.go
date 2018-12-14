@@ -23,29 +23,43 @@ import (
 	"go.starlark.net/starlark"
 )
 
-type JSONTestCase struct {
+type YamlTestCase struct {
 	skyExpr   string
 	expOutput string
 }
 
-func TestSkyToJson(t *testing.T) {
+func TestSkyToYaml(t *testing.T) {
 	thread := new(starlark.Thread)
 	env := starlark.StringDict{
-		"json": JsonModule(),
+		"yaml": YamlModule(),
 	}
 
-	testCases := []JSONTestCase{
-		JSONTestCase{
-			skyExpr:   "123",
-			expOutput: "123",
+	testCases := []YamlTestCase{
+		YamlTestCase{
+			skyExpr: "123",
+			expOutput: `123
+`,
 		},
-		JSONTestCase{
-			skyExpr:   `{"a": 5, 13: 2, "k": {"k2": "v"}}`,
-			expOutput: `{"a": 5, 13: 2, "k": {"k2": "v"}}`,
+		YamlTestCase{
+			skyExpr: `{"a": 5, 13: 2, "k": {"k2": "v"}}`,
+			expOutput: `13: 2
+a: 5
+k:
+  k2: v
+`,
 		},
-		JSONTestCase{
-			skyExpr:   `[1, 2, 3, "abc", None, 15, True, False, {"k": "v"}]`,
-			expOutput: `[1, 2, 3, "abc", null, 15, true, false, {"k": "v"}]`,
+		YamlTestCase{
+			skyExpr: `[1, 2, 3, "abc", None, 15, True, False, {"k": "v"}]`,
+			expOutput: `- 1
+- 2
+- 3
+- abc
+- null
+- 15
+- true
+- false
+- k: v
+`,
 		},
 	}
 
@@ -53,7 +67,7 @@ func TestSkyToJson(t *testing.T) {
 		v, err := starlark.Eval(
 			thread,
 			"<expr>",
-			fmt.Sprintf("json.marshal(%s)", testCase.skyExpr),
+			fmt.Sprintf("yaml.marshal(%s)", testCase.skyExpr),
 			env,
 		)
 		if err != nil {
@@ -62,7 +76,7 @@ func TestSkyToJson(t *testing.T) {
 		exp := starlark.String(testCase.expOutput)
 		if v != exp {
 			t.Error(
-				"Bad return value from json.marshal",
+				"Bad return value from yaml.marshal",
 				"\nExpected",
 				exp,
 				"\nGot",
