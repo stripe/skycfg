@@ -27,24 +27,11 @@ import (
 	"go.starlark.net/starlark"
 )
 
-type defaultProtoRegistry struct{}
-
-func (*defaultProtoRegistry) UnstableProtoMessageType(name string) (reflect.Type, error) {
-	return proto.MessageType(name), nil
-}
-
-func (*defaultProtoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
-	return proto.EnumValueMap(name)
-}
-
 // NewMessageType creates a Starlark value representing a named Protobuf message type.
 //
 // The message type must have been registered with the protobuf library, and implement
 // the expected interfaces for a generated .pb.go message struct.
 func newMessageType(registry ProtoRegistry, name string) (starlark.Value, error) {
-	if registry == nil {
-		registry = &defaultProtoRegistry{}
-	}
 	goType, err := registry.UnstableProtoMessageType(name)
 	if err != nil {
 		return nil, err
