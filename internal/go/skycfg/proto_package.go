@@ -18,10 +18,21 @@ package skycfg
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/golang/protobuf/proto"
 	"go.starlark.net/starlark"
 )
+
+type defaultProtoRegistry struct{}
+
+func (*defaultProtoRegistry) UnstableProtoMessageType(name string) (reflect.Type, error) {
+	return proto.MessageType(name), nil
+}
+
+func (*defaultProtoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
+	return proto.EnumValueMap(name)
+}
 
 // NewProtoPackage creates a Starlark value representing a named Protobuf package.
 //
@@ -57,11 +68,15 @@ func (pkg *skyProtoPackage) AttrNames() []string {
 
 func (pkg *skyProtoPackage) Attr(attrName string) (starlark.Value, error) {
 	fullName := fmt.Sprintf("%s.%s", pkg.name, attrName)
-	if ev := proto.EnumValueMap(fullName); ev != nil {
+	registry := pkg.registry
+	if registry == nil {
+		registry = &defaultProtoRegistry{}
+	}
+	if ev := registry.UnstableEnumValueMap(fullName); ev != nil {
 		return &skyProtoEnumType{
 			name:     fullName,
 			valueMap: ev,
 		}, nil
 	}
-	return newMessageType(pkg.registry, fullName)
+	return newMessageType(registry, fullName)
 }
