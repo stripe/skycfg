@@ -25,6 +25,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gogo/protobuf/types"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"go.starlark.net/starlark"
@@ -307,7 +308,7 @@ func scalarToStarlark(val reflect.Value) starlark.Value {
 	case bool:
 		return starlark.Bool(f)
 	case time.Duration:
-		return starlark.MakeInt64(int64(f))
+		return NewSkyProtoMessage(types.DurationProto(f))
 	}
 	if enum, ok := iface.(protoEnum); ok {
 		return &skyProtoEnumValue{
@@ -359,6 +360,16 @@ func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error
 			val := reflect.New(t)
 			val.Elem().Set(reflect.ValueOf(sky.msg).Elem())
 			return val.Elem(), nil
+		}
+
+		dpb, ok := sky.msg.(*types.Duration)
+		if ok && t == reflect.TypeOf(time.Duration(0)) {
+			d, err := types.DurationFromProto(dpb)
+			if err != nil {
+				return reflect.Value{}, fmt.Errorf("TypeError: %v (type `%s') can't be coverted to type `%s'.", dpb, reflect.TypeOf(dpb), reflect.TypeOf(t))
+			}
+
+			return reflect.ValueOf(d), nil
 		}
 	case *protoRepeated:
 		return valueFromStarlark(t, sky.list)
@@ -440,11 +451,6 @@ func scalarFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, erro
 	case reflect.Int64:
 		if skyInt, ok := sky.(starlark.Int); ok {
 			if val, ok := skyInt.Int64(); ok {
-				// Support for gogoproto.stdduration option
-				// (https://github.com/gogo/protobuf/blob/master/extensions.md#more-canonical-go-structures).
-				if t.String() == "time.Duration" {
-					return reflect.ValueOf(time.Duration(val)), nil
-				}
 				return reflect.ValueOf(val), nil
 			}
 			return reflect.Value{}, fmt.Errorf("ValueError: value %v overflows type `int64'.", skyInt)

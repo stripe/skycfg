@@ -31,6 +31,8 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 
+	_ "github.com/gogo/protobuf/types"
+
 	pb "github.com/stripe/skycfg/test_proto"
 )
 
@@ -572,7 +574,7 @@ func TestMessageGogo(t *testing.T) {
 		f_nested_enum = gogo_proto.package("skycfg.test_proto").MessageGogo.NestedEnum.NESTED_ENUM_B,
 		f_oneof_a = "string in oneof",
 		f_bytes = "also some string",
-		f_duration = 1000000000,
+		f_duration = gogo_proto.package("google.protobuf").Duration(seconds = 1),
 	)`)
 	gotMsg := val.(*skyProtoMessage).msg
 	wantMsg := &pb.MessageGogo{
@@ -632,7 +634,7 @@ func TestMessageGogo(t *testing.T) {
 		"f_oneof_a":       `"string in oneof"`,
 		"f_oneof_b":       `None`,
 		"f_bytes":         `"also some string"`,
-		"f_duration":      `1000000000`,
+		"f_duration":      `<google.protobuf.Duration seconds:1 >`,
 	}
 	attrs := val.(starlark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {
