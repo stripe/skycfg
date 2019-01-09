@@ -574,7 +574,7 @@ func TestMessageGogo(t *testing.T) {
 		f_nested_enum = gogo_proto.package("skycfg.test_proto").MessageGogo.NestedEnum.NESTED_ENUM_B,
 		f_oneof_a = "string in oneof",
 		f_bytes = "also some string",
-		f_duration = gogo_proto.package("google.protobuf").Duration(seconds = 1),
+		f_duration = proto.package("google.protobuf").Duration(seconds = 1),
 	)`)
 	gotMsg := val.(*skyProtoMessage).msg
 	wantMsg := &pb.MessageGogo{
