@@ -23,6 +23,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -305,6 +306,8 @@ func scalarToStarlark(val reflect.Value) starlark.Value {
 		return starlark.String(f)
 	case bool:
 		return starlark.Bool(f)
+	case time.Duration:
+		return starlark.MakeInt64(int64(f))
 	}
 	if enum, ok := iface.(protoEnum); ok {
 		return &skyProtoEnumValue{
@@ -437,6 +440,11 @@ func scalarFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, erro
 	case reflect.Int64:
 		if skyInt, ok := sky.(starlark.Int); ok {
 			if val, ok := skyInt.Int64(); ok {
+				// Support for gogoproto.stdduration option
+				// (https://github.com/gogo/protobuf/blob/master/extensions.md#more-canonical-go-structures).
+				if t.String() == "time.Duration" {
+					return reflect.ValueOf(time.Duration(val)), nil
+				}
 				return reflect.ValueOf(val), nil
 			}
 			return reflect.Value{}, fmt.Errorf("ValueError: value %v overflows type `int64'.", skyInt)

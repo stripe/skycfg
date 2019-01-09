@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	gogo_proto "github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/proto"
@@ -571,6 +572,7 @@ func TestMessageGogo(t *testing.T) {
 		f_nested_enum = gogo_proto.package("skycfg.test_proto").MessageGogo.NestedEnum.NESTED_ENUM_B,
 		f_oneof_a = "string in oneof",
 		f_bytes = "also some string",
+		f_duration = 1000000000,
 	)`)
 	gotMsg := val.(*skyProtoMessage).msg
 	wantMsg := &pb.MessageGogo{
@@ -604,6 +606,7 @@ func TestMessageGogo(t *testing.T) {
 		FNestedEnum:   pb.MessageGogo_NESTED_ENUM_B.Enum(),
 		FOneof:        &pb.MessageGogo_FOneofA{"string in oneof"},
 		FBytes:        []byte("also some string"),
+		FDuration:     time.Second,
 	}
 	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
 		t.Fatalf("diff from expected message:\n%s", diff)
@@ -629,6 +632,7 @@ func TestMessageGogo(t *testing.T) {
 		"f_oneof_a":       `"string in oneof"`,
 		"f_oneof_b":       `None`,
 		"f_bytes":         `"also some string"`,
+		"f_duration":      `1000000000`,
 	}
 	attrs := val.(starlark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {

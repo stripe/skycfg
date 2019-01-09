@@ -20,6 +20,7 @@ package skycfg.test_proto;
 
 import "gogo.proto";
 import "test_proto_v2.proto";
+import "google/protobuf/duration.proto";
 
 option go_package = "github.com/stripe/skycfg/test_proto";
 
@@ -68,5 +69,10 @@ message MessageGogo {
 
   optional bytes f_bytes = 19;
 
-  // NEXT: 20
+  optional google.protobuf.Duration f_duration = 20 [
+    (gogoproto.stdduration) = true,
+    (gogoproto.nullable) = false
+  ];
+
+  // NEXT: 21
 }
