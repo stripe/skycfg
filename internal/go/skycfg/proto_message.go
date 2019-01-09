@@ -366,7 +366,7 @@ func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error
 		if ok && t == reflect.TypeOf(time.Duration(0)) {
 			d, err := types.DurationFromProto(dpb)
 			if err != nil {
-				return reflect.Value{}, fmt.Errorf("TypeError: %v (type `%s') can't be coverted to type `%s'.", dpb, reflect.TypeOf(dpb), reflect.TypeOf(t))
+				return reflect.Value{}, fmt.Errorf("ValueError: %v (type `%s') can't be coverted to `time.Duration': %v", dpb, reflect.TypeOf(dpb), err)
 			}
 
 			return reflect.ValueOf(d), nil
