@@ -23,9 +23,12 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
+	dpb "github.com/golang/protobuf/ptypes/duration"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 )
@@ -305,6 +308,8 @@ func scalarToStarlark(val reflect.Value) starlark.Value {
 		return starlark.String(f)
 	case bool:
 		return starlark.Bool(f)
+	case time.Duration:
+		return NewSkyProtoMessage(ptypes.DurationProto(f))
 	}
 	if enum, ok := iface.(protoEnum); ok {
 		return &skyProtoEnumValue{
@@ -356,6 +361,16 @@ func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error
 			val := reflect.New(t)
 			val.Elem().Set(reflect.ValueOf(sky.msg).Elem())
 			return val.Elem(), nil
+		}
+
+		dpb, ok := sky.msg.(*dpb.Duration)
+		if ok && t == reflect.TypeOf(time.Duration(0)) {
+			d, err := ptypes.Duration(dpb)
+			if err != nil {
+				return reflect.Value{}, fmt.Errorf("ValueError: %v (type `%s') can't be coverted to `time.Duration': %v", dpb, reflect.TypeOf(dpb), err)
+			}
+
+			return reflect.ValueOf(d), nil
 		}
 	case *protoRepeated:
 		return valueFromStarlark(t, sky.list)
