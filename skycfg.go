@@ -315,6 +315,51 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 	return msgs, nil
 }
 
+// RunTests executes all functions with names of the form "test_...". Tests are expected to
+// fail using fail("msg"). The return values of the test invocations are discarded.
+// It returns the failure messages if there were any failures, and an error if any of
+// the tests failed or did not execute properly.
+func (c *Config) RunTests(ctx context.Context, opts ...ExecOption) ([]string, error) {
+	parsedOpts := &execOptions{
+		vars: &starlark.Dict{},
+	}
+	for _, opt := range opts {
+		opt.applyExec(parsedOpts)
+	}
+
+	msgs := []string{}
+	success := true
+	for name, val := range c.locals {
+		if !strings.HasPrefix(name, "test_") || val.Type() != "function" {
+			continue
+		}
+
+		callable := val.(starlark.Callable)
+		thread := &starlark.Thread{
+			Print: skyPrint,
+		}
+		thread.SetLocal("context", ctx)
+		funcCtx := &impl.Module{
+			Name: "skycfg_ctx",
+			Attrs: starlark.StringDict(map[string]starlark.Value{
+				"vars": parsedOpts.vars,
+			}),
+		}
+		args := starlark.Tuple([]starlark.Value{funcCtx})
+		_, err := starlark.Call(thread, callable, args, nil)
+		if err != nil {
+			msgs = append(msgs, fmt.Sprintf("Test did not exit cleanly (%s): %s", name, err))
+			success = false
+		}
+	}
+
+	if !success {
+		return msgs, fmt.Errorf("%d tests failed to exit cleanly", len(msgs))
+	}
+
+	return nil, nil
+}
+
 func skyPrint(t *starlark.Thread, msg string) {
 	fmt.Fprintf(os.Stderr, "[%v] %s\n", t.Caller().Position(), msg)
 }
