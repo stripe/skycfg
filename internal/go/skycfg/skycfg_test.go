@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/golang/protobuf/proto"
@@ -38,6 +39,10 @@ test_proto = proto.package("skycfg.test_proto")
 def helper1():
 	s = struct(x = 12345)
 	return s.x
+
+def test_helper1(t):
+	x = helper1()
+	t.assert(x == 12345)
 
 def main(ctx):
 	msg = test_proto.MessageV2()
@@ -58,6 +63,23 @@ def helper2(ctx):
 	}
 
 	return result
+
+def test_helper2(t):
+	ctx = struct(vars = {
+		"var_key": "var_value",
+	})
+	result = helper2(ctx)
+	t.assert(result["key4"]["key5"] == "value5")
+
+def test_helper2_fails(t):
+	ctx = struct(vars = {
+		"var_key": "var_value",
+	})
+	result = helper2(ctx)
+	t.assert(result["key4"]["key5"] == "value6")
+
+def test_helper2_errors(t):
+	t.someundefinedfunc()
 `,
 	"test3.sky": `
 def helper3(ctx):
@@ -201,6 +223,106 @@ func TestSkycfgEndToEnd(t *testing.T) {
 				"\nExpected", testCase.expProtos,
 				"\nGot", protos,
 			)
+		}
+	}
+}
+
+// testTestCase is a test case for the testing functionality built into skycfg
+type testTestCase struct {
+	errors     bool
+	passes     bool
+	failureMsg string // we can't create a skycfg.AssertionError but we can check the message and type
+}
+
+func TestSkycfgTesting(t *testing.T) {
+	loader := &testLoader{}
+	ctx := context.Background()
+
+	config, err := skycfg.Load(ctx, "test1.sky", skycfg.WithFileReader(loader))
+	if err != nil {
+		t.Error("Unexpected error loading test1.sky", err)
+	}
+
+	tests := config.Tests()
+	if len(tests) != 4 {
+		t.Error("Expected 4 tests but found", len(tests))
+	}
+
+	cases := map[string]testTestCase{
+		"test_helper1": testTestCase{
+			passes: true,
+		},
+		"test_helper2": testTestCase{
+			passes: true,
+		},
+		"test_helper2_fails": testTestCase{
+			passes:     false,
+			failureMsg: "assertion failed",
+		},
+		"test_helper2_errors": testTestCase{
+			errors: true,
+		},
+	}
+
+	for _, test := range tests {
+		result, err := test.Run(ctx)
+		testCase, ok := cases[test.Name()]
+		if !ok {
+			t.Error("Could not find test case for test", test.Name())
+			continue
+		}
+
+		if (err != nil) != testCase.errors {
+			t.Errorf(
+				"[%s] Execution result (error: %t) did not equal expected execution result (error: %t). err: %s",
+				test.Name(),
+				err != nil,
+				testCase.errors,
+				err,
+			)
+			continue
+		}
+
+		// if the execution errors, the result is nil and theres nothing else to check
+		if err != nil {
+			continue
+		}
+
+		if result.Name != test.Name() {
+			t.Errorf("TestResult (%s) and Test (%s) should have the same name", result.Name, test.Name())
+			continue
+		}
+
+		if (result.Failure == nil) != testCase.passes {
+			t.Errorf(
+				"[%s] Test result (pass: %t) did not equal expected test result (pass: %t)",
+				test.Name(),
+				result.Failure == nil,
+				testCase.passes,
+			)
+			continue
+		}
+
+		if !testCase.passes {
+			// check the error message
+			if _, ok := result.Failure.(skycfg.AssertionError); !ok {
+				t.Errorf(
+					"[%s] Test failures should be of type skycfg.AssertionError, but found %#v",
+					test.Name(),
+					result.Failure,
+				)
+				continue
+			}
+
+			if !strings.Contains(result.Failure.Error(), testCase.failureMsg) {
+				t.Errorf(
+					"[%s] Expected %s to be in failure message, but instead found %s",
+					test.Name(),
+					testCase.failureMsg,
+					result.Failure.Error(),
+				)
+				continue
+			}
 		}
 	}
 }
