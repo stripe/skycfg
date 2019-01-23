@@ -357,13 +357,13 @@ func (t *Test) Run(ctx context.Context) (*TestResult, error) {
 	thread.SetLocal("context", ctx)
 
 	// we can keep track of assertion failures in the failureCtx
-	failureCtx := &testContext{}
+	failureCtx, assertModule := impl.AssertModule()
 
 	testCtx := &impl.Module{
 		Name: "skycfg_test_ctx",
 		Attrs: starlark.StringDict(map[string]starlark.Value{
 			"vars":   &starlark.Dict{},
-			"assert": starlark.NewBuiltin("assert", failureCtx.assertImpl),
+			"assert": assertModule,
 		}),
 	}
 	args := starlark.Tuple([]starlark.Value{testCtx})
@@ -377,12 +377,16 @@ func (t *Test) Run(ctx context.Context) (*TestResult, error) {
 	result.Duration = time.Since(startTime)
 	if err != nil {
 		// if there is no assertion error, there was something wrong with the execution itself
-		if failureCtx.failure == nil {
+		if len(failureCtx.Failures) == 0 {
 			return nil, err
 		}
 
-		// some assertion failed
-		result.Failure = failureCtx.failure
+		// there should only be one failure, because each test run gets its own *TestContext
+		// and each assertion failure halts execution.
+		if len(failureCtx.Failures) > 1 {
+			panic("A test run should only have one assertion failure. Something went wrong with the test infrastructure.")
+		}
+		result.Failure = failureCtx.Failures[0]
 	}
 
 	return &result, nil
@@ -405,38 +409,4 @@ func skyFail(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwar
 	var buf bytes.Buffer
 	t.Caller().WriteBacktrace(&buf)
 	return nil, fmt.Errorf("[%s] %s\n%s", t.Caller().Position(), msg, buf.String())
-}
-
-// assertionError represents a failed assertion
-type assertionError struct {
-	position  string
-	backtrace string
-}
-
-func (err assertionError) Error() string {
-	return fmt.Sprintf("[%s] assertion failed\n%s", err.position, err.backtrace)
-}
-
-type testContext struct {
-	failure error
-}
-
-func (t *testContext) assertImpl(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var val bool
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &val); err != nil {
-		return nil, err
-	}
-
-	if !val {
-		var buf bytes.Buffer
-		thread.Caller().WriteBacktrace(&buf)
-		err := assertionError{
-			position:  thread.Caller().Position().String(),
-			backtrace: buf.String(),
-		}
-		t.failure = err
-		return nil, err
-	}
-
-	return starlark.None, nil
 }

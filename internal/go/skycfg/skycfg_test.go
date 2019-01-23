@@ -42,7 +42,7 @@ def helper1():
 
 def test_helper1(t):
 	x = helper1()
-	t.assert(x == 12345)
+	t.assert.true(x == 12345)
 
 def main(ctx):
 	msg = test_proto.MessageV2()
@@ -69,14 +69,14 @@ def test_helper2(t):
 		"var_key": "var_value",
 	})
 	result = helper2(ctx)
-	t.assert(result["key4"]["key5"] == "value5")
+	t.assert.true(result["key4"]["key5"] == "value5")
 
 def test_helper2_fails(t):
 	ctx = struct(vars = {
 		"var_key": "var_value",
 	})
 	result = helper2(ctx)
-	t.assert(result["key4"]["key5"] == "value6")
+	t.assert.true(result["key4"]["key5"] == "value6")
 
 def test_helper2_errors(t):
 	t.someundefinedfunc()
@@ -231,7 +231,7 @@ func TestSkycfgEndToEnd(t *testing.T) {
 type testTestCase struct {
 	errors     bool
 	passes     bool
-	failureMsg string // we can't create a skycfg.AssertionError but we can check the message and type
+	failureMsg string
 }
 
 func TestSkycfgTesting(t *testing.T) {
