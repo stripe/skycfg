@@ -48,6 +48,7 @@ type skyProtoMessage struct {
 
 var _ starlark.HasAttrs = (*skyProtoMessage)(nil)
 var _ starlark.HasSetField = (*skyProtoMessage)(nil)
+var _ starlark.Comparable = (*skyProtoMessage)(nil)
 
 func (msg *skyProtoMessage) String() string {
 	return fmt.Sprintf("<%s %s>", msg.Type(), proto.CompactTextString(msg.msg))
@@ -62,6 +63,58 @@ func (msg *skyProtoMessage) Freeze() {
 			attr.Freeze()
 		}
 	}
+}
+
+func (msg *skyProtoMessage) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
+	other, ok := y.(*skyProtoMessage)
+	if !ok {
+		return false, nil
+	}
+
+	switch op {
+	case syntax.EQL:
+		return msg.equals(other, depth)
+	case syntax.NEQ:
+		eql, err := msg.equals(other, depth)
+		if err != nil {
+			return eql, err
+		}
+
+		return !eql, err
+	default:
+		return false, fmt.Errorf("Only == and != operations are supported on protobufs, found %s", op.String())
+	}
+}
+
+func (msg *skyProtoMessage) equals(other *skyProtoMessage, depth int) (bool, error) {
+	msgAttrNames := msg.AttrNames()
+	otherAttrNames := other.AttrNames()
+
+	if len(msgAttrNames) != len(otherAttrNames) {
+		return false, nil
+	}
+
+	for _, name := range msgAttrNames {
+		val1, err := msg.Attr(name)
+		if err != nil {
+			return false, err
+		}
+		val2, err := other.Attr(name)
+		if err != nil {
+			return false, err
+		}
+
+		eql, err := starlark.CompareDepth(syntax.EQL, val1, val2, depth-1)
+		if err != nil {
+			return false, err
+		}
+
+		if !eql {
+			return false, nil
+		}
+	}
+
+	return true, nil
 }
 
 func (msg *skyProtoMessage) Hash() (uint32, error) {
@@ -535,6 +588,7 @@ var _ starlark.Indexable = (*protoRepeated)(nil)
 var _ starlark.HasAttrs = (*protoRepeated)(nil)
 var _ starlark.HasSetIndex = (*protoRepeated)(nil)
 var _ starlark.HasBinary = (*protoRepeated)(nil)
+var _ starlark.Comparable = (*protoRepeated)(nil)
 
 func (r *protoRepeated) Attr(name string) (starlark.Value, error) {
 	wrapper, ok := listMethods[name]
@@ -559,6 +613,15 @@ func (r *protoRepeated) Truth() starlark.Bool                { return r.list.Tru
 
 func (r *protoRepeated) Type() string {
 	return fmt.Sprintf("list<%s>", typeName(r.field.Type().Elem()))
+}
+
+func (r *protoRepeated) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
+	other, ok := y.(*protoRepeated)
+	if !ok {
+		return false, nil
+	}
+
+	return starlark.CompareDepth(op, r.list, other.list, depth)
 }
 
 func (r *protoRepeated) wrapClear() starlark.Value {
@@ -712,6 +775,7 @@ var _ starlark.Iterable = (*protoMap)(nil)
 var _ starlark.Sequence = (*protoMap)(nil)
 var _ starlark.HasAttrs = (*protoMap)(nil)
 var _ starlark.HasSetKey = (*protoMap)(nil)
+var _ starlark.Comparable = (*protoMap)(nil)
 
 func (m *protoMap) Attr(name string) (starlark.Value, error) {
 	wrapper, ok := dictMethods[name]
@@ -736,6 +800,15 @@ func (m *protoMap) Truth() starlark.Bool                               { return 
 func (m *protoMap) Type() string {
 	t := m.field.Type()
 	return fmt.Sprintf("map<%s, %s>", typeName(t.Key()), typeName(t.Elem()))
+}
+
+func (m *protoMap) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
+	other, ok := y.(*protoMap)
+	if !ok {
+		return false, nil
+	}
+
+	return starlark.CompareDepth(op, m.dict, other.dict, depth)
 }
 
 func (m *protoMap) wrapClear() starlark.Value {
