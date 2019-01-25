@@ -73,48 +73,14 @@ func (msg *skyProtoMessage) CompareSameType(op syntax.Token, y starlark.Value, d
 
 	switch op {
 	case syntax.EQL:
-		return msg.equals(other, depth)
+		eql := proto.Equal(msg.msg, other.msg)
+		return eql, nil
 	case syntax.NEQ:
-		eql, err := msg.equals(other, depth)
-		if err != nil {
-			return eql, err
-		}
-
-		return !eql, err
+		eql := proto.Equal(msg.msg, other.msg)
+		return !eql, nil
 	default:
 		return false, fmt.Errorf("Only == and != operations are supported on protobufs, found %s", op.String())
 	}
-}
-
-func (msg *skyProtoMessage) equals(other *skyProtoMessage, depth int) (bool, error) {
-	msgAttrNames := msg.AttrNames()
-	otherAttrNames := other.AttrNames()
-
-	if len(msgAttrNames) != len(otherAttrNames) {
-		return false, nil
-	}
-
-	for _, name := range msgAttrNames {
-		val1, err := msg.Attr(name)
-		if err != nil {
-			return false, err
-		}
-		val2, err := other.Attr(name)
-		if err != nil {
-			return false, err
-		}
-
-		eql, err := starlark.CompareDepth(syntax.EQL, val1, val2, depth-1)
-		if err != nil {
-			return false, err
-		}
-
-		if !eql {
-			return false, nil
-		}
-	}
-
-	return true, nil
 }
 
 func (msg *skyProtoMessage) Hash() (uint32, error) {
