@@ -30,6 +30,7 @@ import (
 	"github.com/kylelemons/godebug/pretty"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 
 	_ "github.com/gogo/protobuf/types"
 
@@ -969,5 +970,45 @@ func TestProtoFromYaml(t *testing.T) {
 	want := "1010"
 	if want != got {
 		t.Fatalf("from_yaml: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoComparisonEqual(t *testing.T) {
+	msg := &pb.MessageV2{
+		RString: []string{"a", "b", "c"},
+	}
+	skyMsg := NewSkyProtoMessage(msg)
+
+	// create a separate msg to ensure the underlying reference in skyMsgOther is different
+	msgOther := &pb.MessageV2{
+		RString: []string{"a", "b", "c"},
+	}
+	skyMsgOther := NewSkyProtoMessage(msgOther)
+	ok, err := starlark.Compare(syntax.EQL, skyMsg, skyMsgOther)
+	if err != nil {
+		t.Error(err)
+	}
+	if !ok {
+		t.Error("Expected protos to be equal")
+	}
+}
+
+func TestProtoComparisonNotEqual(t *testing.T) {
+	msg := &pb.MessageV2{
+		RString: []string{"a", "b", "c"},
+	}
+	skyMsg := NewSkyProtoMessage(msg)
+
+	// create a separate msg to ensure the underlying reference in skyMsgOther is different
+	msgOther := &pb.MessageV2{
+		RString: []string{"a", "b"},
+	}
+	skyMsgOther := NewSkyProtoMessage(msgOther)
+	ok, err := starlark.Compare(syntax.EQL, skyMsg, skyMsgOther)
+	if err != nil {
+		t.Error(err)
+	}
+	if ok {
+		t.Error("Expected protos to not be equal")
 	}
 }
