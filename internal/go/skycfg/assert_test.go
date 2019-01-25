@@ -77,7 +77,7 @@ func TestUnaryAsserts(t *testing.T) {
 
 	for _, testCase := range testCases {
 		cmd := fmt.Sprintf(
-			`t.assert.true(%s)`,
+			`t.assert(%s)`,
 			testCase.val,
 		)
 
@@ -256,7 +256,7 @@ func TestBinaryAsserts(t *testing.T) {
 
 func TestMultipleAssertionErrors(t *testing.T) {
 	thread := new(starlark.Thread)
-	failureCtx, assertModule := AssertModule()
+	assertModule := AssertModule()
 
 	env := starlark.StringDict{
 		"assert": assertModule,
@@ -265,32 +265,32 @@ func TestMultipleAssertionErrors(t *testing.T) {
 	_, err := starlark.Eval(
 		thread,
 		"<expr>",
-		"assert.eql(1, 2)",
+		"assert.equal(1, 2)",
 		env,
 	)
 	if err == nil {
 		t.Error("Failing an assertion should return an error, but code completed successfully")
 	}
-	if len(failureCtx.Failures) != 1 {
-		t.Errorf("Expected 1 assertion failure, but found %d", len(failureCtx.Failures))
+	if len(assertModule.Failures) != 1 {
+		t.Errorf("Expected 1 assertion failure, but found %d", len(assertModule.Failures))
 	}
 	_, err = starlark.Eval(
 		thread,
 		"<expr>",
-		"assert.eql(1, 2)",
+		"assert.equal(1, 2)",
 		env,
 	)
 	if err == nil {
 		t.Error("Failing an assertion should return an error, but code completed successfully")
 	}
-	if len(failureCtx.Failures) != 2 {
-		t.Errorf("Expected 2 assertion failures, but found %d", len(failureCtx.Failures))
+	if len(assertModule.Failures) != 2 {
+		t.Errorf("Expected 2 assertion failures, but found %d", len(assertModule.Failures))
 	}
 }
 
 func evalAndReportResults(t *testing.T, cmd string, testCase assertTestCase) {
 	thread := new(starlark.Thread)
-	failureCtx, assertModule := AssertModule()
+	assertModule := AssertModule()
 
 	// set it up like it would be used, off a param
 	testCtx := &Module{
@@ -335,21 +335,21 @@ func evalAndReportResults(t *testing.T, cmd string, testCase assertTestCase) {
 		return
 	}
 
-	if (len(failureCtx.Failures) > 0) != testCase.ExpFailure() {
+	if (len(assertModule.Failures) > 0) != testCase.ExpFailure() {
 		t.Errorf(
 			"Assertion result (%t) did not equal expected assertion result (%t) for `%s`",
-			len(failureCtx.Failures) == 0,
+			len(assertModule.Failures) == 0,
 			!testCase.ExpFailure(),
 			cmd,
 		)
 		return
 	}
 
-	if testCase.ExpFailure() && !strings.Contains(failureCtx.Failures[0].Error(), testCase.ExpFailureMsg()) {
+	if testCase.ExpFailure() && !strings.Contains(assertModule.Failures[0].Error(), testCase.ExpFailureMsg()) {
 		t.Errorf(
 			"Expected '%s' to be included in the failure message: '%s'",
 			testCase.ExpFailureMsg(),
-			failureCtx.Failures[0].Error(),
+			assertModule.Failures[0].Error(),
 		)
 	}
 }

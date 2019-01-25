@@ -356,9 +356,7 @@ func (t *Test) Run(ctx context.Context) (*TestResult, error) {
 	}
 	thread.SetLocal("context", ctx)
 
-	// we can keep track of assertion failures in the failureCtx
-	failureCtx, assertModule := impl.AssertModule()
-
+	assertModule := impl.AssertModule()
 	testCtx := &impl.Module{
 		Name: "skycfg_test_ctx",
 		Attrs: starlark.StringDict(map[string]starlark.Value{
@@ -377,16 +375,16 @@ func (t *Test) Run(ctx context.Context) (*TestResult, error) {
 	result.Duration = time.Since(startTime)
 	if err != nil {
 		// if there is no assertion error, there was something wrong with the execution itself
-		if len(failureCtx.Failures) == 0 {
+		if len(assertModule.Failures) == 0 {
 			return nil, err
 		}
 
 		// there should only be one failure, because each test run gets its own *TestContext
 		// and each assertion failure halts execution.
-		if len(failureCtx.Failures) > 1 {
+		if len(assertModule.Failures) > 1 {
 			panic("A test run should only have one assertion failure. Something went wrong with the test infrastructure.")
 		}
-		result.Failure = failureCtx.Failures[0]
+		result.Failure = assertModule.Failures[0]
 	}
 
 	return &result, nil

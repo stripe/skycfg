@@ -19,6 +19,7 @@ package skycfg
 import (
 	"bytes"
 	"fmt"
+	"sort"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
@@ -29,22 +30,17 @@ import (
 // assert.* functions from this module will mutate the *TestContext.
 // After execution is complete, TestContext.Failures will be non-empty
 // if any of the assertions failed, and also contain details about the failures.
-func AssertModule() (*TestContext, starlark.Value) {
+func AssertModule() *TestContext {
 	ctx := &TestContext{}
-	return ctx, &Module{
-		Name: "assert",
-		Attrs: starlark.StringDict{
-			"true": starlark.NewBuiltin("assert.true", ctx.AssertUnaryImpl),
+	ctx.Attrs = starlark.StringDict{}
 
-			// names match https://github.com/google/starlark-go/blob/7b3aad4436b8cbd25fda2bd658ed44b3dc2c6dcc/syntax/scan.go#L64
-			"lt":  starlark.NewBuiltin("assert.lt", ctx.AssertBinaryImpl(syntax.LT)),
-			"gt":  starlark.NewBuiltin("assert.gt", ctx.AssertBinaryImpl(syntax.GT)),
-			"ge":  starlark.NewBuiltin("assert.ge", ctx.AssertBinaryImpl(syntax.GE)),
-			"le":  starlark.NewBuiltin("assert.le", ctx.AssertBinaryImpl(syntax.LE)),
-			"eql": starlark.NewBuiltin("assert.eql", ctx.AssertBinaryImpl(syntax.EQL)),
-			"neq": starlark.NewBuiltin("assert.neq", ctx.AssertBinaryImpl(syntax.NEQ)),
-		},
+	// this loop populates the assert module with binary comparator functions
+	// e.g. assert.equal, assert.lesser, etc.
+	// soo tokenToString for all supported operations
+	for op, str := range tokenToString {
+		ctx.Attrs[str] = starlark.NewBuiltin(fmt.Sprintf("assert.%s", str), ctx.AssertBinaryImpl(op))
 	}
+	return ctx
 }
 
 // assertionError represents a failed assertion
@@ -77,13 +73,41 @@ func (err assertionError) Error() string {
 
 // TestContext is keeps track of whether there is a failure during a test execution
 type TestContext struct {
+	Attrs    starlark.StringDict
 	Failures []error
 }
 
-// AssertUnaryImpl is the implementation for assert(bool) in tests
-func (t *TestContext) AssertUnaryImpl(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+var _ starlark.HasAttrs = (*Module)(nil)
+var _ starlark.Value = (*TestContext)(nil)
+var _ starlark.Callable = (*TestContext)(nil)
+
+func (t *TestContext) Name() string          { return "assert" }
+func (t *TestContext) String() string        { return "<test_context>" }
+func (t *TestContext) Type() string          { return "test_context" }
+func (t *TestContext) Freeze()               { t.Attrs.Freeze() }
+func (t *TestContext) Truth() starlark.Bool  { return starlark.True }
+func (t *TestContext) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable type: %s", t.Type()) }
+
+func (t *TestContext) Attr(name string) (starlark.Value, error) {
+	if val, ok := t.Attrs[name]; ok {
+		return val, nil
+	}
+	return nil, nil
+}
+
+func (t *TestContext) AttrNames() []string {
+	var names []string
+	for name := range t.Attrs {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// CallInternal is the implementation for assert(...)
+func (t *TestContext) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var val bool
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &val); err != nil {
+	if err := starlark.UnpackPositionalArgs("assert", args, kwargs, 1, &val); err != nil {
 		return nil, err
 	}
 
@@ -136,10 +160,10 @@ func (t *TestContext) AssertBinaryImpl(op syntax.Token) func(thread *starlark.Th
 }
 
 var tokenToString = map[syntax.Token]string{
-	syntax.LT:  "lt",
-	syntax.GT:  "gt",
-	syntax.GE:  "ge",
-	syntax.LE:  "le",
-	syntax.EQL: "eql",
-	syntax.NEQ: "neq",
+	syntax.LT:  "lesser",
+	syntax.GT:  "greater",
+	syntax.GE:  "greater_or_equal",
+	syntax.LE:  "lesser_or_equal",
+	syntax.EQL: "equal",
+	syntax.NEQ: "not_equal",
 }
