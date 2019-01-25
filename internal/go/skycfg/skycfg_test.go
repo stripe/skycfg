@@ -231,7 +231,7 @@ func TestSkycfgEndToEnd(t *testing.T) {
 type testTestCase struct {
 	errors     bool
 	passes     bool
-	failureMsg string // we can't create a skycfg.AssertionError but we can check the message and type
+	failureMsg string
 }
 
 func TestSkycfgTesting(t *testing.T) {
