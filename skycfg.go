@@ -221,9 +221,12 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 		cache[modulePath] = &cacheEntry{globals, err}
 
 		for name, val := range globals {
-			if strings.HasPrefix(name, "test_") && val.Type() == "function" {
+			if !strings.HasPrefix(name, "test_") {
+				continue
+			}
+			if fn, ok := val.(starlark.Callable); ok {
 				tests = append(tests, &Test{
-					callable: val.(starlark.Callable),
+					callable: fn,
 				})
 			}
 		}
@@ -330,7 +333,7 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 
 // A TestResult is the result of a test run
 type TestResult struct {
-	Name     string
+	TestName string
 	Failure  error
 	Duration time.Duration
 }
@@ -366,7 +369,7 @@ func (t *Test) Run(ctx context.Context) (*TestResult, error) {
 	args := starlark.Tuple([]starlark.Value{testCtx})
 
 	result := TestResult{
-		Name: t.Name(),
+		TestName: t.Name(),
 	}
 
 	startTime := time.Now()
@@ -404,13 +407,13 @@ func skyFail(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwar
 	return nil, fmt.Errorf("[%s] %s\n%s", t.Caller().Position(), msg, buf.String())
 }
 
-// AssertionError represents a failed assertion
-type AssertionError struct {
+// assertionError represents a failed assertion
+type assertionError struct {
 	position  string
 	backtrace string
 }
 
-func (err AssertionError) Error() string {
+func (err assertionError) Error() string {
 	return fmt.Sprintf("[%s] assertion failed\n%s", err.position, err.backtrace)
 }
 
@@ -427,7 +430,7 @@ func (t *testContext) assertImpl(thread *starlark.Thread, fn *starlark.Builtin, 
 	if !val {
 		var buf bytes.Buffer
 		thread.Caller().WriteBacktrace(&buf)
-		err := AssertionError{
+		err := assertionError{
 			position:  thread.Caller().Position().String(),
 			backtrace: buf.String(),
 		}

@@ -288,8 +288,8 @@ func TestSkycfgTesting(t *testing.T) {
 			continue
 		}
 
-		if result.Name != test.Name() {
-			t.Errorf("TestResult (%s) and Test (%s) should have the same name", result.Name, test.Name())
+		if result.TestName != test.Name() {
+			t.Errorf("TestResult (%s) and Test (%s) should have the same name", result.TestName, test.Name())
 			continue
 		}
 
@@ -305,15 +305,6 @@ func TestSkycfgTesting(t *testing.T) {
 
 		if !testCase.passes {
 			// check the error message
-			if _, ok := result.Failure.(skycfg.AssertionError); !ok {
-				t.Errorf(
-					"[%s] Test failures should be of type skycfg.AssertionError, but found %#v",
-					test.Name(),
-					result.Failure,
-				)
-				continue
-			}
-
 			if !strings.Contains(result.Failure.Error(), testCase.failureMsg) {
 				t.Errorf(
 					"[%s] Expected %s to be in failure message, but instead found %s",
