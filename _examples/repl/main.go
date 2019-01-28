@@ -22,11 +22,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"reflect"
 
 	"github.com/gogo/protobuf/jsonpb"
-	gogo_proto "github.com/gogo/protobuf/proto"
-	"github.com/golang/protobuf/proto"
 	"go.starlark.net/repl"
 	"go.starlark.net/starlark"
 	yaml "gopkg.in/yaml.v2"
@@ -38,29 +35,8 @@ import (
 	_ "k8s.io/api/storage/v1"
 
 	"github.com/stripe/skycfg"
+	"github.com/stripe/skycfg/gogocompat"
 )
-
-type protoRegistry struct{}
-
-func (*protoRegistry) UnstableProtoMessageType(name string) (reflect.Type, error) {
-	if t := proto.MessageType(name); t != nil {
-		return t, nil
-	}
-	if t := gogo_proto.MessageType(name); t != nil {
-		return t, nil
-	}
-	return nil, nil
-}
-
-func (*protoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
-	if ev := proto.EnumValueMap(name); ev != nil {
-		return ev
-	}
-	if ev := gogo_proto.EnumValueMap(name); ev != nil {
-		return ev
-	}
-	return nil
-}
 
 func main() {
 	flag.Parse()
@@ -89,7 +65,7 @@ usage: %s FILENAME
 		os.Exit(1)
 	}
 
-	config, err := skycfg.Load(context.Background(), filename, skycfg.WithProtoRegistry(&protoRegistry{}))
+	config, err := skycfg.Load(context.Background(), filename, skycfg.WithProtoRegistry(gogocompat.ProtoRegistry()))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error loading %q: %v\n", filename, err)
 		os.Exit(1)
