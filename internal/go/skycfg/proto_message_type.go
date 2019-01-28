@@ -60,9 +60,12 @@ func newMessageType(registry ProtoRegistry, name string) (starlark.Value, error)
 		msgDesc:  msgDesc,
 		emptyMsg: emptyMsg,
 	}
-	if gotName := mt.Name(); name != gotName {
+	if gotName := mt.Name(); strings.TrimPrefix(name, "gogo:") != gotName {
 		// All the protobuf lookups are by name, so it's important that
 		// buggy self-registered protobuf types don't get mixed in.
+		//
+		// Special casing the "gogo:" prefix is unfortunate, but lets
+		// the GoGo compatibility layer support built-in types.
 		return nil, fmt.Errorf("InternalError: %v has unexpected protobuf type name %q (wanted %q)", goType, gotName, name)
 	}
 	return mt, nil

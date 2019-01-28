@@ -8,8 +8,7 @@ require (
 	github.com/envoyproxy/go-control-plane v0.6.0
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/gogo/googleapis v1.1.0 // indirect
-	github.com/gogo/protobuf v1.1.2-0.20181010092945-fd322a3c4963
-	github.com/golang/protobuf v1.2.0
+	github.com/gogo/protobuf v1.2.0
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/lyft/protoc-gen-validate v0.0.7 // indirect
@@ -19,7 +18,7 @@ require (
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/stretchr/testify v1.2.2 // indirect
 	github.com/stripe/skycfg v0.0.0
-	go.starlark.net v0.0.0-20181108041844-f4938bde4080
+	go.starlark.net v0.0.0-20190118175400-7b3aad4436b8
 	google.golang.org/grpc v1.15.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.1
