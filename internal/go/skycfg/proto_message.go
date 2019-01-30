@@ -538,21 +538,13 @@ func typeName(t reflect.Type) string {
 }
 
 func typeError(t reflect.Type, sky starlark.Value) error {
-	if sky.Type() == typeName(t) {
-		return fmt.Errorf(
-			"TypeError: value %s (type `%s') can't be assigned to type `%s'."+
-				"\nThe names of the types in this error are deceptively similar.\n"+
-				"this is often because of a conflict between the google protobuf\n"+
-				"implementation and messages that are shadowing the google naming,\n"+
-				"but which are actually coming from gogoproto, which adds features\n"+
-				"with the unfortunate effect of sometimes causing this confusion.\n\n"+
-				"To address this, try adding the github.com/stripe/skycfg/gogocompat\n"+
-				"module, and follow the examples of the added diffs at\n"+
-				"https://github.com/stripe/skycfg/pull/41/files\n",
+	if sky.Type() != typeName(t) {
+		return fmt.Errorf("TypeError: value %s (type `%s') can't be assigned to type `%s'.",
 			sky.String(), sky.Type(), typeName(t))
-	} else {
-		return fmt.Errorf("TypeError: value %s (type `%s') can't be assigned to type `%s'.", sky.String(), sky.Type(), typeName(t))
 	}
+	return fmt.Errorf("TypeError: value %s (type `%s') can't be assigned to type `%s'.\n"+
+		"(see https://github.com/stripe/skycfg/README.md#typerror-with-same-type-names)",
+		sky.String(), sky.Type(), typeName(t))
 }
 
 type protoRepeated struct {
