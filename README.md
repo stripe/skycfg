@@ -174,7 +174,7 @@ Skycfg depends on internal details of the go-protobuf generated code, and as suc
 Our existing public APIs are expected to be stable even before the v1.0 release. Symbols that will change before v1.0 are hidden from the public docs and named `Unstable*`.
 
 ## Known issues
-<a name="typerror-with-same-type-names></a>
+
 ### TypeError with the same type names
 
 E.g.:
