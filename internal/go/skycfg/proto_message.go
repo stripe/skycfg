@@ -538,7 +538,13 @@ func typeName(t reflect.Type) string {
 }
 
 func typeError(t reflect.Type, sky starlark.Value) error {
-	return fmt.Errorf("TypeError: value %s (type `%s') can't be assigned to type `%s'.", sky.String(), sky.Type(), typeName(t))
+	if sky.Type() != typeName(t) {
+		return fmt.Errorf("TypeError: value %s (type `%s') can't be assigned to type `%s'.",
+			sky.String(), sky.Type(), typeName(t))
+	}
+	return fmt.Errorf("TypeError: value %s (type `%s') can't be assigned to type `%s'.\n"+
+		"(see https://github.com/stripe/skycfg/#typeerror-with-the-same-type-names)",
+		sky.String(), sky.Type(), typeName(t))
 }
 
 type protoRepeated struct {
