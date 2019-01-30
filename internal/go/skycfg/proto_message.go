@@ -543,7 +543,7 @@ func typeError(t reflect.Type, sky starlark.Value) error {
 			sky.String(), sky.Type(), typeName(t))
 	}
 	return fmt.Errorf("TypeError: value %s (type `%s') can't be assigned to type `%s'.\n"+
-		"(see https://github.com/stripe/skycfg/README.md#typerror-with-same-type-names)",
+		"(see https://github.com/stripe/skycfg/#typeerror-with-the-same-type-names)",
 		sky.String(), sky.Type(), typeName(t))
 }
 
