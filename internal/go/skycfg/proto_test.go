@@ -29,6 +29,7 @@ import (
 	"time"
 
 	gogo_proto "github.com/gogo/protobuf/proto"
+	gogo_types "github.com/gogo/protobuf/types"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
@@ -366,7 +367,53 @@ func TestProtoToJsonFull(t *testing.T) {
 	}
 }
 
-func TestProtoToAny(t *testing.T) {
+func TestProtoToAnyGogo(t *testing.T) {
+	val := skyEval(t, `proto.to_any(gogo_proto.package("skycfg.test_proto").MessageGogo(
+		f_string = "some string",
+	))`)
+	myAny := val.(*skyProtoMessage).msg.(*gogo_types.Any)
+
+	want := "type.googleapis.com/skycfg.test_proto.MessageGogo"
+	if want != myAny.GetTypeUrl() {
+		t.Fatalf("to_any: wanted %q, got %q", want, myAny.GetTypeUrl())
+	}
+
+	msg := pb.MessageGogo{}
+	err := gogo_types.UnmarshalAny(myAny, &msg)
+	if err != nil {
+		t.Fatalf("to_any: could not unmarshal: %v", err)
+	}
+
+	want = "some string"
+	if want != msg.GetFString() {
+		t.Fatalf("to_any: wanted %q, got %q", want, msg.GetFString())
+	}
+}
+
+func TestProtoToAnyV2(t *testing.T) {
+	val := skyEval(t, `proto.to_any(proto.package("skycfg.test_proto").MessageV2(
+		f_string = "some string",
+	))`)
+	myAny := val.(*skyProtoMessage).msg.(*any.Any)
+
+	want := "type.googleapis.com/skycfg.test_proto.MessageV2"
+	if want != myAny.GetTypeUrl() {
+		t.Fatalf("to_any: wanted %q, got %q", want, myAny.GetTypeUrl())
+	}
+
+	msg := pb.MessageV2{}
+	err := ptypes.UnmarshalAny(myAny, &msg)
+	if err != nil {
+		t.Fatalf("to_any: could not unmarshal: %v", err)
+	}
+
+	want = "some string"
+	if want != msg.GetFString() {
+		t.Fatalf("to_any: wanted %q, got %q", want, msg.GetFString())
+	}
+}
+
+func TestProtoToAnyV3(t *testing.T) {
 	val := skyEval(t, `proto.to_any(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	))`)
@@ -380,12 +427,12 @@ func TestProtoToAny(t *testing.T) {
 	msg := pb.MessageV3{}
 	err := ptypes.UnmarshalAny(myAny, &msg)
 	if err != nil {
-		log.Fatalf("to_any: could not unmarshal: %v", err)
+		t.Fatalf("to_any: could not unmarshal: %v", err)
 	}
 
 	want = "some string"
 	if want != msg.GetFString() {
-		log.Fatalf("to_any: wanted %q, got %q", want, msg.GetFString())
+		t.Fatalf("to_any: wanted %q, got %q", want, msg.GetFString())
 	}
 }
 
