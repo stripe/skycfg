@@ -25,9 +25,9 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
+	"github.com/gogo/protobuf/types"
 	"go.starlark.net/starlark"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 )
 
 // UNSTABLE extension point for configuring how protobuf messages are loaded.
@@ -242,7 +242,7 @@ func fnProtoToAny(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple,
 		return nil, err
 	}
 
-	any, err := ptypes.MarshalAny(msg.msg)
+	any, err := types.MarshalAny(msg.msg)
 	if err != nil {
 		return nil, err
 	}
