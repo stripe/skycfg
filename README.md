@@ -191,7 +191,7 @@ name.
 
 For projects that use `gogo_protobuf`, e.g. envoy, this can be very confusing.
 
-To resolve this, use the package `github.com/stripe/skycfg/gogocopmat`
+To resolve this, use the package `github.com/stripe/skycfg/gogocompat`
 in your go code. This will allow skycfg code to load
 `proto.package("gogo:google.protobuf") and the internal registry it
 creates will handle the conversion of these types.
