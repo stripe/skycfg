@@ -25,6 +25,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"go.starlark.net/starlark"
 	yaml "gopkg.in/yaml.v2"
 )
@@ -53,6 +54,7 @@ func NewProtoModule(registry ProtoRegistry) *ProtoModule {
 			"merge":        starlark.NewBuiltin("proto.merge", fnProtoMerge),
 			"set_defaults": starlark.NewBuiltin("proto.set_defaults", fnProtoSetDefaults),
 			"to_json":      starlark.NewBuiltin("proto.to_json", fnProtoToJson),
+			"to_any":       starlark.NewBuiltin("proto.to_any", fnProtoToAny),
 			"to_text":      starlark.NewBuiltin("proto.to_text", fnProtoToText),
 			"to_yaml":      starlark.NewBuiltin("proto.to_yaml", fnProtoToYaml),
 		},
@@ -232,6 +234,20 @@ func fnProtoToJson(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 		jsonData = buf.Bytes()
 	}
 	return starlark.String(jsonData), nil
+}
+
+func fnProtoToAny(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var msg *skyProtoMessage
+	if err := wantSingleProtoMessage("proto.to_any", args, kwargs, &msg); err != nil {
+		return nil, err
+	}
+
+	any, err := ptypes.MarshalAny(msg.msg)
+	if err != nil {
+		return nil, err
+	}
+
+	return NewSkyProtoMessage(any), nil
 }
 
 // Implementation of the `proto.to_yaml()` built-in function. Returns the
