@@ -85,3 +85,56 @@ k:
 		}
 	}
 }
+
+func TestYamlToSky(t *testing.T) {
+	thread := new(starlark.Thread)
+	env := starlark.StringDict{
+		"yaml": YamlModule(),
+	}
+	v, err := starlark.Eval(
+		thread,
+		"<expr>",
+		`yaml.unmarshal("testdata/test.yml")`,
+		env,
+	)
+	if err != nil {
+		t.Error("Error from eval", "\nExpected nil", "\nGot", err)
+	}
+	staryaml := v.(starlark.Mapping)
+	for _, testCase := range []struct {
+		name, key, want string
+		expectedErr     error
+	}{
+		{
+			name: "key mapped to String",
+			key:  "strKey",
+			want: `"value"`,
+		},
+		{
+			name: "key mapped to Array",
+			key:  "arrKey",
+			want: `["a", "b", "c"]`,
+		},
+		{
+			name: "key mapped to Map",
+			key:  "mapKey",
+			want: `{"subkey": "valuevalue"}`,
+		},
+	} {
+		t.Run(testCase.name, func(t *testing.T) {
+			got, _, err := staryaml.Get(starlark.String(testCase.key))
+			if err != nil {
+				t.Errorf("error accessing key [%v] in staryaml: %v", testCase.key, err)
+			}
+			if testCase.want != got.String() {
+				t.Error(
+					"Bad return value from yaml.unmarshal",
+					"\nExpected:",
+					testCase.want,
+					"\nGot:",
+					got,
+				)
+			}
+		})
+	}
+}

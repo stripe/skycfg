@@ -1,0 +1,7 @@
+strKey: value
+arrKey:
+  - a
+  - b
+  - c
+mapKey:
+  subkey: valuevalue
