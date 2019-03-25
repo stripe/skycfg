@@ -19,7 +19,6 @@ package skycfg
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"reflect"
 
 	"go.starlark.net/starlark"
@@ -65,25 +64,21 @@ func fnYamlMarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 	return starlark.String(yamlBytes), nil
 }
 
-// yamlUnmarshal returns a Starlark function for unmarshaling YAML files to
+// yamlUnmarshal returns a Starlark function for unmarshaling yaml content to
 // to starlark values.
 //
-// def yaml.unmarshal(file) -> (dicts, lists, etc)
+// def yaml.unmarshal(yaml_content) -> (dicts, lists, etc)
 func yamlUnmarshal() starlark.Callable {
 	return starlark.NewBuiltin("yaml.unmarshal", fnYamlUnmarshal)
 }
 
 func fnYamlUnmarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var filename string
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, nil, 1, &filename); err != nil {
-		return nil, err
-	}
-	blob, err := ioutil.ReadFile(filename)
-	if err != nil {
+	var blob string
+	if err := starlark.UnpackPositionalArgs(fn.Name(), args, nil, 1, &blob); err != nil {
 		return nil, err
 	}
 	var inflated interface{}
-	if err = yaml.Unmarshal(blob, &inflated); err != nil {
+	if err := yaml.Unmarshal([]byte(blob), &inflated); err != nil {
 		return nil, err
 	}
 	return toStarlarkValue(inflated)

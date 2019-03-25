@@ -91,10 +91,11 @@ func TestYamlToSky(t *testing.T) {
 	env := starlark.StringDict{
 		"yaml": YamlModule(),
 	}
+	skyExpr := `{"strKey": "val", "arrKey": ["a", "b"], "mapKey": {"subkey": "val"}}`
 	v, err := starlark.Eval(
 		thread,
 		"<expr>",
-		`yaml.unmarshal("testdata/test.yml")`,
+		fmt.Sprintf(`yaml.unmarshal(yaml.marshal(%s))`, skyExpr),
 		env,
 	)
 	if err != nil {
@@ -108,17 +109,17 @@ func TestYamlToSky(t *testing.T) {
 		{
 			name: "key mapped to String",
 			key:  "strKey",
-			want: `"value"`,
+			want: `"val"`,
 		},
 		{
 			name: "key mapped to Array",
 			key:  "arrKey",
-			want: `["a", "b", "c"]`,
+			want: `["a", "b"]`,
 		},
 		{
 			name: "key mapped to Map",
 			key:  "mapKey",
-			want: `{"subkey": "valuevalue"}`,
+			want: `{"subkey": "val"}`,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
