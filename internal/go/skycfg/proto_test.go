@@ -32,6 +32,8 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 
+	admregv1beta1 "k8s.io/api/admissionregistration/v1beta1"
+
 	_ "github.com/gogo/protobuf/types"
 
 	pb "github.com/stripe/skycfg/test_proto"
@@ -1010,5 +1012,19 @@ func TestProtoComparisonNotEqual(t *testing.T) {
 	}
 	if ok {
 		t.Error("Expected protos to not be equal")
+	}
+}
+
+func TestKubernetesMessage(t *testing.T) {
+	val := skyEval(t, `gogo_proto.package("k8s.io.api.admissionregistration.v1beta1").Webhook(
+		sideEffects = "Some",
+	)`)
+	gotMsg := val.(*skyProtoMessage).msg
+	some := admregv1beta1.SideEffectClassSome
+	wantMsg := &admregv1beta1.Webhook{
+		SideEffects: &some,
+	}
+	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
+		t.Fatalf("diff from expected message:\n%s", diff)
 	}
 }
