@@ -1,7 +1,7 @@
 language: go
 go_import_path: github.com/stripe/skycfg
 go:
-  - "1.12"
+  - "1.11"
   - master
 env:
   global:
