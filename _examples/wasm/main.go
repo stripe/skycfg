@@ -103,13 +103,7 @@ func jsMain(args []js.Value) {
 }
 
 func main() {
-	var cb js.Func
-	cb = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
-		jsMain(args)
-		cb.Release()
-		return nil
-	})
-	js.Global().Set("skycfg_main", cb)
+	js.Global().Set("skycfg_main", js.NewCallback(jsMain))
 	c := make(chan struct{}, 0)
 	<-c
 }
