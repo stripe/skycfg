@@ -1035,8 +1035,9 @@ func (*KubernetesMessage) Descriptor() ([]byte, []int) {
 
 func init() {
 	proto.RegisterType((*KubernetesMessage)(nil), "skycfg.test_proto.KubernetesMessage")
+
 	fd := &descriptorpb.FileDescriptorProto{
-		Name:    proto.String("fake_kubernete.proto"),
+		Name:    proto.String("fake_kubernetes.proto"),
 		Package: proto.String("skycfg.test_proto"),
 		MessageType: []*descriptorpb.DescriptorProto{
 			&descriptorpb.DescriptorProto{
