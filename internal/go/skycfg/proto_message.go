@@ -340,6 +340,21 @@ func scalarToStarlark(val reflect.Value) starlark.Value {
 	return nil
 }
 
+// maybeConvertString checks if type is not assignable and is string (string
+// alias) and attempts to convert it.
+// Returns false if can't convert, true if successfully converted or conversion
+// was not required.
+func maybeConvertString(v reflect.Value, t reflect.Type) (reflect.Value, bool) {
+	if vt := v.Type(); !vt.AssignableTo(t) {
+		// Only attempt to convert string aliases.
+		if vt.Kind() != reflect.String || !vt.ConvertibleTo(t) {
+			return reflect.Value{}, false
+		}
+		return v.Convert(t), true
+	}
+	return v, true
+}
+
 func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error) {
 	switch sky := sky.(type) {
 	case starlark.Int, starlark.Float, starlark.String, starlark.Bool:
@@ -350,11 +365,9 @@ func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error
 
 		// Handle the use of typedefs in Kubernetes and "string" ->
 		// "bytes" conversion.
-		if scalarType := scalar.Type(); !scalarType.AssignableTo(t) {
-			if scalarType.Kind() != reflect.String || !scalarType.ConvertibleTo(t) {
-				return reflect.Value{}, typeError(t, sky)
-			}
-			scalar = scalar.Convert(t)
+		scalar, ok := maybeConvertString(scalar, t)
+		if !ok {
+			return reflect.Value{}, typeError(t, sky)
 		}
 		return scalar, nil
 	case starlark.NoneType:
@@ -450,6 +463,13 @@ func scalarFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, erro
 			// Recompute the type error based on the pointer type.
 			return reflect.Value{}, typeError(t, sky)
 		}
+
+		// In case target is aliased ptr string.
+		elem, ok := maybeConvertString(elem, val.Elem().Type())
+		if !ok {
+			return reflect.Value{}, typeError(t, sky)
+		}
+
 		val.Elem().Set(elem)
 		return val, nil
 	case reflect.Bool:

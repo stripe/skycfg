@@ -17,7 +17,10 @@
 package skycfg
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"reflect"
 	"sort"
@@ -34,6 +37,7 @@ import (
 
 	_ "github.com/gogo/protobuf/types"
 
+	descriptorpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	pb "github.com/stripe/skycfg/test_proto"
 )
 
@@ -1010,5 +1014,78 @@ func TestProtoComparisonNotEqual(t *testing.T) {
 	}
 	if ok {
 		t.Error("Expected protos to not be equal")
+	}
+}
+
+type StringFieldAliasType string
+
+type KubernetesMessage struct {
+	FString *StringFieldAliasType `protobuf:"bytes,1,opt,name=f_string,json=fString" json:"f_string,omitempty"`
+}
+
+func (m *KubernetesMessage) Reset()         { *m = KubernetesMessage{} }
+func (m *KubernetesMessage) String() string { return proto.CompactTextString(m) }
+func (*KubernetesMessage) ProtoMessage()    {}
+
+var k8sMsgFileDescriptor []byte
+
+func (*KubernetesMessage) Descriptor() ([]byte, []int) {
+	return k8sMsgFileDescriptor, []int{0}
+}
+
+func init() {
+	proto.RegisterType((*KubernetesMessage)(nil), "skycfg.test_proto.KubernetesMessage")
+
+	fd := &descriptorpb.FileDescriptorProto{
+		Name:    proto.String("fake_kubernetes.proto"),
+		Package: proto.String("skycfg.test_proto"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			&descriptorpb.DescriptorProto{
+				Name: proto.String("KubernetesMessage"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					&descriptorpb.FieldDescriptorProto{
+						Name:     proto.String("f_string"),
+						Number:   proto.Int32(1),
+						Label:    descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+						Type:     descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+						JsonName: proto.String("fString"),
+					},
+				},
+			},
+		},
+	}
+
+	bs, err := proto.Marshal(fd)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal FileDescriptorProto: %v", err))
+	}
+
+	buf := new(bytes.Buffer)
+	zw := gzip.NewWriter(buf)
+	_, err = zw.Write(bs)
+	if err != nil {
+		panic(fmt.Sprintf("failed to gzip bytes: %v", err))
+	}
+	if err := zw.Close(); err != nil {
+		panic(fmt.Sprintf("failed to close gzip writer: %v", err))
+	}
+
+	k8sMsgFileDescriptor, err = ioutil.ReadAll(buf)
+	if err != nil {
+		panic(fmt.Sprintf("failed to read FileDescriptorProto bytes: %v", err))
+	}
+}
+
+func TestKubernetesMessage(t *testing.T) {
+	val := skyEval(t, `proto.package("skycfg.test_proto").KubernetesMessage(
+		f_string = "foobar",
+	)`)
+	gotMsg := val.(*skyProtoMessage).msg
+	var fString StringFieldAliasType = "foobar"
+	wantMsg := &KubernetesMessage{
+		FString: &fString,
+	}
+	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
+		t.Fatalf("diff from expected message:\n%s", diff)
 	}
 }
