@@ -17,7 +17,10 @@
 package skycfg
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"reflect"
 	"sort"
@@ -34,6 +37,7 @@ import (
 
 	_ "github.com/gogo/protobuf/types"
 
+	descriptorpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	pb "github.com/stripe/skycfg/test_proto"
 )
 
@@ -1023,16 +1027,7 @@ func (m *KubernetesMessage) Reset()         { *m = KubernetesMessage{} }
 func (m *KubernetesMessage) String() string { return proto.CompactTextString(m) }
 func (*KubernetesMessage) ProtoMessage()    {}
 
-var k8sMsgFileDescriptor = []byte{
-	// 98 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0xe2, 0x2b, 0x49, 0x2d, 0x2e,
-	0x89, 0xcf, 0xb6, 0x28, 0xd6, 0x2b, 0x28, 0xca, 0x2f, 0xc9, 0x17, 0x12, 0x2c, 0xce, 0xae, 0x4c,
-	0x4e, 0x4b, 0xd7, 0x03, 0x0b, 0x83, 0x85, 0x94, 0xf4, 0xb8, 0x04, 0xbd, 0x4b, 0x93, 0x52, 0x8b,
-	0xf2, 0x52, 0x4b, 0x52, 0x8b, 0x7d, 0x53, 0x8b, 0x8b, 0x13, 0xd3, 0x53, 0x85, 0x24, 0xb9, 0x38,
-	0xd2, 0xe2, 0x8b, 0x4b, 0x8a, 0x32, 0xf3, 0xd2, 0x25, 0x18, 0x15, 0x18, 0x35, 0x38, 0x83, 0xd8,
-	0xd3, 0x82, 0xc1, 0x5c, 0x40, 0x00, 0x00, 0x00, 0xff, 0xff, 0x8a, 0xe9, 0xb1, 0x31, 0x53, 0x00,
-	0x00, 0x00,
-}
+var k8sMsgFileDescriptor []byte
 
 func (*KubernetesMessage) Descriptor() ([]byte, []int) {
 	return k8sMsgFileDescriptor, []int{0}
@@ -1040,6 +1035,44 @@ func (*KubernetesMessage) Descriptor() ([]byte, []int) {
 
 func init() {
 	proto.RegisterType((*KubernetesMessage)(nil), "skycfg.test_proto.KubernetesMessage")
+	fd := &descriptorpb.FileDescriptorProto{
+		Name:    proto.String("fake_kubernete.proto"),
+		Package: proto.String("skycfg.test_proto"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			&descriptorpb.DescriptorProto{
+				Name: proto.String("KubernetesMessage"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					&descriptorpb.FieldDescriptorProto{
+						Name:     proto.String("f_string"),
+						Number:   proto.Int32(1),
+						Label:    descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+						Type:     descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+						JsonName: proto.String("fString"),
+					},
+				},
+			},
+		},
+	}
+
+	bs, err := proto.Marshal(fd)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal FileDescriptorProto: %v", err))
+	}
+
+	buf := new(bytes.Buffer)
+	zw := gzip.NewWriter(buf)
+	_, err = zw.Write(bs)
+	if err != nil {
+		panic(fmt.Sprintf("failed to gzip bytes: %v", err))
+	}
+	if err := zw.Close(); err != nil {
+		panic(fmt.Sprintf("failed to close gzip writer: %v", err))
+	}
+
+	k8sMsgFileDescriptor, err = ioutil.ReadAll(buf)
+	if err != nil {
+		panic(fmt.Sprintf("failed to read FileDescriptorProto bytes: %v", err))
+	}
 }
 
 func TestKubernetesMessage(t *testing.T) {
