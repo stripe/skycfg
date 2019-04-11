@@ -164,32 +164,39 @@ func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
 //  * yaml   - same as "json" package but for YAML.
 //  * url    - utility package for encoding URL query string.
 func UnstablePredeclaredModules(r unstableProtoRegistry) starlark.StringDict {
-	return starlark.StringDict{
+	modules, protoModule := predeclaredModules()
+	protoModule.Registry = r
+	return modules
+}
+
+// predeclaredModules is a helper that returns new predeclared modules.
+// Returns proto module separately for (optional) extra initialization.
+func predeclaredModules() (modules starlark.StringDict, proto *impl.ProtoModule) {
+	proto = impl.NewProtoModule(nil /* TODO: registry from options */)
+	modules = starlark.StringDict{
 		"fail":   starlark.NewBuiltin("fail", skyFail),
 		"hash":   impl.HashModule(),
 		"json":   impl.JsonModule(),
-		"proto":  impl.NewProtoModule(r),
+		"proto":  proto,
 		"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 		"yaml":   impl.YamlModule(),
 		"url":    impl.UrlModule(),
 	}
+	return
 }
 
 // Load reads a Skycfg config file from the filesystem.
 func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, error) {
+	modules, protoModule := predeclaredModules()
 	parsedOpts := &loadOptions{
-		globals:    UnstablePredeclaredModules(nil),
+		globals:    modules,
 		fileReader: LocalFileReader(filepath.Dir(filename)),
 	}
 
 	for _, opt := range opts {
 		opt.applyLoad(parsedOpts)
 	}
-
-	// Set the proto registry option if proto package was configured.
-	if p, ok := parsedOpts.globals["proto"]; ok {
-		p.(*impl.ProtoModule).Registry = parsedOpts.protoRegistry
-	}
+	protoModule.Registry = parsedOpts.protoRegistry
 
 	configLocals, err := loadImpl(ctx, parsedOpts, filename)
 	if err != nil {
