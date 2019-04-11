@@ -17,9 +17,9 @@
 package skycfg
 
 import (
-	"bytes"
 	"fmt"
 	"sort"
+	"strings"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
@@ -112,8 +112,8 @@ func (t *TestContext) CallInternal(thread *starlark.Thread, args starlark.Tuple,
 	}
 
 	if !val {
-		var buf bytes.Buffer
-		thread.Caller().WriteBacktrace(&buf)
+		buf := new(strings.Builder)
+		thread.Caller().WriteBacktrace(buf)
 		err := assertionError{
 			position:  thread.Caller().Position().String(),
 			backtrace: buf.String(),
@@ -136,14 +136,14 @@ func (t *TestContext) AssertBinaryImpl(op syntax.Token) func(thread *starlark.Th
 
 		passes, err := starlark.Compare(op, val1, val2)
 		if err != nil {
-			var buf bytes.Buffer
-			thread.Caller().WriteBacktrace(&buf)
+			buf := new(strings.Builder)
+			thread.Caller().WriteBacktrace(buf)
 			return nil, err
 		}
 
 		if !passes {
-			var buf bytes.Buffer
-			thread.Caller().WriteBacktrace(&buf)
+			buf := new(strings.Builder)
+			thread.Caller().WriteBacktrace(buf)
 			err := assertionError{
 				op:        &op,
 				val1:      val1,

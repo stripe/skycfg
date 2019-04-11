@@ -19,7 +19,6 @@
 package skycfg
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
@@ -404,7 +403,7 @@ func skyFail(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwar
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &msg); err != nil {
 		return nil, err
 	}
-	var buf bytes.Buffer
-	t.Caller().WriteBacktrace(&buf)
+	buf := new(strings.Builder)
+	t.Caller().WriteBacktrace(buf)
 	return nil, fmt.Errorf("[%s] %s\n%s", t.Caller().Position(), msg, buf.String())
 }
