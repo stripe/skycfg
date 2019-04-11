@@ -151,21 +151,50 @@ func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
 	})
 }
 
+// UnstablePredeclaredModules returns a Starlark string dictionary with
+// predeclared Skycfg modules which can be used in starlark.ExecFile.
+//
+// Takes in unstableProtoRegistry as param (if nil will use standard proto
+// registry).
+//
+// Currently provides these modules (see REAMDE for more detailed description):
+//  * fail   - interrupts execution and prints a stacktrace.
+//  * hash   - supports md5, sha1 and sha245 functions.
+//  * json   - marshals plain values (dicts, lists, etc) to JSON.
+//  * proto  - package for constructing Protobuf messages.
+//  * struct - experimental Starlark struct support.
+//  * yaml   - same as "json" package but for YAML.
+//  * url    - utility package for encoding URL query string.
+func UnstablePredeclaredModules(r unstableProtoRegistry) starlark.StringDict {
+	modules, protoModule := predeclaredModules()
+	protoModule.Registry = r
+	return modules
+}
+
+// predeclaredModules is a helper that returns new predeclared modules.
+// Returns proto module separately for (optional) extra initialization.
+func predeclaredModules() (modules starlark.StringDict, proto *impl.ProtoModule) {
+	proto = impl.NewProtoModule(nil /* TODO: registry from options */)
+	modules = starlark.StringDict{
+		"fail":   starlark.NewBuiltin("fail", skyFail),
+		"hash":   impl.HashModule(),
+		"json":   impl.JsonModule(),
+		"proto":  proto,
+		"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
+		"yaml":   impl.YamlModule(),
+		"url":    impl.UrlModule(),
+	}
+	return
+}
+
 // Load reads a Skycfg config file from the filesystem.
 func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, error) {
-	protoModule := impl.NewProtoModule(nil /* TODO: registry from options */)
+	modules, protoModule := predeclaredModules()
 	parsedOpts := &loadOptions{
-		globals: starlark.StringDict{
-			"fail":   starlark.NewBuiltin("fail", skyFail),
-			"hash":   impl.HashModule(),
-			"json":   impl.JsonModule(),
-			"proto":  protoModule,
-			"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
-			"yaml":   impl.YamlModule(),
-			"url":    impl.UrlModule(),
-		},
+		globals:    modules,
 		fileReader: LocalFileReader(filepath.Dir(filename)),
 	}
+
 	for _, opt := range opts {
 		opt.applyLoad(parsedOpts)
 	}
