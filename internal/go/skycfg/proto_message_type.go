@@ -27,24 +27,11 @@ import (
 	"go.starlark.net/starlark"
 )
 
-type defaultProtoRegistry struct{}
-
-func (*defaultProtoRegistry) UnstableProtoMessageType(name string) (reflect.Type, error) {
-	return proto.MessageType(name), nil
-}
-
-func (*defaultProtoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
-	return proto.EnumValueMap(name)
-}
-
 // NewMessageType creates a Starlark value representing a named Protobuf message type.
 //
 // The message type must have been registered with the protobuf library, and implement
 // the expected interfaces for a generated .pb.go message struct.
 func newMessageType(registry ProtoRegistry, name string) (starlark.Value, error) {
-	if registry == nil {
-		registry = &defaultProtoRegistry{}
-	}
 	goType, err := registry.UnstableProtoMessageType(name)
 	if err != nil {
 		return nil, err
@@ -73,9 +60,12 @@ func newMessageType(registry ProtoRegistry, name string) (starlark.Value, error)
 		msgDesc:  msgDesc,
 		emptyMsg: emptyMsg,
 	}
-	if gotName := mt.Name(); name != gotName {
+	if gotName := mt.Name(); strings.TrimPrefix(name, "gogo:") != gotName {
 		// All the protobuf lookups are by name, so it's important that
 		// buggy self-registered protobuf types don't get mixed in.
+		//
+		// Special casing the "gogo:" prefix is unfortunate, but lets
+		// the GoGo compatibility layer support built-in types.
 		return nil, fmt.Errorf("InternalError: %v has unexpected protobuf type name %q (wanted %q)", goType, gotName, name)
 	}
 	return mt, nil

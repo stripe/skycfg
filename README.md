@@ -10,9 +10,9 @@ At present, only the Go implementation of Starlark is supported.
 
 ## Getting Started
 
-The entry point to Skycfg is the [`skycfg.Load()`](https://godoc.org/pkg/github.com/stripe/skycfg/#Load) function, which reads a config file from local disk. As the implementation stabilizes we expect to expand the public API surface so that Skycfg can be combined with other Starlark extensions.
+The entry point to Skycfg is the [`skycfg.Load()`](https://godoc.org/pkg/github.com/stripe/skycfg/#Load) function, which reads a configuration file from local disk. As the implementation stabilizes we expect to expand the public API surface so that Skycfg can be combined with other Starlark extensions.
 
-Lets start with a simple `main` that just prints out every Protobuf message created by the config file `hello.sky`:
+Lets start with a simple `main` function that prints out every Protobuf message created by the config file `hello.sky`:
 
 ```go
 package main
@@ -44,7 +44,7 @@ def main(ctx):
   return [pb.StringValue(value = "Hello, world!")]
 ```
 
-Now we can build our little test driver, write `hello.sky`, and see what values come out:
+Now we can build a small test driver and see what values are returned:
 
 ```
 $ go get github.com/stripe/skycfg
@@ -63,13 +63,13 @@ For more in-depth examples covering specific topics, see the `_examples/` direct
 
 ## Why use Skycfg?
 
-Compared to bare YAML or TOML, the Python-ish syntax of Skycfg might not seem like a win. Why would we want configs with all those quotes and colons and braces?
+Compared to bare YAML or TOML, the Python-like syntax of Skycfg might not seem like a win. Why would we want configuration files with all those quotes and colons and braces?
 
-There are four important benefits of using Skycfg over YAML:
+There are four important benefits to using Skycfg over YAML:
 
 ### Type Safety
 
-Protobuf has a statically-typed data model, which means the types of all fields are known to Skycfg when it's evaluating your config. There is no risk of accidentally assigning a string to a number, a struct to a different struct, or forgetting to quote a YAML value.
+Protobuf has a statically-typed data model, which means the type of every field is known to Skycfg when it's building your configuration. There is no risk of accidentally assigning a string to a number, a struct to a different struct, or forgetting to quote a YAML value.
 
 ```python
 pb = proto.package("google.protobuf")
@@ -108,7 +108,7 @@ value:"Bonjour, monde!"
 
 ### Modules
 
-Starlark supports importing modules from other files, which you can use to share common code between your configs. By default the paths to load are resolved on the local filesystem, but you can also override the `load()` handler to support syntaxes such as Bazel-style targets.
+Starlark supports importing modules from other files, which you can use to share common code between configurations. By default the paths to load are resolved on the local filesystem, but you can also override the `load()` handler to support syntaxes such as [Bazel-style target labels](https://docs.bazel.build/versions/master/build-ref.html).
 
 Modules can protect service owners from complex Kubernetes logic:
 
@@ -124,7 +124,7 @@ def my_service(ctx):
   )
 ```
 
-When combined with VCS hooks like [GitHub CODEOWNERS](https://help.github.com/articles/about-codeowners/), you can use modules to provide an API surface to third-party tools deployed in your infrastructure:
+When combined with VCS hooks like [GitHub CODEOWNERS](https://help.github.com/articles/about-codeowners/), you can use modules to provide an API surface for third-party tools deployed in your infrastructure:
 
 ```python
 load("//config/common/constants.sky",  "CLUSTERS")
@@ -165,10 +165,33 @@ $ ./test-skycfg
 
 ## Contributing
 
-We welcome contributions from the community. For small simple changes, go ahead and open a pull request. Larger changes should start out in the issue tracker, so we can make sure they fit into the roadmap. Changes to the Starlark language itself (such as new primitive types or syntax) should be applied to https://github.com/google/starlark-go.
+We welcome contributions from the community. For small simple changes, go ahead and [open a pull request](https://github.com/stripe/skycfg/compare). Larger changes should start out in the issue tracker, so we can make sure they fit into the roadmap. Changes to the Starlark language itself (such as new primitive types or syntax) should be applied to https://github.com/google/starlark-go.
 
 ## Stability
 
-Skycfg depends on internal details of the go-protobuf generated code, and as such it may need to be updated to work with future versions of go-protobuf. We will release Skycfg v1.0 after all dependencies on go-protobuf implementation details have been fixed, which will be after the "api-v2" branch lands in a stable release of go-protobuf.
+Skycfg depends on internal details of the go-protobuf generated code, and as such may need to be updated to work with future versions of go-protobuf. We will release Skycfg v1.0 after all dependencies on go-protobuf implementation details have been fixed, which will be after the "api-v2" branch lands in a stable release of go-protobuf.
 
 Our existing public APIs are expected to be stable even before the v1.0 release. Symbols that will change before v1.0 are hidden from the public docs and named `Unstable*`.
+
+## Known issues
+
+### TypeError with the same type names
+
+E.g.:
+```
+panic: TypeError: value <google.protobuf.UInt32Value value:20 > (type `google.protobuf.UInt32Value') can't be assigned to type `google.protobuf.UInt32Value'.
+```
+
+On the face of it this looks confusing, and it is. It's an effect of a
+project that use `gogo_protobuf`, where some fundamental types are
+wrapped in messages that shadow the same messages defined by
+`google.protobuf`. Even though the messages seem to say that they are
+of the same type, they are actually two different types with the same
+name.
+
+For projects that use `gogo_protobuf`, e.g. envoy, this can be very confusing.
+
+To resolve this, use the package `github.com/stripe/skycfg/gogocopmat`
+in your go code. This will allow skycfg code to load
+`proto.package("gogo:google.protobuf") and the internal registry it
+creates will handle the conversion of these types.

@@ -26,7 +26,6 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"reflect"
 	"strings"
 
 	"github.com/gogo/protobuf/jsonpb"
@@ -50,6 +49,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	"github.com/stripe/skycfg"
+	"github.com/stripe/skycfg/gogocompat"
 )
 
 var (
@@ -57,28 +57,6 @@ var (
 	namespace  = flag.String("namespace", "default", "Namespace to create/delete objects in.")
 	configPath = flag.String("kubeconfig", os.Getenv("HOME")+"/.kube/config", "Kubernetes client config path.")
 )
-
-type protoRegistry struct{}
-
-func (*protoRegistry) UnstableProtoMessageType(name string) (reflect.Type, error) {
-	if t := proto.MessageType(name); t != nil {
-		return t, nil
-	}
-	if t := gogo_proto.MessageType(name); t != nil {
-		return t, nil
-	}
-	return nil, nil
-}
-
-func (*protoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
-	if ev := proto.EnumValueMap(name); ev != nil {
-		return ev
-	}
-	if ev := gogo_proto.EnumValueMap(name); ev != nil {
-		return ev
-	}
-	return nil
-}
 
 var k8sProtoMagic = []byte("k8s\x00")
 
@@ -309,7 +287,7 @@ usage: %s [ up | down ] NAME FILENAME
 		dryRun:  *dryRun,
 	}
 
-	config, err := skycfg.Load(context.Background(), filename, skycfg.WithProtoRegistry(&protoRegistry{}))
+	config, err := skycfg.Load(context.Background(), filename, skycfg.WithProtoRegistry(gogocompat.ProtoRegistry()))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error loading %q: %v\n", filename, err)
 		os.Exit(1)

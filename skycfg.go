@@ -27,6 +27,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/golang/protobuf/proto"
 	"go.starlark.net/starlark"
@@ -96,6 +97,7 @@ type Config struct {
 	filename string
 	globals  starlark.StringDict
 	locals   starlark.StringDict
+	tests    []*Test
 }
 
 // A LoadOption adjusts details of how Skycfg configs are loaded.
@@ -197,8 +199,7 @@ func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, er
 		opt.applyLoad(parsedOpts)
 	}
 	protoModule.Registry = parsedOpts.protoRegistry
-
-	configLocals, err := loadImpl(ctx, parsedOpts, filename)
+	configLocals, tests, err := loadImpl(ctx, parsedOpts, filename)
 	if err != nil {
 		return nil, err
 	}
@@ -206,10 +207,11 @@ func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, er
 		filename: filename,
 		globals:  parsedOpts.globals,
 		locals:   configLocals,
+		tests:    tests,
 	}, nil
 }
 
-func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark.StringDict, error) {
+func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark.StringDict, []*Test, error) {
 	reader := opts.fileReader
 
 	type cacheEntry struct {
@@ -217,6 +219,7 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 		err     error
 	}
 	cache := make(map[string]*cacheEntry)
+	tests := []*Test{}
 
 	var load func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error)
 	load = func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error) {
@@ -245,12 +248,24 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 		cache[modulePath] = nil
 		globals, err := starlark.ExecFile(thread, modulePath, moduleSource, opts.globals)
 		cache[modulePath] = &cacheEntry{globals, err}
+
+		for name, val := range globals {
+			if !strings.HasPrefix(name, "test_") {
+				continue
+			}
+			if fn, ok := val.(starlark.Callable); ok {
+				tests = append(tests, &Test{
+					callable: fn,
+				})
+			}
+		}
 		return globals, err
 	}
-	return load(&starlark.Thread{
+	locals, err := load(&starlark.Thread{
 		Print: skyPrint,
 		Load:  load,
 	}, filename)
+	return locals, tests, err
 }
 
 // Filename returns the original filename passed to Load().
@@ -343,6 +358,70 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 		msgs = append(msgs, msg)
 	}
 	return msgs, nil
+}
+
+// A TestResult is the result of a test run
+type TestResult struct {
+	TestName string
+	Failure  error
+	Duration time.Duration
+}
+
+// A Test is a test case, which is a skycfg function whose name starts with `test_`.
+type Test struct {
+	callable starlark.Callable
+}
+
+// Name returns the name of the test (the name of the function)
+func (t *Test) Name() string {
+	return t.callable.Name()
+}
+
+// Run actually executes a test. It returns a TestResult if the test completes (even if it fails)
+// The error return value will only be non-nil if the test execution itself errors.
+func (t *Test) Run(ctx context.Context) (*TestResult, error) {
+	thread := &starlark.Thread{
+		Print: skyPrint,
+	}
+	thread.SetLocal("context", ctx)
+
+	assertModule := impl.AssertModule()
+	testCtx := &impl.Module{
+		Name: "skycfg_test_ctx",
+		Attrs: starlark.StringDict(map[string]starlark.Value{
+			"vars":   &starlark.Dict{},
+			"assert": assertModule,
+		}),
+	}
+	args := starlark.Tuple([]starlark.Value{testCtx})
+
+	result := TestResult{
+		TestName: t.Name(),
+	}
+
+	startTime := time.Now()
+	_, err := starlark.Call(thread, t.callable, args, nil)
+	result.Duration = time.Since(startTime)
+	if err != nil {
+		// if there is no assertion error, there was something wrong with the execution itself
+		if len(assertModule.Failures) == 0 {
+			return nil, err
+		}
+
+		// there should only be one failure, because each test run gets its own *TestContext
+		// and each assertion failure halts execution.
+		if len(assertModule.Failures) > 1 {
+			panic("A test run should only have one assertion failure. Something went wrong with the test infrastructure.")
+		}
+		result.Failure = assertModule.Failures[0]
+	}
+
+	return &result, nil
+}
+
+// Tests returns all tests defined in the config
+func (c *Config) Tests() []*Test {
+	return c.tests
 }
 
 func skyPrint(t *starlark.Thread, msg string) {

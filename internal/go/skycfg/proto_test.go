@@ -17,19 +17,27 @@
 package skycfg
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
+	"io/ioutil"
 	"math"
 	"reflect"
 	"sort"
 	"strings"
 	"testing"
+	"time"
 
 	gogo_proto "github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/proto"
 	"github.com/kylelemons/godebug/pretty"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 
+	_ "github.com/gogo/protobuf/types"
+
+	descriptorpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	pb "github.com/stripe/skycfg/test_proto"
 )
 
@@ -571,6 +579,7 @@ func TestMessageGogo(t *testing.T) {
 		f_nested_enum = gogo_proto.package("skycfg.test_proto").MessageGogo.NestedEnum.NESTED_ENUM_B,
 		f_oneof_a = "string in oneof",
 		f_bytes = "also some string",
+		f_duration = proto.package("google.protobuf").Duration(seconds = 1),
 	)`)
 	gotMsg := val.(*skyProtoMessage).msg
 	wantMsg := &pb.MessageGogo{
@@ -604,6 +613,7 @@ func TestMessageGogo(t *testing.T) {
 		FNestedEnum:   pb.MessageGogo_NESTED_ENUM_B.Enum(),
 		FOneof:        &pb.MessageGogo_FOneofA{"string in oneof"},
 		FBytes:        []byte("also some string"),
+		FDuration:     time.Second,
 	}
 	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
 		t.Fatalf("diff from expected message:\n%s", diff)
@@ -629,6 +639,7 @@ func TestMessageGogo(t *testing.T) {
 		"f_oneof_a":       `"string in oneof"`,
 		"f_oneof_b":       `None`,
 		"f_bytes":         `"also some string"`,
+		"f_duration":      `<google.protobuf.Duration seconds:1 >`,
 	}
 	attrs := val.(starlark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {
@@ -963,5 +974,118 @@ func TestProtoFromYaml(t *testing.T) {
 	want := "1010"
 	if want != got {
 		t.Fatalf("from_yaml: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoComparisonEqual(t *testing.T) {
+	msg := &pb.MessageV2{
+		RString: []string{"a", "b", "c"},
+	}
+	skyMsg := NewSkyProtoMessage(msg)
+
+	// create a separate msg to ensure the underlying reference in skyMsgOther is different
+	msgOther := &pb.MessageV2{
+		RString: []string{"a", "b", "c"},
+	}
+	skyMsgOther := NewSkyProtoMessage(msgOther)
+	ok, err := starlark.Compare(syntax.EQL, skyMsg, skyMsgOther)
+	if err != nil {
+		t.Error(err)
+	}
+	if !ok {
+		t.Error("Expected protos to be equal")
+	}
+}
+
+func TestProtoComparisonNotEqual(t *testing.T) {
+	msg := &pb.MessageV2{
+		RString: []string{"a", "b", "c"},
+	}
+	skyMsg := NewSkyProtoMessage(msg)
+
+	// create a separate msg to ensure the underlying reference in skyMsgOther is different
+	msgOther := &pb.MessageV2{
+		RString: []string{"a", "b"},
+	}
+	skyMsgOther := NewSkyProtoMessage(msgOther)
+	ok, err := starlark.Compare(syntax.EQL, skyMsg, skyMsgOther)
+	if err != nil {
+		t.Error(err)
+	}
+	if ok {
+		t.Error("Expected protos to not be equal")
+	}
+}
+
+type StringFieldAliasType string
+
+type KubernetesMessage struct {
+	FString *StringFieldAliasType `protobuf:"bytes,1,opt,name=f_string,json=fString" json:"f_string,omitempty"`
+}
+
+func (m *KubernetesMessage) Reset()         { *m = KubernetesMessage{} }
+func (m *KubernetesMessage) String() string { return proto.CompactTextString(m) }
+func (*KubernetesMessage) ProtoMessage()    {}
+
+var k8sMsgFileDescriptor []byte
+
+func (*KubernetesMessage) Descriptor() ([]byte, []int) {
+	return k8sMsgFileDescriptor, []int{0}
+}
+
+func init() {
+	proto.RegisterType((*KubernetesMessage)(nil), "skycfg.test_proto.KubernetesMessage")
+
+	fd := &descriptorpb.FileDescriptorProto{
+		Name:    proto.String("fake_kubernetes.proto"),
+		Package: proto.String("skycfg.test_proto"),
+		MessageType: []*descriptorpb.DescriptorProto{
+			&descriptorpb.DescriptorProto{
+				Name: proto.String("KubernetesMessage"),
+				Field: []*descriptorpb.FieldDescriptorProto{
+					&descriptorpb.FieldDescriptorProto{
+						Name:     proto.String("f_string"),
+						Number:   proto.Int32(1),
+						Label:    descriptorpb.FieldDescriptorProto_LABEL_OPTIONAL.Enum(),
+						Type:     descriptorpb.FieldDescriptorProto_TYPE_STRING.Enum(),
+						JsonName: proto.String("fString"),
+					},
+				},
+			},
+		},
+	}
+
+	bs, err := proto.Marshal(fd)
+	if err != nil {
+		panic(fmt.Sprintf("failed to marshal FileDescriptorProto: %v", err))
+	}
+
+	buf := new(bytes.Buffer)
+	zw := gzip.NewWriter(buf)
+	_, err = zw.Write(bs)
+	if err != nil {
+		panic(fmt.Sprintf("failed to gzip bytes: %v", err))
+	}
+	if err := zw.Close(); err != nil {
+		panic(fmt.Sprintf("failed to close gzip writer: %v", err))
+	}
+
+	k8sMsgFileDescriptor, err = ioutil.ReadAll(buf)
+	if err != nil {
+		panic(fmt.Sprintf("failed to read FileDescriptorProto bytes: %v", err))
+	}
+}
+
+func TestKubernetesMessage(t *testing.T) {
+	val := skyEval(t, `proto.package("skycfg.test_proto").KubernetesMessage(
+		f_string = "foobar",
+	)`)
+	gotMsg := val.(*skyProtoMessage).msg
+	var fString StringFieldAliasType = "foobar"
+	wantMsg := &KubernetesMessage{
+		FString: &fString,
+	}
+	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
+		t.Fatalf("diff from expected message:\n%s", diff)
 	}
 }
