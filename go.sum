@@ -4,8 +4,8 @@ github.com/golang/protobuf v1.2.0 h1:P3YflyNX/ehuJFLhxviNdFxQPkGK5cDcApsge1SqnvM
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
 github.com/jmillikin-stripe/godebug v0.0.0-20180620173319-8279e1966bc1 h1:JgsVrDAUy59N248f3l4RGZ0hij5u1HTit8iJr1mFSBY=
 github.com/jmillikin-stripe/godebug v0.0.0-20180620173319-8279e1966bc1/go.mod h1:gFqr/IKD8P+Hluq9gThCR944BAu6jUqd5H/R3PrPfuM=
-go.starlark.net v0.0.0-20190118175400-7b3aad4436b8 h1:XwnTit/nLMXHXs7llfozgg66ff0F2AxeWCBAIpln3Lc=
-go.starlark.net v0.0.0-20190118175400-7b3aad4436b8/go.mod h1:c1/X6cHgvdXj6pUlmWKMkuqRnW4K8x2vwt6JAaaircg=
+go.starlark.net v0.0.0-20190410141808-24246af8ff5f h1:bvVkOJ7Tpp7E9wFXERf6V1RLR2trOJBQJTaWS4XeOds=
+go.starlark.net v0.0.0-20190410141808-24246af8ff5f/go.mod h1:c1/X6cHgvdXj6pUlmWKMkuqRnW4K8x2vwt6JAaaircg=
 golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6 h1:bjcUS9ztw9kFmmIxJInhon/0Is3p+EHBKNgquIzo1OI=
 golang.org/x/sync v0.0.0-20190227155943-e225da77a7e6/go.mod h1:RxMgew5VJxzue5/jJTE5uejpjVlOe/izrB70Jof72aM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
