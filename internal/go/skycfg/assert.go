@@ -113,9 +113,10 @@ func (t *TestContext) CallInternal(thread *starlark.Thread, args starlark.Tuple,
 
 	if !val {
 		buf := new(strings.Builder)
-		thread.Caller().WriteBacktrace(buf)
+		stk := thread.CallFrame(1)
+		fmt.Fprintf(buf, "%s", stk)
 		err := assertionError{
-			position:  thread.Caller().Position().String(),
+			position:  stk.Pos.String(),
 			backtrace: buf.String(),
 		}
 		t.Failures = append(t.Failures, err)
@@ -137,18 +138,20 @@ func (t *TestContext) AssertBinaryImpl(op syntax.Token) func(thread *starlark.Th
 		passes, err := starlark.Compare(op, val1, val2)
 		if err != nil {
 			buf := new(strings.Builder)
-			thread.Caller().WriteBacktrace(buf)
+			stk := thread.CallFrame(1)
+			fmt.Fprintf(buf, "%s", stk)
 			return nil, err
 		}
 
 		if !passes {
 			buf := new(strings.Builder)
-			thread.Caller().WriteBacktrace(buf)
+			stk := thread.CallFrame(1)
+			fmt.Fprintf(buf, "%s", stk)
 			err := assertionError{
 				op:        &op,
 				val1:      val1,
 				val2:      val2,
-				position:  thread.Caller().Position().String(),
+				position:  stk.Pos.String(),
 				backtrace: buf.String(),
 			}
 			t.Failures = append(t.Failures, err)

@@ -69,7 +69,7 @@ func (r *localFileReader) Resolve(ctx context.Context, name, fromPath string) (s
 	if filepath.Separator != '/' && strings.ContainsRune(name, filepath.Separator) {
 		return "", fmt.Errorf("load(%q): invalid character in module name", name)
 	}
-	resolved := filepath.Join(r.root, filepath.FromSlash(path.Clean("/"+name)))
+	resolved := filepath.FromSlash(path.Clean(name))
 	return resolved, nil
 }
 
@@ -223,8 +223,8 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 	var load func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error)
 	load = func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error) {
 		var fromPath string
-		if thread.TopFrame() != nil {
-			fromPath = thread.TopFrame().Position().Filename()
+		if thread.CallStack() != nil {
+			fromPath = thread.CallStack().String()
 		}
 		modulePath, err := reader.Resolve(ctx, moduleName, fromPath)
 		if err != nil {
@@ -424,15 +424,16 @@ func (c *Config) Tests() []*Test {
 }
 
 func skyPrint(t *starlark.Thread, msg string) {
-	fmt.Fprintf(os.Stderr, "[%v] %s\n", t.Caller().Position(), msg)
+	fmt.Fprintf(os.Stderr, "[%v] %s\n", t.CallFrame(0).Pos.String(), msg)
 }
 
-func skyFail(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func skyFail(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var msg string
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &msg); err != nil {
 		return nil, err
 	}
 	buf := new(strings.Builder)
-	t.Caller().WriteBacktrace(buf)
-	return nil, fmt.Errorf("[%s] %s\n%s", t.Caller().Position(), msg, buf.String())
+	stk := thread.CallFrame(1)
+	fmt.Fprintf(buf, "%s", stk)
+	return nil, fmt.Errorf("[%s] %s\n%s", thread.CallFrame(0).Pos.String(), msg, buf.String())
 }
