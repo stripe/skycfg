@@ -18,7 +18,7 @@ require (
 	github.com/spf13/pflag v1.0.3 // indirect
 	github.com/stretchr/testify v1.2.2 // indirect
 	github.com/stripe/skycfg v0.0.0
-	go.starlark.net v0.0.0-20190118175400-7b3aad4436b8
+	go.starlark.net v0.0.0-20190604130855-6ddc71c0ba77
 	google.golang.org/grpc v1.15.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.2.1

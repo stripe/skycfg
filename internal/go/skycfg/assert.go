@@ -19,7 +19,6 @@ package skycfg
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
@@ -48,26 +47,29 @@ type assertionError struct {
 	op        *syntax.Token
 	val1      starlark.Value
 	val2      starlark.Value
-	position  string
-	backtrace string
+	callStack starlark.CallStack
 }
 
 func (err assertionError) Error() string {
+	callStack := err.callStack[:len(err.callStack)-1]
+	position := callStack.At(0).Pos.String()
+	backtrace := callStack.String()
+
 	// straight boolean assertions like assert.true(false)
 	if err.op == nil {
-		return fmt.Sprintf("[%s] assertion failed\n%s", err.position, err.backtrace)
+		return fmt.Sprintf("[%s] assertion failed\n%s", position, backtrace)
 	}
 
 	// binary assertions, like assert.eql(1, 2)
 	return fmt.Sprintf(
 		"[%s] assertion failed: %s (type: %s) %s %s (type: %s)\n%s",
-		err.position,
+		position,
 		err.val1.String(),
 		err.val1.Type(),
 		err.op.String(),
 		err.val2.String(),
 		err.val2.Type(),
-		err.backtrace,
+		backtrace,
 	)
 }
 
@@ -112,11 +114,8 @@ func (t *TestContext) CallInternal(thread *starlark.Thread, args starlark.Tuple,
 	}
 
 	if !val {
-		buf := new(strings.Builder)
-		thread.Caller().WriteBacktrace(buf)
 		err := assertionError{
-			position:  thread.Caller().Position().String(),
-			backtrace: buf.String(),
+			callStack: thread.CallStack(),
 		}
 		t.Failures = append(t.Failures, err)
 		return nil, err
@@ -136,20 +135,15 @@ func (t *TestContext) AssertBinaryImpl(op syntax.Token) func(thread *starlark.Th
 
 		passes, err := starlark.Compare(op, val1, val2)
 		if err != nil {
-			buf := new(strings.Builder)
-			thread.Caller().WriteBacktrace(buf)
 			return nil, err
 		}
 
 		if !passes {
-			buf := new(strings.Builder)
-			thread.Caller().WriteBacktrace(buf)
 			err := assertionError{
 				op:        &op,
 				val1:      val1,
 				val2:      val2,
-				position:  thread.Caller().Position().String(),
-				backtrace: buf.String(),
+				callStack: thread.CallStack(),
 			}
 			t.Failures = append(t.Failures, err)
 			return nil, err
