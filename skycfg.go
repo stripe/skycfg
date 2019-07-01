@@ -223,8 +223,8 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 	var load func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error)
 	load = func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error) {
 		var fromPath string
-		if thread.TopFrame() != nil {
-			fromPath = thread.TopFrame().Position().Filename()
+		if thread.CallStackDepth() > 0 {
+			fromPath = thread.CallFrame(0).Pos.Filename()
 		}
 		modulePath, err := reader.Resolve(ctx, moduleName, fromPath)
 		if err != nil {
@@ -424,7 +424,7 @@ func (c *Config) Tests() []*Test {
 }
 
 func skyPrint(t *starlark.Thread, msg string) {
-	fmt.Fprintf(os.Stderr, "[%v] %s\n", t.Caller().Position(), msg)
+	fmt.Fprintf(os.Stderr, "[%v] %s\n", t.CallFrame(1).Pos, msg)
 }
 
 func skyFail(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -432,7 +432,7 @@ func skyFail(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwar
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &msg); err != nil {
 		return nil, err
 	}
-	buf := new(strings.Builder)
-	t.Caller().WriteBacktrace(buf)
-	return nil, fmt.Errorf("[%s] %s\n%s", t.Caller().Position(), msg, buf.String())
+	callStack := t.CallStack()
+	callStack.Pop()
+	return nil, fmt.Errorf("[%s] %s\n%s", callStack.At(0).Pos, msg, callStack.String())
 }
