@@ -28,6 +28,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	dpb "github.com/golang/protobuf/ptypes/duration"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
@@ -358,6 +359,29 @@ func maybeConvertString(v reflect.Value, t reflect.Type) (reflect.Value, bool) {
 func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error) {
 	switch sky := sky.(type) {
 	case starlark.Int, starlark.Float, starlark.String, starlark.Bool:
+		switch t {
+			// autobox if t is a wrapper type
+			case reflect.TypeOf(&wrappers.StringValue{}):
+				if strval, ok := sky.(starlark.String); ok {
+					val := reflect.New(reflect.TypeOf(&wrappers.StringValue{}).Elem())
+					val.Elem().Set(reflect.ValueOf(wrappers.StringValue{Value: string(strval)}))
+					return val, nil
+				}
+			case reflect.TypeOf(&wrappers.Int32Value{}):
+				if intval, ok := sky.(starlark.Int); ok {
+					val := reflect.New(reflect.TypeOf(&wrappers.Int32Value{}).Elem())
+					int64val, _ := intval.Int64()
+					val.Elem().Set(reflect.ValueOf(wrappers.Int32Value{Value: int32(int64val)}))
+					return val, nil
+				}
+			case reflect.TypeOf(&wrappers.BoolValue{}):
+				if boolval, ok := sky.(starlark.Bool); ok {
+					val := reflect.New(reflect.TypeOf(&wrappers.BoolValue{}).Elem())
+					val.Elem().Set(reflect.ValueOf(wrappers.BoolValue{Value: bool(boolval)}))
+					return val, nil
+				}
+		}
+
 		scalar, err := scalarFromStarlark(t, sky)
 		if err != nil {
 			return reflect.Value{}, err
