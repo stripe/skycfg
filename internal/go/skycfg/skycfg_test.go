@@ -121,6 +121,7 @@ def main(ctx):
 	msg.f_Int32Value = 110
 	msg.f_Int64Value = 2148483647
 	msg.f_BytesValue = "foo/bar/baz"
+	msg.r_StringValue = ["s1","s2","s3"]
 	return [msg]
 `,
 	"test8.sky": `
@@ -205,6 +206,11 @@ func TestSkycfgEndToEnd(t *testing.T) {
 					F_Int32Value: &wrappers.Int32Value{Value: 110},
 					F_Int64Value: &wrappers.Int64Value{Value: 2148483647},
 					F_BytesValue: &wrappers.BytesValue{Value: []byte("foo/bar/baz")},
+					R_StringValue: []*wrappers.StringValue{
+						&wrappers.StringValue{Value: "s1"},
+						&wrappers.StringValue{Value: "s2"},
+						&wrappers.StringValue{Value: "s3"},
+					},
 				},
 			},
 		},

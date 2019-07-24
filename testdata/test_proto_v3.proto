@@ -66,7 +66,9 @@ message MessageV3 {
   google.protobuf.Int64Value f_Int64Value = 24;
   google.protobuf.BytesValue f_BytesValue = 25;
 
-  // NEXT: 26
+  repeated google.protobuf.StringValue r_StringValue = 26;
+
+  // NEXT: 27
 }
 
 enum ToplevelEnumV3 {

@@ -332,6 +332,7 @@ func TestMessageAttrNames(t *testing.T) {
 		"f_Int32Value",
 		"f_Int64Value",
 		"f_BytesValue",
+		"r_StringValue",
 	}
 	sort.Strings(want)
 	if !reflect.DeepEqual(want, got) {
