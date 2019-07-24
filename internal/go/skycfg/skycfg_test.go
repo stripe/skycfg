@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.starlark.net/starlark"
 
 	"github.com/stripe/skycfg"
@@ -107,6 +108,30 @@ def main(ctx):
 def main(ctx):
 	return ["str1", "str2"]
 `,
+	"test7.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# autoboxing of primitives into wrappers works 
+def main(ctx):
+	msg = test_proto.MessageV3()
+	msg.f_BoolValue = True
+	msg.f_StringValue = "something"
+	msg.f_DoubleValue = 18
+	msg.f_DoubleValue = 3110.4120
+	msg.f_Int32Value = 110
+	msg.f_Int64Value = 2148483647
+	msg.f_BytesValue = "foo/bar/baz"
+	return [msg]
+`,
+	"test8.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# autoboxing but overflow error
+def main(ctx):
+	msg = test_proto.MessageV3()
+	msg.f_Int32Value = 2147483648
+	return [msg]
+`,
 }
 
 // testLoader is a simple loader that loads files from the testFiles map.
@@ -165,6 +190,27 @@ func TestSkycfgEndToEnd(t *testing.T) {
 		endToEndTestCase{
 			caseName:   "return non-protos",
 			fileToLoad: "test6.sky",
+			expExecErr: true,
+		},
+		endToEndTestCase{
+			caseName:   "autoboxing primitives",
+			fileToLoad: "test7.sky",
+			expLoadErr: false,
+			expExecErr: false,
+			expProtos: []proto.Message{
+				&pb.MessageV3{
+					F_BoolValue: &wrappers.BoolValue{Value:true},
+					F_StringValue: &wrappers.StringValue{Value: "something"},
+					F_DoubleValue: &wrappers.DoubleValue{Value: 3110.4120},
+					F_Int32Value: &wrappers.Int32Value{Value: 110},
+					F_Int64Value: &wrappers.Int64Value{Value: 2148483647},
+					F_BytesValue: &wrappers.BytesValue{Value: []byte("foo/bar/baz")},
+				},
+			},
+		},
+		endToEndTestCase{
+			caseName:   "overflow err when attempting to autobox a large integer into Int32Value",
+			fileToLoad: "test8.sky",
 			expExecErr: true,
 		},
 	}

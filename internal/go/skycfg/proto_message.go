@@ -356,30 +356,77 @@ func maybeConvertString(v reflect.Value, t reflect.Type) (reflect.Value, bool) {
 	return v, true
 }
 
+// maybeConvertToWrapper checks if [sky] is a primitive and [t] is a corresponding
+// protobuf wrapper type and attempts to convert it.
+// Returns a non-nil Value and nil error if successfully converted, a non-nil error
+// if unsuccessful conversion, and nil Value and nil error if no conversion attempt
+// was required.
+func maybeConvertToWrapper(t reflect.Type, sky starlark.Value) (*reflect.Value, error) {
+	BoolValueType := reflect.TypeOf(&wrappers.BoolValue{})
+	StringValueType := reflect.TypeOf(&wrappers.StringValue{})
+	DoubleValueType := reflect.TypeOf(&wrappers.DoubleValue{})
+	Int32ValueType := reflect.TypeOf(&wrappers.Int32Value{})
+	Int64ValueType := reflect.TypeOf(&wrappers.Int64Value{})
+	BytesValueType := reflect.TypeOf(&wrappers.BytesValue{})
+
+	switch sky := sky.(type) {
+	case starlark.Bool:
+		if t == BoolValueType {
+			val := reflect.New(t.Elem())
+			val.Elem().Set(reflect.ValueOf(wrappers.BoolValue{Value: bool(sky)}))
+			return &val, nil
+		}
+	case starlark.Int:
+		switch t {
+		case Int64ValueType:
+			val := reflect.New(t.Elem())
+			int64val, _ := sky.Int64()
+			val.Elem().Set(reflect.ValueOf(wrappers.Int64Value{Value: int64val}))
+			return &val, nil
+		case DoubleValueType:
+			val := reflect.New(t.Elem())
+			int64val, _ := sky.Int64()
+			val.Elem().Set(reflect.ValueOf(wrappers.DoubleValue{Value: float64(int64val)}))
+			return &val, nil
+		case Int32ValueType:
+			val := reflect.New(t.Elem())
+			int64val, _ := sky.Int64()
+			if int64val >= math.MinInt32 && int64val <= math.MaxInt32 {
+				val.Elem().Set(reflect.ValueOf(wrappers.Int32Value{Value: int32(int64val)}))
+				return &val, nil
+			}
+			return nil, fmt.Errorf("ValueError: value %v overflows type `int32'.", int64val)
+		}
+	case starlark.Float:
+		// float (float64) to DoubleValue; cant auto-convert to FloatValue (32 bits)
+		if t == DoubleValueType {
+			val := reflect.New(t.Elem())
+			val.Elem().Set(reflect.ValueOf(wrappers.DoubleValue{Value: float64(sky)}))
+			return &val, nil
+		}
+	case starlark.String:
+		switch t {
+		case StringValueType:
+			val := reflect.New(t.Elem())
+			val.Elem().Set(reflect.ValueOf(wrappers.StringValue{Value: string(sky)}))
+			return &val, nil
+		case BytesValueType:
+			val := reflect.New(t.Elem())
+			val.Elem().Set(reflect.ValueOf(wrappers.BytesValue{Value: []byte(sky)}))
+			return &val, nil
+		}
+	}
+	return nil, nil
+}
+
 func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error) {
 	switch sky := sky.(type) {
 	case starlark.Int, starlark.Float, starlark.String, starlark.Bool:
-		switch t {
-			// autobox if t is a wrapper type
-			case reflect.TypeOf(&wrappers.StringValue{}):
-				if strval, ok := sky.(starlark.String); ok {
-					val := reflect.New(reflect.TypeOf(&wrappers.StringValue{}).Elem())
-					val.Elem().Set(reflect.ValueOf(wrappers.StringValue{Value: string(strval)}))
-					return val, nil
-				}
-			case reflect.TypeOf(&wrappers.Int32Value{}):
-				if intval, ok := sky.(starlark.Int); ok {
-					val := reflect.New(reflect.TypeOf(&wrappers.Int32Value{}).Elem())
-					int64val, _ := intval.Int64()
-					val.Elem().Set(reflect.ValueOf(wrappers.Int32Value{Value: int32(int64val)}))
-					return val, nil
-				}
-			case reflect.TypeOf(&wrappers.BoolValue{}):
-				if boolval, ok := sky.(starlark.Bool); ok {
-					val := reflect.New(reflect.TypeOf(&wrappers.BoolValue{}).Elem())
-					val.Elem().Set(reflect.ValueOf(wrappers.BoolValue{Value: bool(boolval)}))
-					return val, nil
-				}
+		value, err := maybeConvertToWrapper(t, sky)
+		if err != nil {
+			return reflect.Value{}, err
+		} else if value != nil && err == nil {
+			return *value, err
 		}
 
 		scalar, err := scalarFromStarlark(t, sky)
