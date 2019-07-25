@@ -332,6 +332,8 @@ func TestMessageAttrNames(t *testing.T) {
 		"f_Int32Value",
 		"f_Int64Value",
 		"f_BytesValue",
+		"f_Uint32Value",
+		"f_Uint64Value",
 		"r_StringValue",
 	}
 	sort.Strings(want)

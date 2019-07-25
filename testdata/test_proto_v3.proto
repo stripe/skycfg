@@ -65,10 +65,12 @@ message MessageV3 {
   google.protobuf.Int32Value f_Int32Value = 23;
   google.protobuf.Int64Value f_Int64Value = 24;
   google.protobuf.BytesValue f_BytesValue = 25;
+  google.protobuf.UInt32Value f_Uint32Value = 26;
+  google.protobuf.UInt64Value f_Uint64Value = 27;
 
-  repeated google.protobuf.StringValue r_StringValue = 26;
+  repeated google.protobuf.StringValue r_StringValue = 28;
 
-  // NEXT: 27
+  // NEXT: 29
 }
 
 enum ToplevelEnumV3 {
