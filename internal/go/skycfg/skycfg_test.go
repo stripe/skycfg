@@ -24,6 +24,7 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.starlark.net/starlark"
 
 	"github.com/stripe/skycfg"
@@ -107,6 +108,60 @@ def main(ctx):
 def main(ctx):
 	return ["str1", "str2"]
 `,
+	"test7.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# autoboxing of primitives into wrappers works 
+def main(ctx):
+	msg = test_proto.MessageV3()
+	msg.f_BoolValue = True
+	msg.f_StringValue = "something"
+	msg.f_DoubleValue = 18
+	msg.f_DoubleValue = 3110.4120
+	msg.f_Int32Value = 110
+	msg.f_Int64Value = 2148483647
+	msg.f_BytesValue = "foo/bar/baz"
+	msg.f_Uint32Value = 4294967295
+	msg.f_Uint64Value = 8294967295
+	msg.r_StringValue = ["s1","s2","s3"]
+	return [msg]
+`,
+	"test8.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# autoboxing but overflow error
+def main(ctx):
+	msg = test_proto.MessageV3()
+	msg.f_Int32Value = 2147483648
+	return [msg]
+`,
+	"test9.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# autoboxing but not representable as int64 error
+def main(ctx):
+	msg = test_proto.MessageV3()
+	msg.f_Int64Value = 999999999999999999999999999999
+	return [msg]
+`,
+	"test10.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# autoboxing but not representable as uint64 error
+def main(ctx):
+	msg = test_proto.MessageV3()
+	msg.f_Uint64Value = -243789
+	return [msg]
+`,
+	"test11.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# autoboxing but not representable as uint32 error
+def main(ctx):
+	msg = test_proto.MessageV3()
+	msg.f_Uint32Value = 4294967296
+	return [msg]
+`,
 }
 
 // testLoader is a simple loader that loads files from the testFiles map.
@@ -167,6 +222,49 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			fileToLoad: "test6.sky",
 			expExecErr: true,
 		},
+		endToEndTestCase{
+			caseName:   "autoboxing primitives",
+			fileToLoad: "test7.sky",
+			expLoadErr: false,
+			expExecErr: false,
+			expProtos: []proto.Message{
+				&pb.MessageV3{
+					F_BoolValue: &wrappers.BoolValue{Value:true},
+					F_StringValue: &wrappers.StringValue{Value: "something"},
+					F_DoubleValue: &wrappers.DoubleValue{Value: 3110.4120},
+					F_Int32Value: &wrappers.Int32Value{Value: 110},
+					F_Int64Value: &wrappers.Int64Value{Value: 2148483647},
+					F_BytesValue: &wrappers.BytesValue{Value: []byte("foo/bar/baz")},
+					F_Uint32Value: &wrappers.UInt32Value{Value: 4294967295},
+					F_Uint64Value: &wrappers.UInt64Value{Value: 8294967295},
+					R_StringValue: []*wrappers.StringValue{
+						&wrappers.StringValue{Value: "s1"},
+						&wrappers.StringValue{Value: "s2"},
+						&wrappers.StringValue{Value: "s3"},
+					},
+				},
+			},
+		},
+		endToEndTestCase{
+			caseName:   "value err when attempting to autobox a too large integer into Int32Value",
+			fileToLoad: "test8.sky",
+			expExecErr: true,
+		},
+		endToEndTestCase{
+			caseName:   "value err when attempting to autobox a too large integer into Int64Value",
+			fileToLoad: "test9.sky",
+			expExecErr: true,
+		},
+		endToEndTestCase{
+			caseName:   "value err when attempting to autobox a negative int into UInt64Value",
+			fileToLoad: "test10.sky",
+			expExecErr: true,
+		},
+		endToEndTestCase{
+			caseName:   "value err when attempting to autobox a too large int into UInt32Value",
+			fileToLoad: "test11.sky",
+			expExecErr: true,
+		},
 	}
 
 	for _, testCase := range testCases {
@@ -199,7 +297,7 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			if err == nil {
 				t.Error(
 					"Bad err result from ExecMain for case", testCase.caseName,
-					"\nExpected nil",
+					"\nExpected non-nil",
 					"\nGot", err,
 				)
 			}

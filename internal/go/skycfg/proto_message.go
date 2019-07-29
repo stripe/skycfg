@@ -28,6 +28,7 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	dpb "github.com/golang/protobuf/ptypes/duration"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
@@ -355,9 +356,117 @@ func maybeConvertString(v reflect.Value, t reflect.Type) (reflect.Value, bool) {
 	return v, true
 }
 
+// maybeConvertToWrapper checks if [sky] is a primitive and [t] is a corresponding
+// protobuf wrapper type and attempts to convert it.
+// Returns a non-nil Value and nil error if successfully converted, a non-nil error
+// if unsuccessful conversion, and nil Value and nil error if no conversion attempt
+// was required.
+func maybeConvertToWrapper(t reflect.Type, sky starlark.Value) (*reflect.Value, error) {
+	BoolValueType := reflect.TypeOf(&wrappers.BoolValue{})
+	StringValueType := reflect.TypeOf(&wrappers.StringValue{})
+	DoubleValueType := reflect.TypeOf(&wrappers.DoubleValue{})
+	Int32ValueType := reflect.TypeOf(&wrappers.Int32Value{})
+	Int64ValueType := reflect.TypeOf(&wrappers.Int64Value{})
+	BytesValueType := reflect.TypeOf(&wrappers.BytesValue{})
+	UInt32ValueType := reflect.TypeOf(&wrappers.UInt32Value{})
+	UInt64ValueType := reflect.TypeOf(&wrappers.UInt64Value{})
+
+	switch t {
+	case UInt32ValueType:
+		switch sky := sky.(type) {
+		case starlark.Int:
+			uint64Val, ok := sky.Uint64()
+			if ok && uint64Val <= math.MaxUint32 {
+				val := reflect.ValueOf(&wrappers.UInt32Value{Value: uint32(uint64Val)})
+				return &val, nil
+			}
+			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `uint32'.", sky)
+		}
+	case UInt64ValueType:
+		switch sky := sky.(type) {
+		case starlark.Int:
+			uint64Val, ok := sky.Uint64()
+			if ok {
+				val := reflect.ValueOf(&wrappers.UInt64Value{Value: uint64Val})
+				return &val, nil
+			}
+			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `uint64'.", sky)
+		}
+	case BoolValueType:
+		switch sky := sky.(type){
+		case starlark.Bool:
+			val := reflect.ValueOf(&wrappers.BoolValue{Value:bool(sky)})
+			return &val, nil
+		}
+	case BytesValueType:
+		if stringVal, ok := starlark.AsString(sky); ok {
+			val := reflect.ValueOf(&wrappers.BytesValue{Value: []byte(stringVal)})
+			return &val, nil
+		}
+	case StringValueType:
+		if stringVal, ok := starlark.AsString(sky); ok {
+			val := reflect.ValueOf(&wrappers.StringValue{Value: stringVal})
+			return &val, nil
+		}
+	case DoubleValueType:
+		if float64Val, ok := starlark.AsFloat(sky); ok {
+			val := reflect.ValueOf(&wrappers.DoubleValue{Value: float64Val})
+			return &val, nil
+		}
+	case Int32ValueType:
+		switch sky := sky.(type) {
+		case starlark.Int:
+			int32Val, err := starlark.AsInt32(sky)
+			if err == nil {
+				val := reflect.ValueOf(&wrappers.Int32Value{Value: int32(int32Val)})
+				return &val, nil
+			}
+			return nil, fmt.Errorf("ValueError: value %v overflows type `int32'.", sky)
+		}
+	case Int64ValueType:
+		switch sky := sky.(type) {
+		case starlark.Int:
+			int64Val, ok := sky.Int64()
+			if ok {
+				val := reflect.ValueOf(&wrappers.Int64Value{Value: int64Val})
+				return &val, nil
+			}
+			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `int64'.", sky)
+		}
+	case UInt32ValueType:
+		switch sky := sky.(type) {
+		case starlark.Int:
+			uint64Val, ok := sky.Uint64()
+			if ok && uint64Val <= math.MaxUint32 {
+				val := reflect.ValueOf(&wrappers.UInt32Value{Value: uint32(uint64Val)})
+				return &val, nil
+			}
+			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `uint32'.", sky)
+		}
+	case UInt64ValueType:
+		switch sky := sky.(type) {
+		case starlark.Int:
+			uint64Val, ok := sky.Uint64()
+			if ok {
+				val := reflect.ValueOf(&wrappers.UInt64Value{Value: uint64Val})
+				return &val, nil
+			}
+			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `uint64'.", sky)
+		}
+	}
+	return nil, nil
+}
+
 func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error) {
 	switch sky := sky.(type) {
 	case starlark.Int, starlark.Float, starlark.String, starlark.Bool:
+		value, err := maybeConvertToWrapper(t, sky)
+		if err != nil {
+			return reflect.Value{}, err
+		} else if value != nil {
+			return *value, err
+		}
+
 		scalar, err := scalarFromStarlark(t, sky)
 		if err != nil {
 			return reflect.Value{}, err
