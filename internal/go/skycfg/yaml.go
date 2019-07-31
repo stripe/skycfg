@@ -65,7 +65,8 @@ func fnYamlMarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 }
 
 // yamlUnmarshal returns a Starlark function for unmarshaling yaml content to
-// to starlark values.
+// to starlark values. Supports yaml key types of strings, ints, and nulls; value types of
+// slices, maps, strings, bools, ints, or nulls
 //
 // def yaml.unmarshal(yaml_content) -> (dicts, lists, etc)
 func yamlUnmarshal() starlark.Callable {
@@ -86,6 +87,10 @@ func fnYamlUnmarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 
 // toStarlarkValue is a DFS walk to translate the DAG from go to starlark
 func toStarlarkValue(obj interface{}) (starlark.Value, error) {
+	if obj == nil {
+		// yaml null value ~
+		return starlark.None, nil
+	}
 	rt := reflect.TypeOf(obj)
 	switch rt.Kind() {
 	case reflect.String:
@@ -97,7 +102,22 @@ func toStarlarkValue(obj interface{}) (starlark.Value, error) {
 			if err != nil {
 				return nil, err
 			}
-			if err = ret.SetKey(starlark.String(k.(string)), starval); err != nil {
+			var keyval starlark.Value
+			if k == nil {
+				// yaml null value ~
+				keyval = starlark.None
+			} else {
+				switch k.(type) {
+				case string:
+					keyval = starlark.String(k.(string))
+				case int:
+					keyval = starlark.String(k.(int))
+				default:
+					return nil, fmt.Errorf("%v is not a string, int, or null", k)
+				}
+			}
+
+			if err = ret.SetKey(keyval, starval); err != nil {
 				return nil, err
 			}
 		}
@@ -113,7 +133,15 @@ func toStarlarkValue(obj interface{}) (starlark.Value, error) {
 			starvals[i] = v
 		}
 		return starlark.NewList(starvals), nil
+	case reflect.Bool:
+		return starlark.Bool(obj.(bool)), nil
+	case reflect.Int:
+		return starlark.MakeInt(obj.(int)), nil
+	case reflect.Int32:
+		return starlark.MakeInt64(int64(obj.(int32))), nil
+	case reflect.Int64:
+		return starlark.MakeInt64(obj.(int64)), nil
 	default:
-		return nil, fmt.Errorf("%v is not a slice, map, or string", obj)
+		return nil, fmt.Errorf("%v is not a slice, map, string, bool, int, or null", obj)
 	}
 }
