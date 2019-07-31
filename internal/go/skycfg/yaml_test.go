@@ -91,7 +91,22 @@ func TestYamlToSky(t *testing.T) {
 	env := starlark.StringDict{
 		"yaml": YamlModule(),
 	}
-	skyExpr := `{"strKey": "val", "arrKey": ["a", "b"], "mapKey": {"subkey": "val"}, "uintKey": 12345678901234567890, "intKey": 123, "floatKey": 1.234, "boolKey": False, "nullKey": None}`
+
+	skyExpr := `{
+        "strKey": "val",
+        "arrKey": ["a", "b"],
+        "mapKey": {"subkey": "val"},
+        "intKey": 2147483647,
+        "int64Key": 2147483648,
+        "nIntKey": -2147483648,
+        "nInt64Key": -2147483649,
+        "uintKey": 9223372036854775808,
+        "overflowUintKey": 18446744073709551616,
+        "floatKey": 1.234,
+        "boolKey": False,
+        "nullKey": None
+    }`
+
 	v, err := starlark.Eval(
 		thread,
 		"<expr>",
@@ -124,17 +139,32 @@ func TestYamlToSky(t *testing.T) {
 		{
 			name: "key mapped to Uint",
 			key:  "uintKey",
-			want: `12345678901234567890`,
+			want: `9223372036854775808`,
+		},
+		{
+			name: "key mapped to negative Int64",
+			key:  "nInt64Key",
+			want: `-2147483649`,
 		},
 		{
 			name: "key mapped to Int",
 			key:  "intKey",
-			want: `123`,
+			want: `2147483647`,
+		},
+		{
+			name: "key mapped to Int64",
+			key:  "int64Key",
+			want: `2147483648`,
 		},
 		{
 			name: "key mapped to Float",
 			key:  "floatKey",
 			want: `1.234`,
+		},
+		{
+			name: "key mapped to Overflow Uint64",
+			key:  "overflowUintKey",
+			want: `1.84467e+19`,
 		},
 		{
 			name: "key mapped to Bool",
