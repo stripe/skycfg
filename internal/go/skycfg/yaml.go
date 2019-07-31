@@ -86,8 +86,19 @@ func fnYamlUnmarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 
 // toStarlarkValue is a DFS walk to translate the DAG from go to starlark
 func toStarlarkValue(obj interface{}) (starlark.Value, error) {
+	if obj == nil {
+		return starlark.None, nil
+	}
 	rt := reflect.TypeOf(obj)
 	switch rt.Kind() {
+	case reflect.Int:
+		return starlark.MakeInt(obj.(int)), nil
+	case reflect.Uint64:
+		return starlark.MakeUint64(obj.(uint64)), nil
+	case reflect.Bool:
+		return starlark.Bool(obj.(bool)), nil
+	case reflect.Float64:
+		return starlark.Float(obj.(float64)), nil
 	case reflect.String:
 		return starlark.String(obj.(string)), nil
 	case reflect.Map:
@@ -114,6 +125,6 @@ func toStarlarkValue(obj interface{}) (starlark.Value, error) {
 		}
 		return starlark.NewList(starvals), nil
 	default:
-		return nil, fmt.Errorf("%v is not a slice, map, or string", obj)
+		return nil, fmt.Errorf("%s (%v) is not a supported type", rt.Kind(), obj)
 	}
 }
