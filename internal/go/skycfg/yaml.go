@@ -84,8 +84,8 @@ func fnYamlUnmarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	return toStarlarkValue(inflated)
 }
 
-// toStarlarkValue is a DFS walk to translate the DAG from go to starlark
-func toStarlarkValue(obj interface{}) (starlark.Value, error) {
+// toStarlarkScalarValue converts a scalar [obj] value to its starlark Value
+func toStarlarkScalarValue(obj interface{}) (starlark.Value, error){
 	if obj == nil {
 		return starlark.None, nil
 	}
@@ -102,14 +102,30 @@ func toStarlarkValue(obj interface{}) (starlark.Value, error) {
 		return starlark.Float(v.Float()), nil
 	case reflect.String:
 		return starlark.String(v.String()), nil
+	default:
+		return nil, fmt.Errorf("%s (%v) is not a supported type", rt.Kind(), obj)
+	}
+}
+
+// toStarlarkValue is a DFS walk to translate the DAG from go to starlark
+func toStarlarkValue(obj interface{}) (starlark.Value, error) {
+	if objval, err := toStarlarkScalarValue(obj); err == nil {
+		return objval, err
+	}
+	rt := reflect.TypeOf(obj)
+	switch rt.Kind() {
 	case reflect.Map:
 		ret := &starlark.Dict{}
 		for k, v := range obj.(map[interface{}]interface{}) {
+			keyval, err := toStarlarkScalarValue(k)
+			if err != nil {
+				return nil, err
+			}
 			starval, err := toStarlarkValue(v)
 			if err != nil {
 				return nil, err
 			}
-			if err = ret.SetKey(starlark.String(k.(string)), starval); err != nil {
+			if err = ret.SetKey(keyval, starval); err != nil {
 				return nil, err
 			}
 		}

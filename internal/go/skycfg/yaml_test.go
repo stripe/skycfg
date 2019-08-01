@@ -104,7 +104,15 @@ func TestYamlToSky(t *testing.T) {
         "overflowUintKey": 18446744073709551616,
         "floatKey": 1.234,
         "boolKey": False,
-        "nullKey": None
+        "nullKey": None,
+        2147483647: "intKey",
+        2147483648: "int64Key",
+        -2147483648: "nIntKey",
+        -2147483649: "nInt64Key",
+        9223372036854775808: "uintKey", 
+        1.234: "floatKey",
+        False: "boolKey",
+        None: "nullKey",
     }`
 
 	v, err := starlark.Eval(
@@ -118,67 +126,104 @@ func TestYamlToSky(t *testing.T) {
 	}
 	staryaml := v.(starlark.Mapping)
 	for _, testCase := range []struct {
-		name, key, want string
-		expectedErr     error
+		name        string
+		key         starlark.Value
+		want        string
+		expectedErr error
 	}{
 		{
 			name: "key mapped to String",
-			key:  "strKey",
+			key:  starlark.String("strKey"),
 			want: `"val"`,
 		},
 		{
 			name: "key mapped to Array",
-			key:  "arrKey",
+			key:  starlark.String("arrKey"),
 			want: `["a", "b"]`,
 		},
 		{
 			name: "key mapped to Map",
-			key:  "mapKey",
+			key:  starlark.String("mapKey"),
 			want: `{"subkey": "val"}`,
 		},
 		{
 			name: "key mapped to Uint",
-			key:  "uintKey",
+			key:  starlark.String("uintKey"),
 			want: `9223372036854775808`,
 		},
 		{
 			name: "key mapped to negative Int64",
-			key:  "nInt64Key",
+			key:  starlark.String("nInt64Key"),
 			want: `-2147483649`,
 		},
 		{
 			name: "key mapped to Int",
-			key:  "intKey",
+			key:  starlark.String("intKey"),
 			want: `2147483647`,
 		},
 		{
 			name: "key mapped to Int64",
-			key:  "int64Key",
+			key:  starlark.String("int64Key"),
 			want: `2147483648`,
 		},
 		{
 			name: "key mapped to Float",
-			key:  "floatKey",
+			key:  starlark.String("floatKey"),
 			want: `1.234`,
 		},
 		{
 			name: "key mapped to Overflow Uint64",
-			key:  "overflowUintKey",
+			key:  starlark.String("overflowUintKey"),
 			want: `1.84467e+19`,
 		},
 		{
 			name: "key mapped to Bool",
-			key:  "boolKey",
+			key:  starlark.String("boolKey"),
 			want: `False`,
 		},
 		{
 			name: "key mapped to Null",
-			key:  "nullKey",
+			key:  starlark.String("nullKey"),
 			want: `None`,
+		},
+		{
+			name: "int key mapped to String",
+			key:  starlark.MakeInt(2147483647),
+			want: `"intKey"`,
+		},
+		{
+			name: "Int64 key mapped to String",
+			key:  starlark.MakeInt64(2147483648),
+			want: `"int64Key"`,
+		},
+		{
+			name: "negative Int64 key mapped to String",
+			key: starlark.MakeInt64(-2147483649),
+			want:  `"nInt64Key"`,
+		},
+		{
+			name: "Uint key mapped to String",
+			key:  starlark.MakeUint(9223372036854775808),
+			want: `"uintKey"`,
+		},
+		{
+			name: "Float key mapped to String",
+			key:  starlark.Float(1.234),
+			want: `"floatKey"`,
+		},
+		{
+			name: "Bool key mapped to String",
+			key:  starlark.Bool(false),
+			want: `"boolKey"`,
+		},
+		{
+			name: "Null key mapped to String",
+			key:  starlark.None,
+			want: `"nullKey"`,
 		},
 	} {
 		t.Run(testCase.name, func(t *testing.T) {
-			got, _, err := staryaml.Get(starlark.String(testCase.key))
+			got, _, err := staryaml.Get(testCase.key)
 			if err != nil {
 				t.Errorf("error accessing key [%v] in staryaml: %v", testCase.key, err)
 			}
