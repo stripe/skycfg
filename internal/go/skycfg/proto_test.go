@@ -38,6 +38,7 @@ import (
 	_ "github.com/gogo/protobuf/types"
 
 	descriptorpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+
 	pb "github.com/stripe/skycfg/test_proto"
 )
 
@@ -69,6 +70,32 @@ func skyEval(t *testing.T, src string) starlark.Value {
 		t.Fatalf("eval(%q): %v", src, err)
 	}
 	return val
+}
+
+func skyExecFun(t *testing.T, src string) starlark.Value {
+	t.Helper()
+	globals := starlark.StringDict{
+		"proto":      NewProtoModule(nil),
+		"gogo_proto": NewProtoModule(&gogoRegistry{}),
+	}
+	globals, err := starlark.ExecFile(&starlark.Thread{}, "", src, globals)
+	if err != nil {
+		t.Fatal(err)
+	}
+	v, ok := globals["fun"]
+	if !ok {
+		t.Fatal("fun: not found")
+	}
+	fun, ok := v.(starlark.Callable)
+	if !ok {
+		t.Fatal("fun: not callable")
+	}
+
+	ret, err := starlark.Call(&starlark.Thread{}, fun, nil, nil)
+	if err != nil {
+		t.Fatalf("fun(): %v", err)
+	}
+	return ret
 }
 
 // Generate a diff of two structs, which may contain protobuf messages.
@@ -1096,5 +1123,22 @@ func TestKubernetesMessage(t *testing.T) {
 	}
 	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
 		t.Fatalf("diff from expected message:\n%s", diff)
+	}
+}
+
+func TestRepeatedProtoFieldMutation(t *testing.T) {
+	val := skyExecFun(t, `
+def fun():
+    pkg = proto.package("skycfg.test_proto")
+    msg = pkg.MessageV3()
+    msg.r_submsg.append(pkg.MessageV3())
+    msg.r_submsg[0].f_string = "foo"
+    msg.r_submsg.extend([pkg.MessageV3()])
+    msg.r_submsg[1].f_string = "bar"
+    return msg`)
+	got := val.String()
+	want := `<skycfg.test_proto.MessageV3 r_submsg:<f_string:"foo" > r_submsg:<f_string:"bar" > >`
+	if want != got {
+		t.Fatalf("skyProtoMessage.String(): wanted %q, got %q", want, got)
 	}
 }

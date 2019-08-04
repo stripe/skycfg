@@ -28,8 +28,8 @@ import (
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	dpb "github.com/golang/protobuf/ptypes/duration"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 )
@@ -393,9 +393,9 @@ func maybeConvertToWrapper(t reflect.Type, sky starlark.Value) (*reflect.Value, 
 			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `uint64'.", sky)
 		}
 	case BoolValueType:
-		switch sky := sky.(type){
+		switch sky := sky.(type) {
 		case starlark.Bool:
-			val := reflect.ValueOf(&wrappers.BoolValue{Value:bool(sky)})
+			val := reflect.ValueOf(&wrappers.BoolValue{Value: bool(sky)})
 			return &val, nil
 		}
 	case BytesValueType:
@@ -494,14 +494,10 @@ func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error
 		return enumFromStarlark(t, sky)
 	case *skyProtoMessage:
 		if reflect.TypeOf(sky.msg) == t {
-			val := reflect.New(t.Elem())
-			val.Elem().Set(reflect.ValueOf(sky.msg).Elem())
-			return val, nil
+			return reflect.ValueOf(sky.msg), nil
 		}
 		if reflect.TypeOf(sky.msg) == reflect.PtrTo(t) {
-			val := reflect.New(t)
-			val.Elem().Set(reflect.ValueOf(sky.msg).Elem())
-			return val.Elem(), nil
+			return reflect.ValueOf(sky.msg).Elem(), nil
 		}
 
 		dpb, ok := sky.msg.(*dpb.Duration)
