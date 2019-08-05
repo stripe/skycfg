@@ -84,32 +84,48 @@ func fnYamlUnmarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	return toStarlarkValue(inflated)
 }
 
-// toStarlarkValue is a DFS walk to translate the DAG from go to starlark
-func toStarlarkValue(obj interface{}) (starlark.Value, error) {
+// toStarlarkScalarValue converts a scalar [obj] value to its starlark Value
+func toStarlarkScalarValue(obj interface{}) (starlark.Value, bool){
 	if obj == nil {
-		return starlark.None, nil
+		return starlark.None, true
 	}
 	rt := reflect.TypeOf(obj)
 	v := reflect.ValueOf(obj)
 	switch rt.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return starlark.MakeInt64(v.Int()), nil
+		return starlark.MakeInt64(v.Int()), true
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return starlark.MakeUint64(v.Uint()), nil
+		return starlark.MakeUint64(v.Uint()), true
 	case reflect.Bool:
-		return starlark.Bool(v.Bool()), nil
+		return starlark.Bool(v.Bool()), true
 	case reflect.Float32, reflect.Float64:
-		return starlark.Float(v.Float()), nil
+		return starlark.Float(v.Float()), true
 	case reflect.String:
-		return starlark.String(v.String()), nil
+		return starlark.String(v.String()), true
+	default:
+		return nil, false
+	}
+}
+
+// toStarlarkValue is a DFS walk to translate the DAG from go to starlark
+func toStarlarkValue(obj interface{}) (starlark.Value, error) {
+	if objval, ok := toStarlarkScalarValue(obj); ok {
+		return objval, nil
+	}
+	rt := reflect.TypeOf(obj)
+	switch rt.Kind() {
 	case reflect.Map:
 		ret := &starlark.Dict{}
 		for k, v := range obj.(map[interface{}]interface{}) {
+			keyval, ok := toStarlarkScalarValue(k)
+			if !ok {
+				return nil, fmt.Errorf("%s (%v) is not a supported key type", rt.Kind(), obj)
+			}
 			starval, err := toStarlarkValue(v)
 			if err != nil {
 				return nil, err
 			}
-			if err = ret.SetKey(starlark.String(k.(string)), starval); err != nil {
+			if err = ret.SetKey(keyval, starval); err != nil {
 				return nil, err
 			}
 		}
