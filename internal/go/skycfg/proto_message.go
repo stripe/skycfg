@@ -143,6 +143,10 @@ func (msg *skyProtoMessage) checkMutable(verb string) error {
 	return nil
 }
 
+func (msg *skyProtoMessage) resetAttrCache() {
+	msg.attrCache = make(map[string]starlark.Value)
+}
+
 func (msg *skyProtoMessage) Attr(name string) (starlark.Value, error) {
 	if attr, ok := msg.attrCache[name]; ok {
 		return attr, nil

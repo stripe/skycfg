@@ -103,6 +103,7 @@ func fnProtoClear(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple,
 		return nil, err
 	}
 	msg.msg.Reset()
+	msg.resetAttrCache()
 	return msg, nil
 }
 
@@ -138,6 +139,7 @@ func fnProtoMerge(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple,
 		return nil, err
 	}
 	proto.Merge(dst.msg, src.msg)
+	dst.resetAttrCache()
 	return dst, nil
 }
 
