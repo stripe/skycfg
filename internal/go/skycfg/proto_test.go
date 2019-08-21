@@ -1142,3 +1142,40 @@ def fun():
 		t.Fatalf("skyProtoMessage.String(): wanted %q, got %q", want, got)
 	}
 }
+
+func TestProtoBulkMutationsClearAttrCache(t *testing.T) {
+	// proto.clear()
+	{
+		val := skyExecFun(t, `
+def fun():
+	pkg = proto.package("skycfg.test_proto")
+	msg = pkg.MessageV3()
+	msg.r_submsg.append(pkg.MessageV3(f_string = "foo"))
+	proto.clear(msg)
+	msg.r_submsg.append(pkg.MessageV3(f_string = "bar"))
+	return msg.r_submsg`)
+		got := val.String()
+		want := `[<skycfg.test_proto.MessageV3 f_string:"bar" >]`
+		if want != got {
+			t.Errorf("wanted %q, got %q", want, got)
+		}
+	}
+
+	// proto.merge()
+	{
+		val := skyExecFun(t, `
+def fun():
+	pkg = proto.package("skycfg.test_proto")
+	msg = pkg.MessageV3()
+	msg.r_submsg.append(pkg.MessageV3(f_string = "foo"))
+	proto.merge(msg, pkg.MessageV3(
+		r_submsg = [pkg.MessageV3(f_string = "bar")],
+	))
+	return msg.r_submsg`)
+		got := val.String()
+		want := `[<skycfg.test_proto.MessageV3 f_string:"foo" >, <skycfg.test_proto.MessageV3 f_string:"bar" >]`
+		if want != got {
+			t.Errorf("wanted %q, got %q", want, got)
+		}
+	}
+}
