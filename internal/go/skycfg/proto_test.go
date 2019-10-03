@@ -39,7 +39,8 @@ import (
 
 	descriptorpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 
-	pb "github.com/stripe/skycfg/test_proto"
+	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
+	pb_gogo "github.com/stripe/skycfg/internal/testdata/test_proto_gogo"
 )
 
 func init() {
@@ -618,7 +619,7 @@ func TestMessageGogo(t *testing.T) {
 		f_duration = proto.package("google.protobuf").Duration(seconds = 1),
 	)`)
 	gotMsg := val.(*skyProtoMessage).msg
-	wantMsg := &pb.MessageGogo{
+	wantMsg := &pb_gogo.MessageGogo{
 		FInt32:   proto.Int32(1010),
 		FInt64:   proto.Int64(1020),
 		FUint32:  proto.Uint32(1030),
@@ -642,12 +643,12 @@ func TestMessageGogo(t *testing.T) {
 				FString: proto.String("map_submsg val"),
 			},
 		},
-		FNestedSubmsg: &pb.MessageGogo_NestedMessage{
+		FNestedSubmsg: &pb_gogo.MessageGogo_NestedMessage{
 			FString: proto.String("nested_submsg val"),
 		},
 		FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_B.Enum(),
-		FNestedEnum:   pb.MessageGogo_NESTED_ENUM_B.Enum(),
-		FOneof:        &pb.MessageGogo_FOneofA{"string in oneof"},
+		FNestedEnum:   pb_gogo.MessageGogo_NESTED_ENUM_B.Enum(),
+		FOneof:        &pb_gogo.MessageGogo_FOneofA{"string in oneof"},
 		FBytes:        []byte("also some string"),
 		FDuration:     time.Second,
 	}

@@ -19,9 +19,12 @@ install:
   - export PATH="${TRAVIS_HOME}/third_party/protobuf-${PROTOC_VERSION}/bin:${PATH}"
   - go get github.com/golang/protobuf/protoc-gen-go
   - go get github.com/gogo/protobuf/protoc-gen-gogofast
-  - ( cd testdata && wget https://raw.githubusercontent.com/gogo/protobuf/v1.1.1/gogoproto/gogo.proto )
-  - protoc --go_out="${TRAVIS_HOME}/gopath/src" --proto_path=testdata test_proto_v2.proto test_proto_v3.proto
-  - protoc --gogofast_out="${TRAVIS_HOME}/gopath/src" --proto_path=testdata test_proto_gogo.proto
+  - mkdir -p "${TRAVIS_HOME}/protopath/github.com/stripe"
+  - ln -s "${PWD}" "${TRAVIS_HOME}/protopath/github.com/stripe/skycfg"
+  - mkdir -p "${TRAVIS_HOME}/protopath/github.com/gogo/protobuf/gogoproto"
+  - ( cd "${TRAVIS_HOME}/protopath/github.com/gogo/protobuf/gogoproto" && wget https://raw.githubusercontent.com/gogo/protobuf/v1.1.1/gogoproto/gogo.proto )
+  - protoc --go_out="${TRAVIS_HOME}/gopath/src" --proto_path="${TRAVIS_HOME}/protopath" github.com/stripe/skycfg/internal/testdata/test_proto/test_proto_v2.proto github.com/stripe/skycfg/internal/testdata/test_proto/test_proto_v3.proto
+  - protoc --gogofast_out="${TRAVIS_HOME}/gopath/src" --proto_path="${TRAVIS_HOME}/protopath" github.com/stripe/skycfg/internal/testdata/test_proto_gogo/test_proto_gogo.proto
   - go get -t -v ./...
 
 script:

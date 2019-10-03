@@ -16,19 +16,10 @@
 
 syntax = "proto2";
 
+option go_package = "github.com/stripe/skycfg/internal/testdata/test_proto";
 package skycfg.test_proto;
 
-import "gogo.proto";
-import "test_proto_v2.proto";
-import "google/protobuf/duration.proto";
-
-option go_package = "github.com/stripe/skycfg/test_proto";
-
-message MessageGogo {
-  option (gogoproto.sizer) = false;
-  option (gogoproto.marshaler) = false;
-  option (gogoproto.unmarshaler) = false;
-
+message MessageV2 {
   optional int32  f_int32   = 1;
   optional int64  f_int64   = 2;
   optional uint32 f_uint32  = 3;
@@ -38,14 +29,10 @@ message MessageGogo {
   optional string f_string  = 7 [default="default_str"];;
   optional bool   f_bool    = 8;
 
-  optional MessageV2 f_submsg = 9 [
-    (gogoproto.nullable) = false
-  ];
+  optional MessageV2 f_submsg = 9;
 
   repeated string        r_string = 10;
-  repeated MessageV2     r_submsg = 11 [
-    (gogoproto.nullable) = false
-  ];
+  repeated MessageV2     r_submsg = 11;
 
   map<string, string>    map_string = 12;
   map<string, MessageV2> map_submsg = 13;
@@ -69,10 +56,10 @@ message MessageGogo {
 
   optional bytes f_bytes = 19;
 
-  optional google.protobuf.Duration f_duration = 20 [
-    (gogoproto.stdduration) = true,
-    (gogoproto.nullable) = false
-  ];
+  // NEXT: 20
+}
 
-  // NEXT: 21
+enum ToplevelEnumV2 {
+  TOPLEVEL_ENUM_V2_A = 0;
+  TOPLEVEL_ENUM_V2_B = 1;
 }
