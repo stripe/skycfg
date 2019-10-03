@@ -28,7 +28,7 @@ import (
 	"go.starlark.net/starlark"
 
 	"github.com/stripe/skycfg"
-	pb "github.com/stripe/skycfg/test_proto"
+	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
 )
 
 var testFiles = map[string]string{

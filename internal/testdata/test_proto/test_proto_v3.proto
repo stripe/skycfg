@@ -16,7 +16,7 @@
 
 syntax = "proto3";
 
-option go_package = "github.com/stripe/skycfg/test_proto";
+option go_package = "github.com/stripe/skycfg/internal/testdata/test_proto";
 package skycfg.test_proto;
 
 import "google/protobuf/wrappers.proto";
