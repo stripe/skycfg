@@ -39,6 +39,9 @@ func AssertModule() *TestContext {
 	for op, str := range tokenToString {
 		ctx.Attrs[str] = starlark.NewBuiltin(fmt.Sprintf("assert.%s", str), ctx.AssertBinaryImpl(op))
 	}
+
+	ctx.Attrs["fails"] = starlark.NewBuiltin("assert.fails", ctx.AssertFails)
+
 	return ctx
 }
 
@@ -47,6 +50,7 @@ type assertionError struct {
 	op        *syntax.Token
 	val1      starlark.Value
 	val2      starlark.Value
+	msg       string
 	callStack starlark.CallStack
 }
 
@@ -54,6 +58,11 @@ func (err assertionError) Error() string {
 	callStack := err.callStack[:len(err.callStack)-1]
 	position := callStack.At(0).Pos.String()
 	backtrace := callStack.String()
+
+	// use custom message if provided
+	if err.msg != "" {
+		return fmt.Sprintf("[%s] assertion failed: %s\n%s", position, err.msg, backtrace)
+	}
 
 	// straight boolean assertions like assert.true(false)
 	if err.op == nil {
@@ -77,6 +86,9 @@ func (err assertionError) Error() string {
 type TestContext struct {
 	Attrs    starlark.StringDict
 	Failures []error
+
+	// error returned from the `fail` builtin, for `assert.fails`
+	FailError error
 }
 
 var _ starlark.HasAttrs = (*Module)(nil)
@@ -151,6 +163,32 @@ func (t *TestContext) AssertBinaryImpl(op syntax.Token) func(thread *starlark.Th
 
 		return starlark.None, nil
 	}
+}
+
+func (t *TestContext) AssertFails(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	// reset this state so we can tell if this test triggers a fail
+	t.FailError = nil
+
+	failFn := args[0]
+	failArgs := args[1:]
+	_, err := starlark.Call(thread, failFn, failArgs, kwargs)
+	if err != nil {
+		// if the result was an error from `fail()`, the assertion passes
+		// starlark swallows the error type in Call, so instead we track it on the test context
+		if t.FailError != nil {
+			return starlark.None, nil
+		}
+
+		return nil, err
+	}
+
+	// if no error was returned, the assertion fails
+	err = assertionError{
+		msg:       fmt.Sprintf("function %s should have failed", failFn.(starlark.Callable).Name()),
+		callStack: thread.CallStack(),
+	}
+	t.Failures = append(t.Failures, err)
+	return nil, err
 }
 
 var tokenToString = map[syntax.Token]string{
