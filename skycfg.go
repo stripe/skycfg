@@ -385,10 +385,6 @@ func (t *Test) Run(ctx context.Context) (*TestResult, error) {
 	thread.SetLocal("context", ctx)
 
 	assertModule := impl.AssertModule()
-
-	// allow `fail` built-in to tell the test harness it failed
-	thread.SetLocal("test_context", assertModule)
-
 	testCtx := &impl.Module{
 		Name: "skycfg_test_ctx",
 		Attrs: starlark.StringDict(map[string]starlark.Value{

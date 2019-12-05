@@ -34,12 +34,5 @@ func failImpl(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwa
 	}
 	callStack := t.CallStack()
 	callStack.Pop()
-	err := NewFailError(msg, callStack)
-
-	// if this is running during a test, set the error on the test context in case assert.fails needs to check for it
-	if testCtx := t.Local("test_context"); testCtx != nil {
-		testCtx.(*TestContext).FailError = err
-	}
-
-	return nil, err
+	return nil, NewFailError(msg, callStack)
 }

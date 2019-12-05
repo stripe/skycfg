@@ -21,6 +21,7 @@ import (
 	"sort"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
 )
 
@@ -173,13 +174,13 @@ func (t *TestContext) AssertFails(thread *starlark.Thread, fn *starlark.Builtin,
 	failArgs := args[1:]
 	_, err := starlark.Call(thread, failFn, failArgs, kwargs)
 	if err != nil {
-		// if the result was an error from `fail()`, the assertion passes
-		// starlark swallows the error type in Call, so instead we track it on the test context
-		if t.FailError != nil {
-			return starlark.None, nil
-		}
-
-		return nil, err
+		// an error means the function failed and the assertion passes
+		// return a struct with `message` as the string from the error
+		s := starlark.NewBuiltin("struct", starlarkstruct.Make)
+		result := starlarkstruct.FromStringDict(s, starlark.StringDict{
+			"message": starlark.String(err.Error()),
+		})
+		return result, nil
 	}
 
 	// if no error was returned, the assertion fails
