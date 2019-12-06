@@ -254,6 +254,51 @@ func TestBinaryAsserts(t *testing.T) {
 	}
 }
 
+func TestAssertFails(t *testing.T) {
+	testCases := []assertUnaryTestCase{
+		assertUnaryTestCase{
+			assertTestCaseImpl: assertTestCaseImpl{
+				expFailure: false,
+				expError:   false,
+			},
+			val: `fail, "this is an expected failure"`,
+		},
+		assertUnaryTestCase{
+			assertTestCaseImpl: assertTestCaseImpl{
+				expFailure:    true,
+				expFailureMsg: "assertion failed: function print should have failed",
+				expError:      false,
+			},
+			val: `print, "this should have failed"`,
+		},
+		assertUnaryTestCase{
+			assertTestCaseImpl: assertTestCaseImpl{
+				expFailure:  false,
+				expError:    true,
+				expErrorMsg: "invalid call of non-function (int)",
+			},
+			val: `3, "this should be an error"`,
+		},
+		assertUnaryTestCase{
+			assertTestCaseImpl: assertTestCaseImpl{
+				expFailure:  false,
+				expError:    true,
+				expErrorMsg: "assert.fails: missing argument for fn",
+			},
+			val: ``,
+		},
+	}
+
+	for _, testCase := range testCases {
+		cmd := fmt.Sprintf(
+			`t.assert.fails(%s)`,
+			testCase.val,
+		)
+
+		evalAndReportResults(t, cmd, testCase)
+	}
+}
+
 func TestMultipleAssertionErrors(t *testing.T) {
 	thread := new(starlark.Thread)
 	assertModule := AssertModule()
@@ -300,7 +345,8 @@ func evalAndReportResults(t *testing.T, cmd string, testCase assertTestCase) {
 		}),
 	}
 	env := starlark.StringDict{
-		"t": testCtx,
+		"t":    testCtx,
+		"fail": Fail,
 	}
 
 	_, err := starlark.Eval(

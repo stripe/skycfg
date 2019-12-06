@@ -175,7 +175,7 @@ func UnstablePredeclaredModules(r unstableProtoRegistry) starlark.StringDict {
 func predeclaredModules() (modules starlark.StringDict, proto *impl.ProtoModule) {
 	proto = impl.NewProtoModule(nil /* TODO: registry from options */)
 	modules = starlark.StringDict{
-		"fail":   starlark.NewBuiltin("fail", skyFail),
+		"fail":   impl.Fail,
 		"hash":   impl.HashModule(),
 		"json":   impl.JsonModule(),
 		"proto":  proto,
@@ -425,14 +425,4 @@ func (c *Config) Tests() []*Test {
 
 func skyPrint(t *starlark.Thread, msg string) {
 	fmt.Fprintf(os.Stderr, "[%v] %s\n", t.CallFrame(1).Pos, msg)
-}
-
-func skyFail(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var msg string
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &msg); err != nil {
-		return nil, err
-	}
-	callStack := t.CallStack()
-	callStack.Pop()
-	return nil, fmt.Errorf("[%s] %s\n%s", callStack.At(0).Pos, msg, callStack.String())
 }
