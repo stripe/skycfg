@@ -279,6 +279,14 @@ func TestAssertFails(t *testing.T) {
 			},
 			val: `3, "this should be an error"`,
 		},
+		assertUnaryTestCase{
+			assertTestCaseImpl: assertTestCaseImpl{
+				expFailure:  false,
+				expError:    true,
+				expErrorMsg: "assert.fails: missing argument for fn",
+			},
+			val: ``,
+		},
 	}
 
 	for _, testCase := range testCases {

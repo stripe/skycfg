@@ -164,6 +164,10 @@ func (t *TestContext) AssertBinaryImpl(op syntax.Token) func(thread *starlark.Th
 }
 
 func (t *TestContext) AssertFails(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	if len(args) < 1 {
+		return nil, fmt.Errorf("assert.fails: missing argument for fn")
+	}
+
 	failFn := args[0]
 	failArgs := args[1:]
 
