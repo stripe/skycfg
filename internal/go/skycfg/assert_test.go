@@ -321,8 +321,6 @@ func evalAndReportResults(t *testing.T, cmd string, testCase assertTestCase) {
 	thread := new(starlark.Thread)
 	assertModule := AssertModule()
 
-	thread.SetLocal("test_context", assertModule)
-
 	// set it up like it would be used, off a param
 	testCtx := &Module{
 		Name: "skycfg_test_ctx",

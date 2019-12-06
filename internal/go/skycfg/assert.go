@@ -87,9 +87,6 @@ func (err assertionError) Error() string {
 type TestContext struct {
 	Attrs    starlark.StringDict
 	Failures []error
-
-	// error returned from the `fail` builtin, for `assert.fails`
-	FailError error
 }
 
 var _ starlark.HasAttrs = (*Module)(nil)
@@ -167,9 +164,6 @@ func (t *TestContext) AssertBinaryImpl(op syntax.Token) func(thread *starlark.Th
 }
 
 func (t *TestContext) AssertFails(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	// reset this state so we can tell if this test triggers a fail
-	t.FailError = nil
-
 	failFn := args[0]
 	failArgs := args[1:]
 	_, err := starlark.Call(thread, failFn, failArgs, kwargs)
