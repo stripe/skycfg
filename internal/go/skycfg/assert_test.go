@@ -271,6 +271,14 @@ func TestAssertFails(t *testing.T) {
 			},
 			val: `print, "this should have failed"`,
 		},
+		assertUnaryTestCase{
+			assertTestCaseImpl: assertTestCaseImpl{
+				expFailure:  false,
+				expError:    true,
+				expErrorMsg: "invalid call of non-function (int)",
+			},
+			val: `3, "this should be an error"`,
+		},
 	}
 
 	for _, testCase := range testCases {

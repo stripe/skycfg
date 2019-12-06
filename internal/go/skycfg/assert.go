@@ -166,19 +166,23 @@ func (t *TestContext) AssertBinaryImpl(op syntax.Token) func(thread *starlark.Th
 func (t *TestContext) AssertFails(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	failFn := args[0]
 	failArgs := args[1:]
-	_, err := starlark.Call(thread, failFn, failArgs, kwargs)
-	if err != nil {
-		// an error means the function failed and the assertion passes
-		// return a struct with `message` as the string from the error
-		s := starlark.NewBuiltin("struct", starlarkstruct.Make)
-		result := starlarkstruct.FromStringDict(s, starlark.StringDict{
-			"message": starlark.String(err.Error()),
-		})
-		return result, nil
+
+	if _, err := starlark.Call(thread, failFn, failArgs, kwargs); err != nil {
+		if _, ok := err.(*starlark.EvalError); ok {
+			// an eval error means the function failed and the assertion passes
+			// return a struct with `message` as the string from the error
+			s := starlark.NewBuiltin("struct", starlarkstruct.Make)
+			result := starlarkstruct.FromStringDict(s, starlark.StringDict{
+				"message": starlark.String(err.Error()),
+			})
+			return result, nil
+		}
+
+		return nil, err
 	}
 
 	// if no error was returned, the assertion fails
-	err = assertionError{
+	err := assertionError{
 		msg:       fmt.Sprintf("function %s should have failed", failFn.(starlark.Callable).Name()),
 		callStack: thread.CallStack(),
 	}
