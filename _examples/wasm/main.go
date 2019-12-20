@@ -103,7 +103,7 @@ func jsMain(args []js.Value) {
 }
 
 func main() {
-	js.Global().Set("skycfg_main", js.NewCallback(jsMain))
+	js.Global().Set("skycfg_main", wrapJsMain())
 	c := make(chan struct{}, 0)
 	<-c
 }
