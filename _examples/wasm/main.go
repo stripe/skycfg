@@ -104,6 +104,12 @@ func jsMain(args []js.Value) {
 
 func main() {
 	js.Global().Set("skycfg_main", js.NewCallback(jsMain))
+	var cb js.Func
+	cb = js.FuncOf(func(this js.Value, args []js.Value) interface{} {
+		fmt.Println("button clicked")
+		cb.Release() // release the function if the button will not be clicked again
+		return nil
+	})
 	c := make(chan struct{}, 0)
 	<-c
 }
