@@ -270,7 +270,7 @@ func fnProtoFromText(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	if !ok {
 		return nil, fmt.Errorf("%s: for parameter 2: got %s, want proto.MessageType", "proto.from_text", msgType.Type())
 	}
-	msg := proto.Clone(protoMsgType.emptyMsg)
+	msg := protoMsgType.emptyMsg()
 	msg.Reset()
 	if err := proto.UnmarshalText(string(value), msg); err != nil {
 		return nil, err
@@ -290,7 +290,7 @@ func fnProtoFromJson(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	if !ok {
 		return nil, fmt.Errorf("%s: for parameter 2: got %s, want proto.MessageType", "proto.from_json", msgType.Type())
 	}
-	msg := proto.Clone(protoMsgType.emptyMsg)
+	msg := protoMsgType.emptyMsg()
 	msg.Reset()
 	if err := jsonpb.UnmarshalString(string(value), msg); err != nil {
 		return nil, err
@@ -322,7 +322,7 @@ func fnProtoFromYaml(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	if err != nil {
 		return nil, err
 	}
-	msg := proto.Clone(protoMsgType.emptyMsg)
+	msg := protoMsgType.emptyMsg()
 	msg.Reset()
 	if err := jsonpb.UnmarshalString(string(jsonData), msg); err != nil {
 		return nil, err
