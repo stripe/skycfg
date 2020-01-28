@@ -45,7 +45,8 @@ func yamlMarshal() starlark.Callable {
 	return starlark.NewBuiltin("yaml.marshal", fnYamlMarshal)
 }
 
-func buildNode(v starlark.Value) (*yaml.Node, error) {
+// starlarkToYAMLNode parses v into *yaml.Node.
+func starlarkToYAMLNode(v starlark.Value) (*yaml.Node, error) {
 	switch v := v.(type) {
 	case starlark.NoneType:
 		return &yaml.Node{
@@ -55,8 +56,8 @@ func buildNode(v starlark.Value) (*yaml.Node, error) {
 	case starlark.Bool:
 		return &yaml.Node{
 			Kind: yaml.ScalarNode,
-			// Both "True" and "true" are valid YAML but use
-			// lowercase to stay consistent with older API.
+			// Both "True" and "true" are valid YAML but we'll use
+			// lowercase to stay consistent with older API (yaml.v2).
 			Value: strings.ToLower(v.String()),
 		}, nil
 	case starlark.Int:
@@ -77,9 +78,9 @@ func buildNode(v starlark.Value) (*yaml.Node, error) {
 	case starlark.Indexable: // Tuple, List
 		var elems []*yaml.Node
 		for i, n := 0, starlark.Len(v); i < n; i++ {
-			nn, err := buildNode(v.Index(i))
+			nn, err := starlarkToYAMLNode(v.Index(i))
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to convert %d-th element of %v to YAML: %v", i, v, err)
 			}
 			elems = append(elems, nn)
 		}
@@ -90,19 +91,19 @@ func buildNode(v starlark.Value) (*yaml.Node, error) {
 		}, nil
 	case *starlark.Dict:
 		var elems []*yaml.Node
-		for _, itemPair := range v.Items() {
-			key, err := buildNode(itemPair[0])
+		for _, pair := range v.Items() {
+			key, err := starlarkToYAMLNode(pair[0])
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to convert key %v to YAML: %v", pair[0], err)
 			}
 			if key.Kind != yaml.ScalarNode {
 				return nil, fmt.Errorf("key `%v' is not scalar", key.Value)
 			}
 			elems = append(elems, key)
 
-			val, err := buildNode(itemPair[1])
+			val, err := starlarkToYAMLNode(pair[1])
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("failed to convert value %v to YAML: %v", pair[1], err)
 			}
 			elems = append(elems, val)
 		}
@@ -112,10 +113,8 @@ func buildNode(v starlark.Value) (*yaml.Node, error) {
 			Content: elems,
 		}, nil
 	default:
-		return nil, fmt.Errorf("TypeError: value %s (type `%s') can't be converted to JSON.", v.String(), v.Type())
+		return nil, fmt.Errorf("TypeError: value %s (type `%s') can't be converted to YAML", v.String(), v.Type())
 	}
-
-	return nil, nil
 }
 
 func fnYamlMarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -123,19 +122,19 @@ func fnYamlMarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "value", &v); err != nil {
 		return nil, err
 	}
-	node := &yaml.Node{
-		Kind: yaml.DocumentNode,
-	}
-	nn, err := buildNode(v)
+
+	node, err := starlarkToYAMLNode(v)
 	if err != nil {
 		return nil, err
 	}
-	node.Content = append(node.Content, nn)
 
 	buf := bytes.Buffer{}
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)
-	if err := enc.Encode(node); err != nil {
+	if err := enc.Encode(&yaml.Node{
+		Kind:    yaml.DocumentNode,
+		Content: []*yaml.Node{node},
+	}); err != nil {
 		return nil, err
 	}
 	enc.Close()
