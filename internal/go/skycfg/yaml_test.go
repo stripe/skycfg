@@ -41,20 +41,20 @@ func TestSkyToYaml(t *testing.T) {
 `,
 		},
 		YamlTestCase{
-			skyExpr: `{"a": 5, 13: 2, "k": {"k2": "v"}}`,
+			skyExpr: `{13: 2, "k": {"k2": "v"}, "a": 5.11}`,
 			expOutput: `13: 2
-a: 5
 k:
   k2: v
+a: 5.11
 `,
 		},
 		YamlTestCase{
-			skyExpr: `[1, 2, 3, "abc", None, 15, True, False, {"k": "v"}]`,
+			skyExpr: `[1, 2, 3, None, "abc", 15, True, False, {"k": "v"}]`,
 			expOutput: `- 1
 - 2
 - 3
-- abc
 - null
+- abc
 - 15
 - true
 - false
@@ -198,8 +198,8 @@ func TestYamlToSky(t *testing.T) {
 		},
 		{
 			name: "negative Int64 key mapped to String",
-			key: starlark.MakeInt64(-2147483649),
-			want:  `"nInt64Key"`,
+			key:  starlark.MakeInt64(-2147483649),
+			want: `"nInt64Key"`,
 		},
 		{
 			name: "Uint key mapped to String",
@@ -230,9 +230,9 @@ func TestYamlToSky(t *testing.T) {
 			if testCase.want != got.String() {
 				t.Error(
 					"Bad return value from yaml.unmarshal",
-					"\nExpected:",
+					"Expected:",
 					testCase.want,
-					"\nGot:",
+					"Got:",
 					got,
 				)
 			}

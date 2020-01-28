@@ -6,6 +6,9 @@ require (
 	github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348
 	go.starlark.net v0.0.0-20190604130855-6ddc71c0ba77
 	gopkg.in/yaml.v2 v2.2.1
+	gopkg.in/yaml.v3 v3.0.0-20200121175148-a6ecf24a6d71
 )
 
 replace github.com/kylelemons/godebug => github.com/jmillikin-stripe/godebug v0.0.0-20180620173319-8279e1966bc1
+
+go 1.13

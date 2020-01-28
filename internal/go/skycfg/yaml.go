@@ -20,9 +20,10 @@ import (
 	"bytes"
 	"fmt"
 	"reflect"
+	"strings"
 
 	"go.starlark.net/starlark"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 // YamlModule returns a Starlark module for YAML helpers.
@@ -44,24 +45,102 @@ func yamlMarshal() starlark.Callable {
 	return starlark.NewBuiltin("yaml.marshal", fnYamlMarshal)
 }
 
+func buildNode(v starlark.Value) (*yaml.Node, error) {
+	switch v := v.(type) {
+	case starlark.NoneType:
+		return &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Value: "null",
+		}, nil
+	case starlark.Bool:
+		return &yaml.Node{
+			Kind: yaml.ScalarNode,
+			// Both "True" and "true" are valid YAML but use
+			// lowercase to stay consistent with older API.
+			Value: strings.ToLower(v.String()),
+		}, nil
+	case starlark.Int:
+		return &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Value: v.String(),
+		}, nil
+	case starlark.Float:
+		return &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Value: fmt.Sprintf("%g", v),
+		}, nil
+	case starlark.String:
+		return &yaml.Node{
+			Kind:  yaml.ScalarNode,
+			Value: string(v),
+		}, nil
+	case starlark.Indexable: // Tuple, List
+		var elems []*yaml.Node
+		for i, n := 0, starlark.Len(v); i < n; i++ {
+			nn, err := buildNode(v.Index(i))
+			if err != nil {
+				return nil, err
+			}
+			elems = append(elems, nn)
+		}
+		return &yaml.Node{
+			Kind:    yaml.SequenceNode,
+			Value:   v.String(),
+			Content: elems,
+		}, nil
+	case *starlark.Dict:
+		var elems []*yaml.Node
+		for _, itemPair := range v.Items() {
+			key, err := buildNode(itemPair[0])
+			if err != nil {
+				return nil, err
+			}
+			if key.Kind != yaml.ScalarNode {
+				return nil, fmt.Errorf("key `%v' is not scalar", key.Value)
+			}
+			elems = append(elems, key)
+
+			val, err := buildNode(itemPair[1])
+			if err != nil {
+				return nil, err
+			}
+			elems = append(elems, val)
+		}
+		return &yaml.Node{
+			Kind:    yaml.MappingNode,
+			Value:   v.String(),
+			Content: elems,
+		}, nil
+	default:
+		return nil, fmt.Errorf("TypeError: value %s (type `%s') can't be converted to JSON.", v.String(), v.Type())
+	}
+
+	return nil, nil
+}
+
 func fnYamlMarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var v starlark.Value
 	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "value", &v); err != nil {
 		return nil, err
 	}
-	var buf bytes.Buffer
-	if err := writeJSON(&buf, v); err != nil {
-		return nil, err
+	node := &yaml.Node{
+		Kind: yaml.DocumentNode,
 	}
-	var jsonObj interface{}
-	if err := yaml.Unmarshal(buf.Bytes(), &jsonObj); err != nil {
-		return nil, err
-	}
-	yamlBytes, err := yaml.Marshal(jsonObj)
+	nn, err := buildNode(v)
 	if err != nil {
 		return nil, err
 	}
-	return starlark.String(yamlBytes), nil
+	node.Content = append(node.Content, nn)
+
+	buf := bytes.Buffer{}
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(node); err != nil {
+		return nil, err
+	}
+	enc.Close()
+
+	return starlark.String(buf.String()), nil
 }
 
 // yamlUnmarshal returns a Starlark function for unmarshaling yaml content to
@@ -77,71 +156,79 @@ func fnYamlUnmarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, nil, 1, &blob); err != nil {
 		return nil, err
 	}
-	var inflated interface{}
-	if err := yaml.Unmarshal([]byte(blob), &inflated); err != nil {
+	var doc yaml.Node
+	if err := yaml.Unmarshal([]byte(blob), &doc); err != nil {
 		return nil, err
 	}
-	return toStarlarkValue(inflated)
+	return toStarlarkValue(doc.Content[0])
 }
 
-// toStarlarkScalarValue converts a scalar [obj] value to its starlark Value
-func toStarlarkScalarValue(obj interface{}) (starlark.Value, bool){
+// toStarlarkScalarValue converts a scalar node value to corresponding
+// starlark.Value.
+func toStarlarkScalarValue(node *yaml.Node) (starlark.Value, error) {
+	var obj interface{}
+	if err := node.Decode(&obj); err != nil {
+		return nil, err
+	}
+
 	if obj == nil {
-		return starlark.None, true
+		return starlark.None, nil
 	}
-	rt := reflect.TypeOf(obj)
+
+	t := reflect.TypeOf(obj)
 	v := reflect.ValueOf(obj)
-	switch rt.Kind() {
+	switch t.Kind() {
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return starlark.MakeInt64(v.Int()), true
+		return starlark.MakeInt64(v.Int()), nil
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return starlark.MakeUint64(v.Uint()), true
+		return starlark.MakeUint64(v.Uint()), nil
 	case reflect.Bool:
-		return starlark.Bool(v.Bool()), true
+		return starlark.Bool(v.Bool()), nil
 	case reflect.Float32, reflect.Float64:
-		return starlark.Float(v.Float()), true
+		return starlark.Float(v.Float()), nil
 	case reflect.String:
-		return starlark.String(v.String()), true
+		return starlark.String(v.String()), nil
 	default:
-		return nil, false
+		return nil, fmt.Errorf("unsupported type: %v", t)
 	}
 }
 
-// toStarlarkValue is a DFS walk to translate the DAG from go to starlark
-func toStarlarkValue(obj interface{}) (starlark.Value, error) {
-	if objval, ok := toStarlarkScalarValue(obj); ok {
-		return objval, nil
-	}
-	rt := reflect.TypeOf(obj)
-	switch rt.Kind() {
-	case reflect.Map:
-		ret := &starlark.Dict{}
-		for k, v := range obj.(map[interface{}]interface{}) {
-			keyval, ok := toStarlarkScalarValue(k)
-			if !ok {
-				return nil, fmt.Errorf("%s (%v) is not a supported key type", rt.Kind(), obj)
+// toStarlarkValue is a DFS walk to translate the DAG from Go to Starlark.
+func toStarlarkValue(node *yaml.Node) (starlark.Value, error) {
+	switch node.Kind {
+	case yaml.ScalarNode:
+		return toStarlarkScalarValue(node)
+	case yaml.MappingNode:
+		out := &starlark.Dict{}
+		for ki, vi := 0, 1; vi < len(node.Content); ki, vi = ki+2, vi+2 {
+			k, v := node.Content[ki], node.Content[vi]
+
+			kv, err := toStarlarkScalarValue(k)
+			if err != nil {
+				return nil, fmt.Errorf("`%s' not a supported key type: %v", k.Value, err)
 			}
-			starval, err := toStarlarkValue(v)
+
+			vv, err := toStarlarkValue(v)
 			if err != nil {
 				return nil, err
 			}
-			if err = ret.SetKey(keyval, starval); err != nil {
+
+			if err = out.SetKey(kv, vv); err != nil {
 				return nil, err
 			}
 		}
-		return ret, nil
-	case reflect.Slice:
-		slice := obj.([]interface{})
-		starvals := make([]starlark.Value, len(slice))
-		for i, element := range slice {
-			v, err := toStarlarkValue(element)
+		return out, nil
+	case yaml.SequenceNode:
+		out := make([]starlark.Value, len(node.Content))
+		for i, e := range node.Content {
+			vv, err := toStarlarkValue(e)
 			if err != nil {
 				return nil, err
 			}
-			starvals[i] = v
+			out[i] = vv
 		}
-		return starlark.NewList(starvals), nil
+		return starlark.NewList(out), nil
 	default:
-		return nil, fmt.Errorf("%s (%v) is not a supported type", rt.Kind(), obj)
+		return nil, fmt.Errorf("`%s' not a supported value", node.Value)
 	}
 }
