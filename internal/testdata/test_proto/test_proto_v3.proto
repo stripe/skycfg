@@ -41,6 +41,10 @@ message MessageV3 {
 
   message NestedMessage {
     string f_string = 1;
+
+    message DoubleNestedMessage {
+      string f_string = 1;
+    }
   }
   NestedMessage f_nested_submsg = 16;
 
