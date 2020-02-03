@@ -39,6 +39,10 @@ message MessageV2 {
 
   message NestedMessage {
     optional string f_string = 1;
+
+    message DoubleNestedMessage {
+      optional string f_string = 1;
+    }
   }
   optional NestedMessage f_nested_submsg = 16;
 

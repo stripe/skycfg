@@ -27,11 +27,11 @@ import (
 	"go.starlark.net/starlark"
 )
 
-// NewMessageType creates a Starlark value representing a named Protobuf message type.
+// newMessageType creates a Starlark value representing a named Protobuf message type.
 //
 // The message type must have been registered with the protobuf library, and implement
 // the expected interfaces for a generated .pb.go message struct.
-func newMessageType(registry ProtoRegistry, name string) (starlark.Value, error) {
+func newMessageType(registry ProtoRegistry, nestedMsgName, name string) (starlark.Value, error) {
 	goType, err := registry.UnstableProtoMessageType(name)
 	if err != nil {
 		return nil, err
@@ -58,6 +58,7 @@ func newMessageType(registry ProtoRegistry, name string) (starlark.Value, error)
 		registry: registry,
 		fileDesc: fileDesc,
 		msgDesc:  msgDesc,
+		nestedMsgName: nestedMsgName,
 		emptyMsg: emptyMsg,
 	}
 	if gotName := mt.Name(); strings.TrimPrefix(name, "gogo:") != gotName {
@@ -78,6 +79,10 @@ type skyProtoMessageType struct {
 	registry ProtoRegistry
 	fileDesc *descriptor_pb.FileDescriptorProto
 	msgDesc  *descriptor_pb.DescriptorProto
+
+	// If set, this should be used instead of `msgDesc.GetName()` in contexts
+	// where the fully nested message name is needed.
+	nestedMsgName string
 
 	// An empty protobuf message of the appropriate type.
 	emptyMsg proto.Message
@@ -101,7 +106,13 @@ func (mt *skyProtoMessageType) Name() string {
 }
 
 func (mt *skyProtoMessageType) Attr(attrName string) (starlark.Value, error) {
-	msgName := fmt.Sprintf("%s.%s", mt.msgDesc.GetName(), attrName)
+	parentMsgName := mt.nestedMsgName
+	if parentMsgName == "" {
+		parentMsgName = mt.msgDesc.GetName()
+	}
+
+	nestedMsgName := fmt.Sprintf("%s.%s", parentMsgName, attrName)
+	msgName := nestedMsgName
 	enumName := strings.Replace(msgName, ".", "_", -1)
 	if pkg := mt.fileDesc.GetPackage(); pkg != "" {
 		msgName = fmt.Sprintf("%s.%s", pkg, msgName)
@@ -119,7 +130,7 @@ func (mt *skyProtoMessageType) Attr(attrName string) (starlark.Value, error) {
 		}, nil
 	}
 
-	return newMessageType(mt.registry, msgName)
+	return newMessageType(mt.registry, nestedMsgName, msgName)
 }
 
 func (mt *skyProtoMessageType) AttrNames() []string {

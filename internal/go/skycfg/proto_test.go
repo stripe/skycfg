@@ -129,6 +129,50 @@ func TestProtoMessageString(t *testing.T) {
 	}
 }
 
+func TestNestedMessages(t *testing.T) {
+	testPb := `proto.package("skycfg.test_proto").`
+	gogoPb := `gogo_proto.package("skycfg.test_proto").`
+
+	tests := []struct {
+		src     string
+		wantVal string
+	}{
+		{
+			src: testPb + `MessageV2.NestedMessage()`,
+			wantVal: `<skycfg.test_proto.MessageV2.NestedMessage >`,
+		},
+		{
+			src: testPb + `MessageV2.NestedMessage.DoubleNestedMessage()`,
+			wantVal: `<skycfg.test_proto.MessageV2.NestedMessage.DoubleNestedMessage >`,
+		},
+
+		{
+			src: testPb + `MessageV3.NestedMessage()`,
+			wantVal: `<skycfg.test_proto.MessageV3.NestedMessage >`,
+		},
+		{
+			src: testPb + `MessageV3.NestedMessage.DoubleNestedMessage()`,
+			wantVal: `<skycfg.test_proto.MessageV3.NestedMessage.DoubleNestedMessage >`,
+		},
+
+		{
+			src: gogoPb + `MessageGogo.NestedMessage()`,
+			wantVal: `<skycfg.test_proto.MessageGogo.NestedMessage >`,
+		},
+		{
+			src: gogoPb + `MessageGogo.NestedMessage.DoubleNestedMessage()`,
+			wantVal: `<skycfg.test_proto.MessageGogo.NestedMessage.DoubleNestedMessage >`,
+		},
+	}
+	for _, test := range tests {
+		gotVal := skyEval(t, test.src).String()
+		if test.wantVal != gotVal {
+			t.Errorf("eval(%q): expected value %q, got %q", test.src, test.wantVal, gotVal)
+		}
+	}
+
+}
+
 func TestProtoSetDefaultV2(t *testing.T) {
 	val := skyEval(t, `proto.set_defaults(proto.package("skycfg.test_proto").MessageV2())`)
 	gotMsg := val.(*skyProtoMessage).msg

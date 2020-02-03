@@ -78,5 +78,5 @@ func (pkg *skyProtoPackage) Attr(attrName string) (starlark.Value, error) {
 			valueMap: ev,
 		}, nil
 	}
-	return newMessageType(registry, fullName)
+	return newMessageType(registry, "", fullName)
 }
