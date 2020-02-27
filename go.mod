@@ -9,3 +9,5 @@ require (
 )
 
 replace github.com/kylelemons/godebug => github.com/jmillikin-stripe/godebug v0.0.0-20180620173319-8279e1966bc1
+
+go 1.13
