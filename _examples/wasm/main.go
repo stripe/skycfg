@@ -88,22 +88,23 @@ func runDemo(content string) ([]js.Value, error) {
 	return out, nil
 }
 
-func jsMain(args []js.Value) {
+func jsMain(this js.Value, args []js.Value) interface{} {
 	content := args[0].String()
 	result, err := runDemo(content)
 	if err != nil {
 		args[1].Call("err", err.Error())
-		return
+		return nil
 	}
 	var out []interface{}
 	for _, item := range result {
 		out = append(out, js.ValueOf(item))
 	}
 	args[1].Call("ok", out)
+	return nil
 }
 
 func main() {
-	js.Global().Set("skycfg_main", wrapJsMain())
+	js.Global().Set("skycfg_main", js.FuncOf(jsMain).Value)
 	c := make(chan struct{}, 0)
 	<-c
 }
