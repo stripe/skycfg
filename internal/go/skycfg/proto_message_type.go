@@ -55,11 +55,11 @@ func newMessageType(registry ProtoRegistry, nestedMsgName, name string) (starlar
 	}
 	fileDesc, msgDesc := descriptor.ForMessage(emptyMsg)
 	mt := &skyProtoMessageType{
-		registry: registry,
-		fileDesc: fileDesc,
-		msgDesc:  msgDesc,
+		registry:      registry,
+		fileDesc:      fileDesc,
+		msgDesc:       msgDesc,
 		nestedMsgName: nestedMsgName,
-		emptyMsg: emptyMsg,
+		emptyMsg:      emptyMsg,
 	}
 	if gotName := mt.Name(); strings.TrimPrefix(name, "gogo:") != gotName {
 		// All the protobuf lookups are by name, so it's important that

@@ -120,10 +120,13 @@ type replHelp struct {
 	config *skycfg.Config
 }
 
-func (*replHelp) Type() string               { return "skycfg_repl_help" }
-func (*replHelp) Freeze()                    {}
-func (*replHelp) Truth() starlark.Bool       { return starlark.True }
-func (help *replHelp) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable type: %s", help.Type()) }
+func (*replHelp) Type() string         { return "skycfg_repl_help" }
+func (*replHelp) Freeze()              {}
+func (*replHelp) Truth() starlark.Bool { return starlark.True }
+
+func (help *replHelp) Hash() (uint32, error) {
+	return 0, fmt.Errorf("unhashable type: %s", help.Type())
+}
 
 func (help *replHelp) String() string {
 	var buf bytes.Buffer
@@ -147,12 +150,15 @@ Pre-defined values:
 
 type replExit struct{}
 
-func (*replExit) Type() string               { return "skycfg_repl_exit" }
-func (*replExit) Freeze()                    {}
-func (*replExit) Truth() starlark.Bool       { return starlark.True }
-func (exit *replExit) Hash() (uint32, error) { return 0, fmt.Errorf("unhashable type: %s", exit.Type()) }
-func (*replExit) String() string             { return "Use exit() or Ctrl-D (i.e. EOF) to exit" }
-func (*replExit) Name() string               { return "exit" }
+func (*replExit) Type() string         { return "skycfg_repl_exit" }
+func (*replExit) Freeze()              {}
+func (*replExit) Truth() starlark.Bool { return starlark.True }
+func (*replExit) String() string       { return "Use exit() or Ctrl-D (i.e. EOF) to exit" }
+func (*replExit) Name() string         { return "exit" }
+
+func (exit *replExit) Hash() (uint32, error) {
+	return 0, fmt.Errorf("unhashable type: %s", exit.Type())
+}
 
 func (*replExit) Call(_ *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	if err := starlark.UnpackPositionalArgs("exit", args, kwargs, 0); err != nil {

@@ -85,7 +85,7 @@ func fnYamlUnmarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 }
 
 // toStarlarkScalarValue converts a scalar [obj] value to its starlark Value
-func toStarlarkScalarValue(obj interface{}) (starlark.Value, bool){
+func toStarlarkScalarValue(obj interface{}) (starlark.Value, bool) {
 	if obj == nil {
 		return starlark.None, true
 	}

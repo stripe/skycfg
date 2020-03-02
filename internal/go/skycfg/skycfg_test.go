@@ -229,12 +229,12 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			expExecErr: false,
 			expProtos: []proto.Message{
 				&pb.MessageV3{
-					F_BoolValue: &wrappers.BoolValue{Value:true},
+					F_BoolValue:   &wrappers.BoolValue{Value: true},
 					F_StringValue: &wrappers.StringValue{Value: "something"},
 					F_DoubleValue: &wrappers.DoubleValue{Value: 3110.4120},
-					F_Int32Value: &wrappers.Int32Value{Value: 110},
-					F_Int64Value: &wrappers.Int64Value{Value: 2148483647},
-					F_BytesValue: &wrappers.BytesValue{Value: []byte("foo/bar/baz")},
+					F_Int32Value:  &wrappers.Int32Value{Value: 110},
+					F_Int64Value:  &wrappers.Int64Value{Value: 2148483647},
+					F_BytesValue:  &wrappers.BytesValue{Value: []byte("foo/bar/baz")},
 					F_Uint32Value: &wrappers.UInt32Value{Value: 4294967295},
 					F_Uint64Value: &wrappers.UInt64Value{Value: 8294967295},
 					R_StringValue: []*wrappers.StringValue{

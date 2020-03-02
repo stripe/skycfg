@@ -198,8 +198,8 @@ func TestYamlToSky(t *testing.T) {
 		},
 		{
 			name: "negative Int64 key mapped to String",
-			key: starlark.MakeInt64(-2147483649),
-			want:  `"nInt64Key"`,
+			key:  starlark.MakeInt64(-2147483649),
+			want: `"nInt64Key"`,
 		},
 		{
 			name: "Uint key mapped to String",

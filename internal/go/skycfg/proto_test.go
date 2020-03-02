@@ -138,29 +138,29 @@ func TestNestedMessages(t *testing.T) {
 		wantVal string
 	}{
 		{
-			src: testPb + `MessageV2.NestedMessage()`,
+			src:     testPb + `MessageV2.NestedMessage()`,
 			wantVal: `<skycfg.test_proto.MessageV2.NestedMessage >`,
 		},
 		{
-			src: testPb + `MessageV2.NestedMessage.DoubleNestedMessage()`,
+			src:     testPb + `MessageV2.NestedMessage.DoubleNestedMessage()`,
 			wantVal: `<skycfg.test_proto.MessageV2.NestedMessage.DoubleNestedMessage >`,
 		},
 
 		{
-			src: testPb + `MessageV3.NestedMessage()`,
+			src:     testPb + `MessageV3.NestedMessage()`,
 			wantVal: `<skycfg.test_proto.MessageV3.NestedMessage >`,
 		},
 		{
-			src: testPb + `MessageV3.NestedMessage.DoubleNestedMessage()`,
+			src:     testPb + `MessageV3.NestedMessage.DoubleNestedMessage()`,
 			wantVal: `<skycfg.test_proto.MessageV3.NestedMessage.DoubleNestedMessage >`,
 		},
 
 		{
-			src: gogoPb + `MessageGogo.NestedMessage()`,
+			src:     gogoPb + `MessageGogo.NestedMessage()`,
 			wantVal: `<skycfg.test_proto.MessageGogo.NestedMessage >`,
 		},
 		{
-			src: gogoPb + `MessageGogo.NestedMessage.DoubleNestedMessage()`,
+			src:     gogoPb + `MessageGogo.NestedMessage.DoubleNestedMessage()`,
 			wantVal: `<skycfg.test_proto.MessageGogo.NestedMessage.DoubleNestedMessage >`,
 		},
 	}
