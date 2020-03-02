@@ -104,7 +104,7 @@ func jsMain(this js.Value, args []js.Value) interface{} {
 }
 
 func main() {
-	js.Global().Set("skycfg_main", js.FuncOf(jsMain.Value))
+	js.Global().Set("skycfg_main", js.FuncOf(jsMain).Value)
 	c := make(chan struct{}, 0)
 	<-c
 }
