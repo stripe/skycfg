@@ -291,7 +291,8 @@ type ExecOption interface {
 }
 
 type execOptions struct {
-	vars *starlark.Dict
+	vars     *starlark.Dict
+	funcName string
 }
 
 type fnExecOption func(*execOptions)
@@ -307,16 +308,24 @@ func WithVars(vars starlark.StringDict) ExecOption {
 	})
 }
 
+// WithEntryPoint changes the name of the Skycfg function to execute.
+func WithEntryPoint(name string) ExecOption {
+	return fnExecOption(func(opts *execOptions) {
+		opts.funcName = name
+	})
+}
+
 // Main executes main() from the top-level Skycfg config module, which is
 // expected to return either None or a list of Protobuf messages.
 func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message, error) {
 	parsedOpts := &execOptions{
-		vars: &starlark.Dict{},
+		vars:     &starlark.Dict{},
+		funcName: "main",
 	}
 	for _, opt := range opts {
 		opt.applyExec(parsedOpts)
 	}
-	mainVal, ok := c.locals["main"]
+	mainVal, ok := c.locals[parsedOpts.funcName]
 	if !ok {
 		return nil, fmt.Errorf("no `main' function found in %q", c.filename)
 	}

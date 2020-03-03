@@ -162,6 +162,16 @@ def main(ctx):
 	msg.f_Uint32Value = 4294967296
 	return [msg]
 `,
+	"test12.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+def not_main(ctx):
+	msg = test_proto.MessageV2()
+	msg.f_int64 = 12345
+	msg.f_string = "12345"
+
+	return [msg]
+`,
 }
 
 // testLoader is a simple loader that loads files from the testFiles map.
@@ -187,10 +197,71 @@ type endToEndTestCase struct {
 	expProtos  []proto.Message
 }
 
-func TestSkycfgEndToEnd(t *testing.T) {
+type ExecSkycfg func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.Message, error)
+
+func runTestCases(t *testing.T, testCases []endToEndTestCase, execSkycfg ExecSkycfg) {
 	loader := &testLoader{}
 	ctx := context.Background()
 
+	for _, testCase := range testCases {
+		config, err := skycfg.Load(ctx, testCase.fileToLoad, skycfg.WithFileReader(loader))
+		if testCase.expLoadErr {
+			if err == nil {
+				t.Error(
+					"Bad err result from LoadConfig for case", testCase.caseName,
+					"\nExpected non-nil",
+					"\nGot", err,
+				)
+			}
+
+			continue
+		} else {
+			if err != nil {
+				t.Error(
+					"Bad err result from LoadConfig for case", testCase.caseName,
+					"\nExpected nil",
+					"\nGot", err,
+				)
+
+				continue
+			}
+		}
+
+		protos, err := execSkycfg(config, testCase)
+
+		if testCase.expExecErr {
+			if err == nil {
+				t.Error(
+					"Bad err result from ExecMain for case", testCase.caseName,
+					"\nExpected non-nil",
+					"\nGot", err,
+				)
+			}
+
+			continue
+		} else {
+			if err != nil {
+				t.Error(
+					"Bad err result from ExecMain for case", testCase.caseName,
+					"\nExpected nil",
+					"\nGot", err,
+				)
+
+				continue
+			}
+		}
+
+		if !reflect.DeepEqual(protos, testCase.expProtos) {
+			t.Error(
+				"Wrong protos result from ExecMain for case", testCase.caseName,
+				"\nExpected", testCase.expProtos,
+				"\nGot", protos,
+			)
+		}
+	}
+}
+
+func TestSkycfgEndToEnd(t *testing.T) {
 	testCases := []endToEndTestCase{
 		endToEndTestCase{
 			caseName:   "all good",
@@ -267,62 +338,30 @@ func TestSkycfgEndToEnd(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range testCases {
-		config, err := skycfg.Load(ctx, testCase.fileToLoad, skycfg.WithFileReader(loader))
-		if testCase.expLoadErr {
-			if err == nil {
-				t.Error(
-					"Bad err result from LoadConfig for case", testCase.caseName,
-					"\nExpected non-nil",
-					"\nGot", err,
-				)
-			}
+	fnExecSkycfg := ExecSkycfg(func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.Message, error) {
+		return config.Main(context.Background(), skycfg.WithVars(testCase.vars))
+	})
+	runTestCases(t, testCases, fnExecSkycfg)
+}
 
-			continue
-		} else {
-			if err != nil {
-				t.Error(
-					"Bad err result from LoadConfig for case", testCase.caseName,
-					"\nExpected nil",
-					"\nGot", err,
-				)
-
-				continue
-			}
-		}
-
-		protos, err := config.Main(context.Background(), skycfg.WithVars(testCase.vars))
-
-		if testCase.expExecErr {
-			if err == nil {
-				t.Error(
-					"Bad err result from ExecMain for case", testCase.caseName,
-					"\nExpected non-nil",
-					"\nGot", err,
-				)
-			}
-
-			continue
-		} else {
-			if err != nil {
-				t.Error(
-					"Bad err result from ExecMain for case", testCase.caseName,
-					"\nExpected nil",
-					"\nGot", err,
-				)
-
-				continue
-			}
-		}
-
-		if !reflect.DeepEqual(protos, testCase.expProtos) {
-			t.Error(
-				"Wrong protos result from ExecMain for case", testCase.caseName,
-				"\nExpected", testCase.expProtos,
-				"\nGot", protos,
-			)
-		}
+func TestSkycfgWithEntryPoint(t *testing.T) {
+	testCases := []endToEndTestCase{
+		endToEndTestCase{
+			caseName:   "all good",
+			fileToLoad: "test12.sky",
+			expProtos: []proto.Message{
+				&pb.MessageV2{
+					FInt64:  proto.Int64(12345),
+					FString: proto.String("12345"),
+				},
+			},
+		},
 	}
+
+	fnExecSkycfg := ExecSkycfg(func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.Message, error) {
+		return config.Main(context.Background(), skycfg.WithVars(testCase.vars), skycfg.WithEntryPoint("not_main"))
+	})
+	runTestCases(t, testCases, fnExecSkycfg)
 }
 
 // testTestCase is a test case for the testing functionality built into skycfg
