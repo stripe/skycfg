@@ -78,18 +78,12 @@ func (v *skyProtoEnumValue) Hash() (uint32, error) {
 }
 
 func (v *skyProtoEnumValue) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
-	other, ok := y.(*skyProtoEnumValue)
-	if !ok {
-		return false, fmt.Errorf("`%v' not enum value", y)
-	}
-
-	eq := (v.typeName == other.typeName) && (v.valueName == other.valueName) && (v.value == other.value)
-
+	other := y.(*skyProtoEnumValue)
 	switch op {
 	case syntax.EQL:
-		return eq, nil
+		return v.value == other.value, nil
 	case syntax.NEQ:
-		return !eq, nil
+		return v.value != other.value, nil
 	default:
 		return false, fmt.Errorf("enums support only `==' and `!=' comparisons, got: %#v", op)
 	}
