@@ -23,6 +23,7 @@ import (
 
 	descriptor_pb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 type skyProtoEnumType struct {
@@ -64,6 +65,8 @@ type skyProtoEnumValue struct {
 	value     int32
 }
 
+var _ starlark.Comparable = (*skyProtoEnumValue)(nil)
+
 func (v *skyProtoEnumValue) String() string {
 	return fmt.Sprintf("<%s %s=%d>", v.typeName, v.valueName, v.value)
 }
@@ -72,6 +75,18 @@ func (v *skyProtoEnumValue) Freeze()              {}
 func (v *skyProtoEnumValue) Truth() starlark.Bool { return starlark.True }
 func (v *skyProtoEnumValue) Hash() (uint32, error) {
 	return starlark.MakeInt64(int64(v.value)).Hash()
+}
+
+func (v *skyProtoEnumValue) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
+	other := y.(*skyProtoEnumValue)
+	switch op {
+	case syntax.EQL:
+		return v.value == other.value, nil
+	case syntax.NEQ:
+		return v.value != other.value, nil
+	default:
+		return false, fmt.Errorf("enums support only `==' and `!=' comparisons, got: %#v", op)
+	}
 }
 
 // Interface for generated enum types.

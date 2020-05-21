@@ -1224,3 +1224,33 @@ def fun():
 		}
 	}
 }
+
+func TestProtoEnumEqual(t *testing.T) {
+	val := skyEval(t, `
+proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A == proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A`)
+	got := val.(starlark.Bool)
+	if !bool(got) {
+		t.Error("Expected equal enums")
+	}
+
+	val = skyEval(t, `
+proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A == proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B`)
+	got = val.(starlark.Bool)
+	if bool(got) {
+		t.Error("Expected unequal enums")
+	}
+
+	val = skyEval(t, `
+proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A != proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A`)
+	got = val.(starlark.Bool)
+	if bool(got) {
+		t.Error("Expected equal enums")
+	}
+
+	val = skyEval(t, `
+proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A != proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B`)
+	got = val.(starlark.Bool)
+	if !bool(got) {
+		t.Error("Expected unequal enums")
+	}
+}
