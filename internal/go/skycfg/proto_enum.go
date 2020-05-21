@@ -23,6 +23,7 @@ import (
 
 	descriptor_pb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 )
 
 type skyProtoEnumType struct {
@@ -40,6 +41,19 @@ func (t *skyProtoEnumType) Freeze()              {}
 func (t *skyProtoEnumType) Truth() starlark.Bool { return starlark.True }
 func (t *skyProtoEnumType) Hash() (uint32, error) {
 	return 0, fmt.Errorf("unhashable type: %s", t.Type())
+}
+
+func (v *skyProtoEnumType) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
+	y := y_.(*skyProtoEnumType)
+
+	switch op {
+	case syntax.EQL:
+		return v.name == y.name, nil
+	case syntax.NEQ:
+		return v.name != y.name, nil
+	default:
+		return false, fmt.Errorf("%s %s %s not implemented", v.Type(), op, y.Type())
+	}
 }
 
 func (t *skyProtoEnumType) Attr(attrName string) (starlark.Value, error) {
@@ -72,6 +86,23 @@ func (v *skyProtoEnumValue) Freeze()              {}
 func (v *skyProtoEnumValue) Truth() starlark.Bool { return starlark.True }
 func (v *skyProtoEnumValue) Hash() (uint32, error) {
 	return starlark.MakeInt64(int64(v.value)).Hash()
+}
+
+func (v *skyProtoEnumValue) CompareSameType(op syntax.Token, y_ starlark.Value, depth int) (bool, error) {
+	y := y_.(*skyProtoEnumValue)
+
+	if v.typeName != y.typeName {
+		return false, fmt.Errorf("%s %s %s not implemented", v.Type(), op, y.Type())
+	}
+
+	switch op {
+	case syntax.EQL:
+		return v.value == y.value, nil
+	case syntax.NEQ:
+		return v.value != y.value, nil
+	default:
+		return false, fmt.Errorf("%s %s %s not implemented", v.Type(), op, y.Type())
+	}
 }
 
 // Interface for generated enum types.

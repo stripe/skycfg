@@ -1098,6 +1098,60 @@ func TestProtoComparisonNotEqual(t *testing.T) {
 	}
 }
 
+func TestEnumComparison(t *testing.T) {
+	t.Run("", func(t *testing.T) {
+		msgA := NewSkyProtoMessage(&pb.MessageV2{
+			FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_A.Enum(),
+		})
+		msgB := NewSkyProtoMessage(&pb.MessageV2{
+			FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_A.Enum(),
+		})
+
+		enumA, err := msgA.Attr("f_toplevel_enum")
+		if err != nil {
+			t.Fatal(err)
+		}
+		enumB, err := msgB.Attr("f_toplevel_enum")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		equal, err := starlark.Equal(enumA, enumB)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !equal {
+			t.Fatalf("Expected %v == %v", enumA, enumB)
+		}
+	})
+
+	t.Run("", func(t *testing.T) {
+		msgA := NewSkyProtoMessage(&pb.MessageV2{
+			FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_A.Enum(),
+		})
+		msgB := NewSkyProtoMessage(&pb.MessageV2{
+			FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_B.Enum(),
+		})
+
+		enumA, err := msgA.Attr("f_toplevel_enum")
+		if err != nil {
+			t.Fatal(err)
+		}
+		enumB, err := msgB.Attr("f_toplevel_enum")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		equal, err := starlark.Equal(enumA, enumB)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if equal {
+			t.Fatalf("Expected %v != %v", enumA, enumB)
+		}
+	})
+}
+
 type StringFieldAliasType string
 
 type KubernetesMessage struct {
