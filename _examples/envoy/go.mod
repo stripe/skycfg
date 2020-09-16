@@ -2,6 +2,8 @@ module github.com/stripe/skycfg/_examples/envoy
 
 go 1.15
 
+replace github.com/stripe/skycfg => ../../
+
 require (
 	github.com/cncf/udpa/go v0.0.0-20200909154343-1f710aca26a9 // indirect
 	github.com/envoyproxy/go-control-plane v0.9.6
