@@ -31,6 +31,7 @@ import (
 
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	_ "github.com/envoyproxy/go-control-plane/envoy/config/bootstrap/v2"
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/stripe/skycfg"
