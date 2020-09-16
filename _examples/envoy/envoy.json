@@ -21,7 +21,7 @@
 										"name": "local_route",
 										"virtual_hosts": [
 											{
-												"name": "local_service",
+												"name": "a_service",
 												"domains": [
 													"*"
 												],
@@ -31,7 +31,7 @@
 															"prefix": "/"
 														},
 														"route": {
-															"cluster": "local_service"
+															"cluster": "a_service"
 														}
 													}
 												]
@@ -47,11 +47,11 @@
 		],
 		"clusters": [
 			{
-				"name": "local_service",
+				"name": "a_service",
 				"type": "STATIC",
 				"connect_timeout": "0.250s",
 				"load_assignment": {
-					"cluster_name": "local_service",
+					"cluster_name": "a_service",
 					"endpoints": [
 						{
 							"lb_endpoints": [
