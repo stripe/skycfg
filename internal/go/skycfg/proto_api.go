@@ -46,17 +46,20 @@ func NewProtoModule(registry ProtoRegistry) *ProtoModule {
 	mod := &ProtoModule{
 		Registry: registry,
 		attrs: starlark.StringDict{
+			"name":        starlark.NewBuiltin("proto.clone", fnProtoName),
 			"clear":        starlark.NewBuiltin("proto.clear", fnProtoClear),
 			"clone":        starlark.NewBuiltin("proto.clone", fnProtoClone),
 			"from_json":    starlark.NewBuiltin("proto.from_json", fnProtoFromJson),
 			"from_text":    starlark.NewBuiltin("proto.from_text", fnProtoFromText),
 			"from_yaml":    starlark.NewBuiltin("proto.from_yaml", fnProtoFromYaml),
+			"from_proto":   starlark.NewBuiltin("proto.from_proto", fnProtoFromProto),
 			"merge":        starlark.NewBuiltin("proto.merge", fnProtoMerge),
 			"set_defaults": starlark.NewBuiltin("proto.set_defaults", fnProtoSetDefaults),
 			"to_json":      starlark.NewBuiltin("proto.to_json", fnProtoToJson),
 			"to_any":       starlark.NewBuiltin("proto.to_any", fnProtoToAny),
 			"to_text":      starlark.NewBuiltin("proto.to_text", fnProtoToText),
 			"to_yaml":      starlark.NewBuiltin("proto.to_yaml", fnProtoToYaml),
+			"to_proto":     starlark.NewBuiltin("proto.to_proto", fnProtoToProto),
 		},
 	}
 	mod.attrs["package"] = starlark.NewBuiltin("proto.package", mod.fnProtoPackage)
@@ -92,6 +95,16 @@ func (mod *ProtoModule) AttrNames() []string {
 	}
 	sort.Strings(names)
 	return names
+}
+
+// Implementation of the `proto.name()` built-in function.
+// returns the name of the protobuf
+func fnProtoName(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var msg *skyProtoMessage
+	if err := wantSingleProtoMessage("proto.name", args, kwargs, &msg); err != nil {
+		return nil, err
+	}
+	return starlark.String(proto.MessageName(msg.msg)), nil
 }
 
 // Implementation of the `proto.clear()` built-in function.
@@ -278,6 +291,20 @@ func fnProtoToYaml(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 	return starlark.String(yamlData), nil
 }
 
+// Implementation of the `proto.to_proto()` built-in function. Returns the
+// marshalled content of a protobuf message.
+func fnProtoToProto(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var msg *skyProtoMessage
+	if err := wantSingleProtoMessage("proto.proto", args, kwargs, &msg); err != nil {
+		return nil, err
+	}
+	protoData, err := proto.Marshal(msg.msg)
+	if err != nil {
+		return nil, err
+	}
+	return starlark.String(string(protoData)), nil
+}
+
 // Implementation of the `proto.from_text()` built-in function.
 // Returns the Protobuf message for text-formatted content.
 func fnProtoFromText(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -345,6 +372,24 @@ func fnProtoFromYaml(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	msg := proto.Clone(protoMsgType.emptyMsg)
 	msg.Reset()
 	if err := jsonpb.UnmarshalString(string(jsonData), msg); err != nil {
+		return nil, err
+	}
+	return NewSkyProtoMessage(msg), nil
+}
+
+func fnProtoFromProto(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var msgType starlark.Value
+	var value starlark.String
+	if err := starlark.UnpackPositionalArgs("proto.from_proto", args, kwargs, 2, &msgType, &value); err != nil {
+		return nil, err
+	}
+	protoMsgType, ok := msgType.(*skyProtoMessageType)
+	if !ok {
+		return nil, fmt.Errorf("%s: for parameter 2: got %s, want proto.MessageType", "proto.from_proto", msgType.Type())
+	}
+	msg := proto.Clone(protoMsgType.emptyMsg)
+	msg.Reset()
+	if err := proto.Unmarshal([]byte(value), msg); err != nil {
 		return nil, err
 	}
 	return NewSkyProtoMessage(msg), nil
