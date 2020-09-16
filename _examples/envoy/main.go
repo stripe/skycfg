@@ -59,6 +59,7 @@ usage: %s FILENAME
 	}
 
 	marshaler := &jsonpb.Marshaler{
+		OrigName: true,
 		Indent: "\t",
 	}
 	protos, err := config.Main(context.Background())
