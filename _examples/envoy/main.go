@@ -34,11 +34,10 @@ import (
 	_ "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 
-	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v2"
-
 	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
 	envoy_types "github.com/envoyproxy/go-control-plane/pkg/cache/types"
+	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v2"
 	server "github.com/envoyproxy/go-control-plane/pkg/server/v2"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
@@ -124,21 +123,49 @@ usage: %s FILENAME
 	})
 
 	c := cache.NewSnapshotCache(true, h, logger)
-	var snapshot cache.Snapshot
-	snapshot.Resources = resourcesByType
+
+	snapshot := cache.Snapshot{
+		Resources: resourcesByType,
+	}
 
 	c.SetSnapshot(node, snapshot)
 
+	cbFuncs := server.CallbackFuncs{
+		StreamOpenFunc: func(ctx context.Context, id int64, s string) error {
+			logger.Printf("[%d] accepted connection from peer: %+v", id, s)
+			return nil
+		},
+		StreamRequestFunc: func(id int64, req *api.DiscoveryRequest) error {
+			logger.Printf(
+				"[%d, %s] recieved discovery request from peer: %+v",
+				id, req.GetTypeUrl(), req.GetNode().GetId(),
+			)
+			return nil
+		},
+		StreamResponseFunc: func(id int64, req *api.DiscoveryRequest, res *api.DiscoveryResponse) {
+			logger.Printf(
+				"[%d, %s] sending discovery response to peer: %+v",
+				id, req.GetTypeUrl(), req.GetNode().GetId(),
+			)
+		},
+	}
+
 	ctx := context.Background()
-	server := server.NewServer(ctx, c, nil)
+	server := server.NewServer(ctx, c, cbFuncs)
 
 	addr := fmt.Sprintf(":%d", port)
 	lis, err := net.Listen("tcp", addr)
-	log.Infof("Starting server on port %v", addr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+
+	log.Infof("Starting server on port %v", addr)
 	grpcServer := grpc.NewServer()
+
 	discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
-	grpcServer.Serve(lis)
+	api.RegisterClusterDiscoveryServiceServer(grpcServer, server)
+
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Fatalf("err: %+v", err)
+	}
 }
