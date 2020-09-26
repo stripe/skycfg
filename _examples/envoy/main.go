@@ -39,7 +39,6 @@ import (
 	envoy_types "github.com/envoyproxy/go-control-plane/pkg/cache/types"
 	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v2"
 	server "github.com/envoyproxy/go-control-plane/pkg/server/v2"
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
 	"github.com/stripe/skycfg"
@@ -51,8 +50,6 @@ const (
 )
 
 var (
-	version = 0
-
 	logger = log.New()
 )
 
@@ -85,6 +82,43 @@ func resourcesByType(version string, protos []proto.Message) [envoy_types.Unknow
 	return ret
 }
 
+type ConfigLoader struct {
+	Cache   cache.SnapshotCache
+	version uint
+}
+
+func (c *ConfigLoader) evalSkycfg(filename string) ([]proto.Message, error) {
+	config, err := skycfg.Load(
+		context.Background(), filename,
+		skycfg.WithGlobals(skycfg.UnstablePredeclaredModules(nil)),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error loading %q: %v", filename, err)
+	}
+
+	protos, err := config.Main(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("error evaluating %q: %v", config.Filename(), err)
+	}
+
+	return protos, nil
+}
+
+func (c *ConfigLoader) Load(filename string) {
+	protos, err := c.evalSkycfg(filename)
+	if err != nil {
+		log.Fatalf("%+v", err)
+	}
+	resourcesByType := resourcesByType(fmt.Sprintf("%d", c.version), protos)
+
+	snapshot := cache.Snapshot{
+		Resources: resourcesByType,
+	}
+
+	c.Cache.SetSnapshot(node, snapshot)
+	c.version++
+}
+
 func main() {
 	argv := os.Args
 
@@ -95,40 +129,17 @@ usage: %s FILENAME
 `, os.Args[0])
 		os.Exit(1)
 	}
+
 	filename := argv[1]
-
-	config, err := skycfg.Load(
-		context.Background(), filename,
-		skycfg.WithGlobals(skycfg.UnstablePredeclaredModules(nil)),
-	)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error loading %q: %v\n", filename, err)
-		os.Exit(1)
-	}
-
-	_ = &jsonpb.Marshaler{
-		OrigName: true,
-		Indent:   "\t",
-	}
-	protos, err := config.Main(context.Background())
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error evaluating %q: %v\n", config.Filename(), err)
-		os.Exit(1)
-	}
-
-	resourcesByType := resourcesByType(fmt.Sprintf("%d", version), protos)
-
 	h := hasher(func(_ *core.Node) string {
 		return node
 	})
-
 	c := cache.NewSnapshotCache(true, h, logger)
 
-	snapshot := cache.Snapshot{
-		Resources: resourcesByType,
+	loader := &ConfigLoader{
+		Cache: c,
 	}
-
-	c.SetSnapshot(node, snapshot)
+	loader.Load(filename)
 
 	cbFuncs := server.CallbackFuncs{
 		StreamOpenFunc: func(ctx context.Context, id int64, s string) error {
