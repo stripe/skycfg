@@ -20,6 +20,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 
 	api "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
@@ -113,6 +116,9 @@ func resourcesByType(version string, protos []proto.Message) [envoy_types.Unknow
 type ConfigLoader struct {
 	Cache   cache.SnapshotCache
 	version uint
+
+	// Protects cache and version
+	sync.Mutex
 }
 
 func (c *ConfigLoader) evalSkycfg(filename string) ([]proto.Message, error) {
@@ -137,12 +143,14 @@ func (c *ConfigLoader) Load(filename string) {
 	if err != nil {
 		log.Fatalf("%+v", err)
 	}
-	resourcesByType := resourcesByType(fmt.Sprintf("%d", c.version), protos)
+	resourcesByType := resourcesByType(fmt.Sprintf("%d-%d", os.Getpid(), c.version), protos)
 
 	snapshot := cache.Snapshot{
 		Resources: resourcesByType,
 	}
 
+	c.Lock()
+	defer c.Unlock()
 	c.Cache.SetSnapshot(node, snapshot)
 	c.version++
 }
@@ -184,6 +192,20 @@ usage: %s FILENAME
 
 	discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
 	api.RegisterClusterDiscoveryServiceServer(grpcServer, server)
+
+	sigCh := make(chan os.Signal, 1)
+	signal.Notify(sigCh, syscall.SIGHUP)
+
+	go func(sigCh chan os.Signal) {
+		for sig := range sigCh {
+			switch sig {
+			case syscall.SIGHUP:
+				log.Printf("recieved signal %q, reloading Envoy config", sig)
+				loader.Load(filename)
+			default:
+			}
+		}
+	}(sigCh)
 
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("err: %+v", err)
