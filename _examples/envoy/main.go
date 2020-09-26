@@ -51,6 +51,34 @@ const (
 
 var (
 	logger = log.New()
+
+	cbFuncs = server.CallbackFuncs{
+		StreamOpenFunc: func(ctx context.Context, id int64, s string) error {
+			logger.Printf("[%d] accepted connection from peer: %+v", id, s)
+			return nil
+		},
+		StreamRequestFunc: func(id int64, req *api.DiscoveryRequest) error {
+			logger.Printf(
+				"[%d, %s] recieved discovery request (version %q) from peer: %+v",
+				id, req.GetTypeUrl(), req.GetVersionInfo(), req.GetNode().GetId(),
+			)
+			logger.Debugf(
+				"[%d, %s] discovery request contents: %#v",
+				id, req.GetTypeUrl(), req,
+			)
+			return nil
+		},
+		StreamResponseFunc: func(id int64, req *api.DiscoveryRequest, res *api.DiscoveryResponse) {
+			logger.Printf(
+				"[%d, %s] sending discovery response (version %q) to peer: %+v",
+				id, req.GetTypeUrl(), res.GetVersionInfo(), req.GetNode().GetId(),
+			)
+			logger.Debugf(
+				"[%d, %s] discovery response contents: %#v",
+				id, req.GetTypeUrl(), res,
+			)
+		},
+	}
 )
 
 type hasher func(node *core.Node) string
@@ -121,6 +149,7 @@ func (c *ConfigLoader) Load(filename string) {
 
 func main() {
 	argv := os.Args
+	//logger.SetLevel(log.DebugLevel)
 
 	if len(argv) != 2 {
 		fmt.Fprintf(os.Stderr, `Demo Envoy CLI for Skycfg, a library for building complex typed configs.
@@ -140,26 +169,6 @@ usage: %s FILENAME
 		Cache: c,
 	}
 	loader.Load(filename)
-
-	cbFuncs := server.CallbackFuncs{
-		StreamOpenFunc: func(ctx context.Context, id int64, s string) error {
-			logger.Printf("[%d] accepted connection from peer: %+v", id, s)
-			return nil
-		},
-		StreamRequestFunc: func(id int64, req *api.DiscoveryRequest) error {
-			logger.Printf(
-				"[%d, %s] recieved discovery request from peer: %+v",
-				id, req.GetTypeUrl(), req.GetNode().GetId(),
-			)
-			return nil
-		},
-		StreamResponseFunc: func(id int64, req *api.DiscoveryRequest, res *api.DiscoveryResponse) {
-			logger.Printf(
-				"[%d, %s] sending discovery response to peer: %+v",
-				id, req.GetTypeUrl(), req.GetNode().GetId(),
-			)
-		},
-	}
 
 	ctx := context.Background()
 	server := server.NewServer(ctx, c, cbFuncs)
