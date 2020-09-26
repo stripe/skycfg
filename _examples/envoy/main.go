@@ -16,26 +16,75 @@
 package main
 
 import (
-	"os"
-	"fmt"
 	"context"
+	"fmt"
+	"net"
+	"os"
 
-	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2"
+	api "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/cluster"
-	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/endpoint"
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/listener"
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/ratelimit"
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
+	"google.golang.org/grpc"
 
-	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
-	_ "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/config/bootstrap/v2"
+	_ "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 
+	cache "github.com/envoyproxy/go-control-plane/pkg/cache/v2"
+
+	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
+	discovery "github.com/envoyproxy/go-control-plane/envoy/service/discovery/v2"
+	envoy_types "github.com/envoyproxy/go-control-plane/pkg/cache/types"
+	server "github.com/envoyproxy/go-control-plane/pkg/server/v2"
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/golang/protobuf/proto"
+	log "github.com/sirupsen/logrus"
 	"github.com/stripe/skycfg"
 )
+
+const (
+	node = ""
+	port = 8080
+)
+
+var (
+	version = 0
+
+	logger = log.New()
+)
+
+type hasher func(node *core.Node) string
+
+func (h hasher) ID(node *core.Node) string {
+	return h(node)
+}
+
+func resourcesByType(version string, protos []proto.Message) [envoy_types.UnknownType]cache.Resources {
+	m := map[envoy_types.ResponseType][]envoy_types.Resource{}
+	for _, proto := range protos {
+		switch proto.(type) {
+		case *api.ClusterLoadAssignment:
+			m[envoy_types.Endpoint] = append(m[envoy_types.Endpoint], envoy_types.Resource(proto))
+		case *api.Listener:
+			m[envoy_types.Listener] = append(m[envoy_types.Listener], envoy_types.Resource(proto))
+		case *api.Cluster:
+			m[envoy_types.Cluster] = append(m[envoy_types.Cluster], envoy_types.Resource(proto))
+		default:
+			m[envoy_types.UnknownType] = append(m[envoy_types.UnknownType], envoy_types.Resource(proto))
+		}
+	}
+
+	ret := [envoy_types.UnknownType]cache.Resources{}
+	for k, v := range m {
+		ret[k] = cache.NewResources(version, v)
+	}
+
+	return ret
+}
 
 func main() {
 	argv := os.Args
@@ -58,9 +107,9 @@ usage: %s FILENAME
 		os.Exit(1)
 	}
 
-	marshaler := &jsonpb.Marshaler{
+	_ = &jsonpb.Marshaler{
 		OrigName: true,
-		Indent: "\t",
+		Indent:   "\t",
 	}
 	protos, err := config.Main(context.Background())
 	if err != nil {
@@ -68,7 +117,28 @@ usage: %s FILENAME
 		os.Exit(1)
 	}
 
-	for _, p := range protos {
-		marshaler.Marshal(os.Stdout, p)
+	resourcesByType := resourcesByType(fmt.Sprintf("%d", version), protos)
+
+	h := hasher(func(_ *core.Node) string {
+		return node
+	})
+
+	c := cache.NewSnapshotCache(true, h, logger)
+	var snapshot cache.Snapshot
+	snapshot.Resources = resourcesByType
+
+	c.SetSnapshot(node, snapshot)
+
+	ctx := context.Background()
+	server := server.NewServer(ctx, c, nil)
+
+	addr := fmt.Sprintf(":%d", port)
+	lis, err := net.Listen("tcp", addr)
+	log.Infof("Starting server on port %v", addr)
+	if err != nil {
+		log.Fatalf("failed to listen: %v", err)
 	}
+	grpcServer := grpc.NewServer()
+	discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
+	grpcServer.Serve(lis)
 }
