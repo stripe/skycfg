@@ -35,6 +35,7 @@ import (
 
 	_ "github.com/envoyproxy/go-control-plane/envoy/config/bootstrap/v2"
 	_ "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
+	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/access_loggers/file/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/filters/network/http_connection_manager/v3"
 
 	core "github.com/envoyproxy/go-control-plane/envoy/api/v2/core"
@@ -138,10 +139,10 @@ func (c *ConfigLoader) evalSkycfg(filename string) ([]proto.Message, error) {
 	return protos, nil
 }
 
-func (c *ConfigLoader) Load(filename string) {
+func (c *ConfigLoader) Load(filename string) error {
 	protos, err := c.evalSkycfg(filename)
 	if err != nil {
-		log.Fatalf("%+v", err)
+		return err
 	}
 	resourcesByType := resourcesByType(fmt.Sprintf("%d-%d", os.Getpid(), c.version), protos)
 
@@ -153,6 +154,7 @@ func (c *ConfigLoader) Load(filename string) {
 	defer c.Unlock()
 	c.Cache.SetSnapshot(node, snapshot)
 	c.version++
+	return nil
 }
 
 func main() {
@@ -176,7 +178,9 @@ usage: %s FILENAME
 	loader := &ConfigLoader{
 		Cache: c,
 	}
-	loader.Load(filename)
+	if err := loader.Load(filename); err != nil {
+		log.Fatalf("%+v", err)
+	}
 
 	ctx := context.Background()
 	server := server.NewServer(ctx, c, cbFuncs)
@@ -201,7 +205,9 @@ usage: %s FILENAME
 			switch sig {
 			case syscall.SIGHUP:
 				log.Printf("recieved signal %q, reloading Envoy config", sig)
-				loader.Load(filename)
+				if err := loader.Load(filename); err != nil {
+					log.Errorf("%+v", err)
+				}
 			default:
 			}
 		}
