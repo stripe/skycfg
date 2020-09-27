@@ -218,6 +218,7 @@ func (c *ConfigLoader) Load(filename string) error {
 	oldSnapshot, _ := c.Cache.GetSnapshot(node)
 	snapshot := oldSnapshot
 
+	// Update all changed resources in the new snapshot
 	for resourceType, oldResources := range oldSnapshot.Resources {
 		newResources := resourcesByType[resourceType]
 		if !resourcesEqual(oldResources, newResources) {
@@ -229,6 +230,7 @@ func (c *ConfigLoader) Load(filename string) error {
 		return fmt.Errorf("snapshot not consistent: %+v", err)
 	}
 
+	// Only send a config update if we've actually changed anything
 	if snapshotsEqual(snapshot, oldSnapshot) {
 		logger.Printf("[skycfg] skipping update as all resources are equal")
 		return nil
