@@ -203,7 +203,6 @@ usage: %s FILENAME
 	grpcServer := grpc.NewServer()
 
 	discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
-	api.RegisterClusterDiscoveryServiceServer(grpcServer, server)
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP)
