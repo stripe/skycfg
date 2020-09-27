@@ -17,6 +17,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"net"
 	"os"
@@ -51,10 +52,12 @@ import (
 
 const (
 	node = ""
-	port = 8080
 )
 
 var (
+	addr  = flag.String("addr", ":8080", "Address to start the discovery service on")
+	level = flag.String("log-level", "info", "Log level to write application logs")
+
 	logger  = log.New()
 	limiter = rate.NewLimiter(1, 1)
 
@@ -68,8 +71,9 @@ var (
 		},
 		StreamRequestFunc: func(id int64, req *api.DiscoveryRequest) error {
 			if err := limiter.Wait(context.Background()); err != nil {
-				logger.Errorf("could not enforce rate limit: %+v", err)
+				logger.Errorf("[%d, %s] could not enforce rate limit: %+v", id, req.GetTypeUrl(), err)
 			}
+
 			logger.Printf(
 				"[%d, %s] recieved discovery request (version %q) from peer: %+v",
 				id, req.GetTypeUrl(), req.GetVersionInfo(), req.GetNode().GetId(),
@@ -166,10 +170,17 @@ func (c *ConfigLoader) Load(filename string) error {
 }
 
 func main() {
-	argv := os.Args
-	//logger.SetLevel(log.DebugLevel)
+	flag.Parse()
 
-	if len(argv) != 2 {
+	argv := flag.Args()
+
+	logrusLevel, err := log.ParseLevel(*level)
+	if err != nil {
+		log.Fatalf("could not set log level to %q: %+v", *level, err)
+	}
+	logger.SetLevel(logrusLevel)
+
+	if len(argv) != 1 {
 		fmt.Fprintf(os.Stderr, `Demo Envoy CLI for Skycfg, a library for building complex typed configs.
 
 usage: %s FILENAME
@@ -177,7 +188,7 @@ usage: %s FILENAME
 		os.Exit(1)
 	}
 
-	filename := argv[1]
+	filename := argv[0]
 	h := hasher(func(_ *core.Node) string {
 		return node
 	})
@@ -193,13 +204,12 @@ usage: %s FILENAME
 	ctx := context.Background()
 	server := server.NewServer(ctx, c, cbFuncs)
 
-	addr := fmt.Sprintf(":%d", port)
-	lis, err := net.Listen("tcp", addr)
+	lis, err := net.Listen("tcp", *addr)
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
 
-	log.Infof("Starting server on port %v", addr)
+	log.Infof("Starting server on %s", *addr)
 	grpcServer := grpc.NewServer()
 
 	discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
