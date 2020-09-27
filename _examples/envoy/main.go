@@ -213,21 +213,27 @@ func (c *ConfigLoader) Load(filename string) error {
 
 	resourcesByType := resourcesByType(fmt.Sprintf("%d-%d", os.Getpid(), c.version), protos)
 
-	snapshot := cache.Snapshot{
-		Resources: resourcesByType,
+	c.Lock()
+	defer c.Unlock()
+	oldSnapshot, _ := c.Cache.GetSnapshot(node)
+	snapshot := oldSnapshot
+
+	for resourceType, oldResources := range oldSnapshot.Resources {
+		newResources := resourcesByType[resourceType]
+		if !resourcesEqual(oldResources, newResources) {
+			snapshot.Resources[resourceType] = newResources
+		}
 	}
 
 	if err := snapshot.Consistent(); err != nil {
 		return fmt.Errorf("snapshot not consistent: %+v", err)
 	}
 
-	c.Lock()
-	defer c.Unlock()
-	oldSnapshot, _ := c.Cache.GetSnapshot(node)
-	if snapshotsEqual(oldSnapshot, snapshot) {
+	if snapshotsEqual(snapshot, oldSnapshot) {
 		logger.Printf("[skycfg] skipping update as all resources are equal")
 		return nil
 	}
+
 	c.Cache.SetSnapshot(node, snapshot)
 	c.version++
 	return nil
