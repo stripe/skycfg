@@ -134,11 +134,33 @@ type ConfigLoader struct {
 	sync.Mutex
 }
 
+type validatableProto interface {
+	proto.Message
+	Validate() error
+}
+
+func (c *ConfigLoader) validateProtos(protos []proto.Message) error {
+	for _, proto := range protos {
+		validatable, ok := proto.(validatableProto)
+		log.Debugf("validating: %+v", proto)
+		if !ok {
+			log.Debugf("cannot validate: %+v", proto)
+			continue
+		}
+
+		if err := validatable.Validate(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *ConfigLoader) evalSkycfg(filename string) ([]proto.Message, error) {
 	config, err := skycfg.Load(
 		context.Background(), filename,
 		skycfg.WithGlobals(skycfg.UnstablePredeclaredModules(nil)),
 	)
+
 	if err != nil {
 		return nil, fmt.Errorf("error loading %q: %v", filename, err)
 	}
@@ -146,6 +168,10 @@ func (c *ConfigLoader) evalSkycfg(filename string) ([]proto.Message, error) {
 	protos, err := config.Main(context.Background())
 	if err != nil {
 		return nil, fmt.Errorf("error evaluating %q: %v", config.Filename(), err)
+	}
+
+	if err := c.validateProtos(protos); err != nil {
+		return nil, fmt.Errorf("validation error: %+v", err)
 	}
 
 	return protos, nil
@@ -156,6 +182,7 @@ func (c *ConfigLoader) Load(filename string) error {
 	if err != nil {
 		return err
 	}
+
 	resourcesByType := resourcesByType(fmt.Sprintf("%d-%d", os.Getpid(), c.version), protos)
 
 	snapshot := cache.Snapshot{
