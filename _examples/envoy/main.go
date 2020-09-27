@@ -46,6 +46,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	log "github.com/sirupsen/logrus"
 	"github.com/stripe/skycfg"
+	"golang.org/x/time/rate"
 )
 
 const (
@@ -54,14 +55,21 @@ const (
 )
 
 var (
-	logger = log.New()
+	logger  = log.New()
+	limiter = rate.NewLimiter(1, 1)
 
 	cbFuncs = server.CallbackFuncs{
 		StreamOpenFunc: func(ctx context.Context, id int64, s string) error {
 			logger.Printf("[%d] accepted connection from peer: %+v", id, s)
 			return nil
 		},
+		StreamClosedFunc: func(id int64) {
+			logger.Printf("[%d] connection closed for peer", id)
+		},
 		StreamRequestFunc: func(id int64, req *api.DiscoveryRequest) error {
+			if err := limiter.Wait(context.Background()); err != nil {
+				logger.Errorf("could not enforce rate limit: %+v", err)
+			}
 			logger.Printf(
 				"[%d, %s] recieved discovery request (version %q) from peer: %+v",
 				id, req.GetTypeUrl(), req.GetVersionInfo(), req.GetNode().GetId(),
