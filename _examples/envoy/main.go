@@ -288,7 +288,7 @@ usage: %s FILENAME
 	discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
 
 	sigCh := make(chan os.Signal, 1)
-	signal.Notify(sigCh, syscall.SIGHUP)
+	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGSTOP)
 
 	go func(sigCh chan os.Signal) {
 		for sig := range sigCh {
@@ -297,6 +297,9 @@ usage: %s FILENAME
 				if err := loader.Load(filename); err != nil {
 					logger.Errorf("%+v", err)
 				}
+			case syscall.SIGINT, syscall.SIGTERM, syscall.SIGSTOP:
+				logger.Warnf("caught signal %v, exiting", sig)
+				grpcServer.Stop()
 			default:
 			}
 		}
