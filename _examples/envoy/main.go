@@ -62,19 +62,19 @@ var (
 
 	cbFuncs = server.CallbackFuncs{
 		StreamOpenFunc: func(ctx context.Context, id int64, s string) error {
-			logger.Printf("[%d] accepted connection from peer: %+v", id, s)
+			logger.Printf("[xds][%d] accepted connection from peer: %+v", id, s)
 			return nil
 		},
 		StreamClosedFunc: func(id int64) {
-			logger.Printf("[%d] connection closed for peer", id)
+			logger.Printf("[xds][%d] connection closed for peer", id)
 		},
 		StreamRequestFunc: func(id int64, req *api.DiscoveryRequest) error {
 			if err := limiter.Wait(context.Background()); err != nil {
-				logger.Errorf("[%d, %s] could not enforce rate limit: %+v", id, req.GetTypeUrl(), err)
+				logger.Errorf("[xds][%d, %s] could not enforce rate limit: %+v", id, req.GetTypeUrl(), err)
 			}
 
 			logger.Printf(
-				"[%d, %s] recieved discovery request (version %q) from peer: %+v",
+				"[xds][%d, %s] recieved discovery request (version %q) from peer: %+v",
 				id, req.GetTypeUrl(), req.GetVersionInfo(), req.GetNode().GetId(),
 			)
 			logger.Debugf(
@@ -85,11 +85,11 @@ var (
 		},
 		StreamResponseFunc: func(id int64, req *api.DiscoveryRequest, res *api.DiscoveryResponse) {
 			logger.Printf(
-				"[%d, %s] sending discovery response (version %q) to peer: %+v",
+				"[xds][%d, %s] sending discovery response (version %q) to peer: %+v",
 				id, req.GetTypeUrl(), res.GetVersionInfo(), req.GetNode().GetId(),
 			)
 			logger.Debugf(
-				"[%d, %s] discovery response contents: %#v",
+				"[xds][%d, %s] discovery response contents: %#v",
 				id, req.GetTypeUrl(), res,
 			)
 		},
@@ -170,9 +170,9 @@ type validatableProto interface {
 func (c *ConfigLoader) validateProtos(protos []proto.Message) error {
 	for _, proto := range protos {
 		validatable, ok := proto.(validatableProto)
-		log.Debugf("validating: %+v", proto)
+		logger.Debugf("validating: %+v", proto)
 		if !ok {
-			log.Debugf("cannot validate: %+v", proto)
+			logger.Debugf("cannot validate: %+v", proto)
 			continue
 		}
 
@@ -225,7 +225,7 @@ func (c *ConfigLoader) Load(filename string) error {
 	defer c.Unlock()
 	oldSnapshot, _ := c.Cache.GetSnapshot(node)
 	if snapshotsEqual(oldSnapshot, snapshot) {
-		log.Printf("skipping update as all resources are equal")
+		logger.Printf("[skycfg] skipping update as all resources are equal")
 		return nil
 	}
 	c.Cache.SetSnapshot(node, snapshot)
@@ -240,7 +240,7 @@ func main() {
 
 	logrusLevel, err := log.ParseLevel(*level)
 	if err != nil {
-		log.Fatalf("could not set log level to %q: %+v", *level, err)
+		logger.Fatalf("could not set log level to %q: %+v", *level, err)
 	}
 	logger.SetLevel(logrusLevel)
 
@@ -264,17 +264,17 @@ usage: %s FILENAME
 	}
 
 	if err := loader.Load(filename); err != nil {
-		log.Fatalf("%+v", err)
+		logger.Fatalf("%+v", err)
 	}
 
 	server := server.NewServer(context.Background(), c, cbFuncs)
 
 	lis, err := net.Listen("tcp", *addr)
 	if err != nil {
-		log.Fatalf("failed to listen: %v", err)
+		logger.Fatalf("failed to listen: %v", err)
 	}
 
-	log.Infof("Starting server on %s", *addr)
+	logger.Infof("Starting server on %s", *addr)
 	grpcServer := grpc.NewServer()
 
 	discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
@@ -286,9 +286,8 @@ usage: %s FILENAME
 		for sig := range sigCh {
 			switch sig {
 			case syscall.SIGHUP:
-				log.Printf("recieved signal %q, reloading Envoy config", sig)
 				if err := loader.Load(filename); err != nil {
-					log.Errorf("%+v", err)
+					logger.Errorf("%+v", err)
 				}
 			default:
 			}
@@ -296,6 +295,6 @@ usage: %s FILENAME
 	}(sigCh)
 
 	if err := grpcServer.Serve(lis); err != nil {
-		log.Fatalf("err: %+v", err)
+		logger.Fatalf("err: %+v", err)
 	}
 }
