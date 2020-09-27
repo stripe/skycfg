@@ -126,6 +126,35 @@ func resourcesByType(version string, protos []proto.Message) [envoy_types.Unknow
 	return ret
 }
 
+func resourcesEqual(a, b cache.Resources) bool {
+	for aKey, aValue := range a.Items {
+		bValue := b.Items[aKey]
+		if !proto.Equal(aValue, bValue) {
+			return false
+		}
+	}
+
+	for bKey, bValue := range b.Items {
+		aValue := a.Items[bKey]
+		if !proto.Equal(aValue, bValue) {
+			return false
+		}
+	}
+	return true
+}
+
+func snapshotsEqual(a, b cache.Snapshot) bool {
+	for i := 0; i < len(a.Resources) && i < len(b.Resources); i++ {
+		aResources := a.Resources[i]
+		bResources := b.Resources[i]
+
+		if !resourcesEqual(aResources, bResources) {
+			return false
+		}
+	}
+	return true
+}
+
 type ConfigLoader struct {
 	Cache   cache.SnapshotCache
 	version uint
@@ -189,8 +218,17 @@ func (c *ConfigLoader) Load(filename string) error {
 		Resources: resourcesByType,
 	}
 
+	if err := snapshot.Consistent(); err != nil {
+		return fmt.Errorf("snapshot not consistent: %+v", err)
+	}
+
 	c.Lock()
 	defer c.Unlock()
+	oldSnapshot, _ := c.Cache.GetSnapshot(node)
+	if snapshotsEqual(oldSnapshot, snapshot) {
+		log.Printf("skipping update as all resources are equal")
+		return nil
+	}
 	c.Cache.SetSnapshot(node, snapshot)
 	c.version++
 	return nil
