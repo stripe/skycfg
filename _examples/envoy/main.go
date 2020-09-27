@@ -193,10 +193,10 @@ usage: %s FILENAME
 		return node
 	})
 	c := cache.NewSnapshotCache(true, h, logger)
-
 	loader := &ConfigLoader{
 		Cache: c,
 	}
+
 	if err := loader.Load(filename); err != nil {
 		log.Fatalf("%+v", err)
 	}
