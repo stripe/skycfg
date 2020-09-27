@@ -32,8 +32,6 @@ import (
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/listener"
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/ratelimit"
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/route"
-	"google.golang.org/grpc"
-
 	_ "github.com/envoyproxy/go-control-plane/envoy/config/bootstrap/v2"
 	_ "github.com/envoyproxy/go-control-plane/envoy/config/route/v3"
 	_ "github.com/envoyproxy/go-control-plane/envoy/extensions/access_loggers/file/v3"
@@ -48,6 +46,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/stripe/skycfg"
 	"golang.org/x/time/rate"
+	"google.golang.org/grpc"
 )
 
 const (
@@ -97,9 +96,9 @@ var (
 	}
 )
 
-type hasher func(node *core.Node) string
+type nodeHashFunc func(node *core.Node) string
 
-func (h hasher) ID(node *core.Node) string {
+func (h nodeHashFunc) ID(node *core.Node) string {
 	return h(node)
 }
 
@@ -254,10 +253,12 @@ usage: %s FILENAME
 	}
 
 	filename := argv[0]
-	h := hasher(func(_ *core.Node) string {
+
+	h := nodeHashFunc(func(_ *core.Node) string {
 		return node
 	})
 	c := cache.NewSnapshotCache(true, h, logger)
+
 	loader := &ConfigLoader{
 		Cache: c,
 	}
@@ -266,8 +267,7 @@ usage: %s FILENAME
 		log.Fatalf("%+v", err)
 	}
 
-	ctx := context.Background()
-	server := server.NewServer(ctx, c, cbFuncs)
+	server := server.NewServer(context.Background(), c, cbFuncs)
 
 	lis, err := net.Listen("tcp", *addr)
 	if err != nil {
