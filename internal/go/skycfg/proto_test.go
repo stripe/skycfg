@@ -29,7 +29,6 @@ import (
 	"time"
 
 	gogo_proto "github.com/gogo/protobuf/proto"
-	gogo_types "github.com/gogo/protobuf/types"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/any"
@@ -364,29 +363,6 @@ func TestProtoToJsonFull(t *testing.T) {
 	want := "{\n\t\"f_string\": \"some string\"\n}"
 	if want != got {
 		t.Fatalf("to_json_full: wanted %q, got %q", want, got)
-	}
-}
-
-func TestProtoToAnyGogo(t *testing.T) {
-	val := skyEval(t, `proto.to_any(gogo_proto.package("skycfg.test_proto").MessageGogo(
-		f_string = "some string",
-	))`)
-	myAny := val.(*skyProtoMessage).msg.(*gogo_types.Any)
-
-	want := "type.googleapis.com/skycfg.test_proto.MessageGogo"
-	if want != myAny.GetTypeUrl() {
-		t.Fatalf("to_any: wanted %q, got %q", want, myAny.GetTypeUrl())
-	}
-
-	msg := pb.MessageGogo{}
-	err := gogo_types.UnmarshalAny(myAny, &msg)
-	if err != nil {
-		t.Fatalf("to_any: could not unmarshal: %v", err)
-	}
-
-	want = "some string"
-	if want != msg.GetFString() {
-		t.Fatalf("to_any: wanted %q, got %q", want, msg.GetFString())
 	}
 }
 

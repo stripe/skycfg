@@ -23,8 +23,6 @@ import (
 	"reflect"
 	"sort"
 
-	gogo_proto "github.com/gogo/protobuf/proto"
-	gogo_types "github.com/gogo/protobuf/types"
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
@@ -244,21 +242,18 @@ func fnProtoToJson(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 // skyProtoMessage with an `Any` proto.Message in it.
 func fnProtoToAny(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var msg *skyProtoMessage
-	err := wantSingleProtoMessage("proto.to_any", args, kwargs, &msg)
+	err := wantSingleProtoMessage(fn.Name(), args, kwargs, &msg)
 	if err != nil {
 		return nil, err
 	}
 
-	// Disambiguate between golang and gogo encoded proto messages.
+	// Disambiguate between golang encoded proto messages.
 	var any proto.Message
 	if "" != proto.MessageName(msg.msg) {
 		// Returns a golang any.Any type.
 		any, err = ptypes.MarshalAny(msg.msg)
-	} else if "" != gogo_proto.MessageName(msg.msg) {
-		// Returns a gogo types.Any type.
-		any, err = gogo_types.MarshalAny(msg.msg)
 	} else {
-		return nil, fmt.Errorf("%s: could not get message name for %s", "proto.to_any", msg.Type())
+		return nil, fmt.Errorf("%s: could not get message name for %s", fn.Name(), msg.Type())
 	}
 	if err != nil {
 		return nil, err
