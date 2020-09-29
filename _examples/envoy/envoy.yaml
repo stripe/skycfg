@@ -16,6 +16,12 @@ static_resources:
     dns_lookup_family: V4_ONLY
     http2_protocol_options: {}
     lb_policy: ROUND_ROBIN
+    health_checks:
+      grpc_health_check: {}
+      timeout: 0.1s
+      interval: 1s
+      unhealthy_threshold: 1
+      healthy_threshold: 1
     load_assignment:
       cluster_name: ads
       endpoints:

@@ -47,6 +47,8 @@ import (
 	"github.com/stripe/skycfg"
 	"golang.org/x/time/rate"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/health"
+	health_pb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 const (
@@ -286,6 +288,7 @@ usage: %s FILENAME
 	grpcServer := grpc.NewServer()
 
 	discovery.RegisterAggregatedDiscoveryServiceServer(grpcServer, server)
+	health_pb.RegisterHealthServer(grpcServer, health.NewServer())
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGSTOP)
