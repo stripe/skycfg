@@ -1,11 +1,9 @@
 module github.com/stripe/skycfg/_examples/wasm
 
-go 1.15
-
 require (
-	github.com/golang/protobuf v1.4.2
+	github.com/golang/protobuf v1.2.0
 	github.com/stripe/skycfg v0.0.0
-	gopkg.in/yaml.v2 v2.3.0
+	gopkg.in/yaml.v2 v2.2.1
 )
 
 replace github.com/stripe/skycfg => ../../
