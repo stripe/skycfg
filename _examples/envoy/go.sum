@@ -51,8 +51,8 @@ github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+
 github.com/stretchr/testify v1.2.2/go.mod h1:a8OnRcib4nhh0OaRAV+Yts87kKdq0PP7pXfy6kDkUVs=
 github.com/stretchr/testify v1.5.1 h1:nOGnQDM7FYENwehXlg/kFVnos3rEvtKTjRvOWSzb6H4=
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
-github.com/stripe/skycfg v0.0.0-20200828222231-758e0862dda7 h1:wrPPi9yLv4XcJiBY5CX1SE9zRPYG8m1Fwv89DBeLSL8=
-github.com/stripe/skycfg v0.0.0-20200828222231-758e0862dda7/go.mod h1:51M7cjklIBDknKJUVGuR9AnTpfk8IZQJDhxr1Yq7bb0=
+github.com/stripe/skycfg v0.0.0-20200930043820-677b39f98fc6 h1:xm6W/85t2nySlyiIu147WczipGCb8Vz6YjZenlGZ+g4=
+github.com/stripe/skycfg v0.0.0-20200930043820-677b39f98fc6/go.mod h1:51M7cjklIBDknKJUVGuR9AnTpfk8IZQJDhxr1Yq7bb0=
 go.starlark.net v0.0.0-20190604130855-6ddc71c0ba77 h1:KPzANX1mXqnSWenqVWkSTsQWiaUSpTY5GyGZKI6lStw=
 go.starlark.net v0.0.0-20190604130855-6ddc71c0ba77/go.mod h1:c1/X6cHgvdXj6pUlmWKMkuqRnW4K8x2vwt6JAaaircg=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=
