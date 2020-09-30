@@ -5,7 +5,6 @@ go:
   - "1.13"
   - "1.14"
   - "1.15"
-  - master
 env:
   global:
     - PROTOC_VERSION=3.6.1

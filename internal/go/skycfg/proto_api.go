@@ -27,7 +27,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"go.starlark.net/starlark"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 // UNSTABLE extension point for configuring how protobuf messages are loaded.
@@ -247,16 +247,10 @@ func fnProtoToAny(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple,
 		return nil, err
 	}
 
-	// Disambiguate between golang encoded proto messages.
-	var any proto.Message
-	if "" != proto.MessageName(msg.msg) {
-		// Returns a golang any.Any type.
-		any, err = ptypes.MarshalAny(msg.msg)
-	} else {
-		return nil, fmt.Errorf("%s: could not get message name for %s", fn.Name(), msg.Type())
-	}
+	// Returns a golang any.Any type.
+	any, err := ptypes.MarshalAny(msg.msg)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("%s: could not get message name for %s", fn.Name(), msg.Type())
 	}
 
 	return NewSkyProtoMessage(any), nil
