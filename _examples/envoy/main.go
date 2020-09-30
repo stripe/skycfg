@@ -20,11 +20,13 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"math/rand"
 	"net"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
+	"time"
 
 	api "github.com/envoyproxy/go-control-plane/envoy/api/v2"
 	_ "github.com/envoyproxy/go-control-plane/envoy/api/v2/auth"
@@ -214,7 +216,7 @@ func (c *ConfigLoader) Load(filename string) error {
 		return err
 	}
 
-	resourcesByType := resourcesByType(fmt.Sprintf("%d-%d", os.Getpid(), c.version), protos)
+	resourcesByType := resourcesByType(fmt.Sprintf("%d-%d-%d", rand.Int(), os.Getpid(), c.version), protos)
 
 	c.Lock()
 	defer c.Unlock()
@@ -262,6 +264,8 @@ usage: %s FILENAME
 `, os.Args[0])
 		os.Exit(1)
 	}
+
+	rand.Seed(time.Now().UnixNano())
 
 	filename := argv[0]
 
