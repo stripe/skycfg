@@ -314,6 +314,6 @@ usage: %s FILENAME
 	}(sigCh)
 
 	if err := grpcServer.Serve(lis); err != nil {
-		logger.Fatalf("err: %+v", err)
+		logger.Fatalf("%+v", err)
 	}
 }
