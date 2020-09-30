@@ -250,7 +250,7 @@ func fnProtoToAny(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple,
 	// Returns a golang any.Any type.
 	any, err := ptypes.MarshalAny(msg.msg)
 	if err != nil {
-		return nil, fmt.Errorf("%s: could not get message name for %s", fn.Name(), msg.Type())
+		return nil, err
 	}
 
 	return NewSkyProtoMessage(any), nil
