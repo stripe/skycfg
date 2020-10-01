@@ -1,0 +1,44 @@
+node:
+  id: "envoy"
+  cluster: "cluster"
+
+admin:
+  access_log_path: /tmp/admin_access.log
+  address:
+    socket_address: { address: 0.0.0.0, port_value: 9901 }
+
+static_resources:
+  clusters:
+  - name: ads
+    connect_timeout: 0.25s
+    type: LOGICAL_DNS
+    # Comment out the following line to test on v6 networks
+    dns_lookup_family: V4_ONLY
+    http2_protocol_options: {}
+    lb_policy: ROUND_ROBIN
+    health_checks:
+      grpc_health_check: {}
+      timeout: 0.1s
+      interval: 1s
+      unhealthy_threshold: 1
+      healthy_threshold: 1
+    load_assignment:
+      cluster_name: ads
+      endpoints:
+      - lb_endpoints:
+        - endpoint:
+            address:
+              socket_address:
+                address: host.docker.internal
+                port_value: 8080
+
+dynamic_resources:
+  cds_config: {ads: {}}
+  lds_config: {ads: {}}
+
+  ads_config:
+    api_type: GRPC
+    transport_api_version: V2
+    grpc_services:
+      envoy_grpc:
+        cluster_name: ads
