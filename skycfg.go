@@ -90,6 +90,12 @@ func AsProtoMessage(v starlark.Value) (proto.Message, bool) {
 	return impl.ToProtoMessage(v)
 }
 
+// NewProtoPackage returns a Starlark value representing the given Protobuf
+// package. It can be added to global symbols when loading a Skycfg config file.
+func NewProtoPackage(r unstableProtoRegistry, name string) starlark.Value {
+	return impl.NewSkyProtoPackage(r, name)
+}
+
 // A Config is a Skycfg config file that has been fully loaded and is ready
 // for execution.
 type Config struct {

@@ -169,10 +169,7 @@ func (mod *ProtoModule) fnProtoPackage(t *starlark.Thread, fn *starlark.Builtin,
 	if err := starlark.UnpackPositionalArgs("proto.package", args, kwargs, 1, &packageName); err != nil {
 		return nil, err
 	}
-	return &skyProtoPackage{
-		registry: mod.Registry,
-		name:     packageName,
-	}, nil
+	return NewSkyProtoPackage(mod.Registry, packageName), nil
 }
 
 func wantSingleProtoMessage(fnName string, args starlark.Tuple, kwargs []starlark.Tuple, msg **skyProtoMessage) error {
