@@ -34,11 +34,12 @@ func (*defaultProtoRegistry) UnstableEnumValueMap(name string) map[string]int32 
 	return proto.EnumValueMap(name)
 }
 
-// NewProtoPackage creates a Starlark value representing a named Protobuf package.
+// NewSkyProtoPackage creates a Starlark value representing a named Protobuf
+// package.
 //
 // Protobuf packagess are conceptually similar to a C++ namespace or Ruby
 // module, in that they're aggregated from multiple .proto source files.
-func newProtoPackage(registry ProtoRegistry, name string) starlark.Value {
+func NewSkyProtoPackage(registry ProtoRegistry, name string) starlark.Value {
 	return &skyProtoPackage{
 		registry: registry,
 		name:     name,
