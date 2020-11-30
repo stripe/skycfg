@@ -24,7 +24,7 @@ jobs:
       - uses: "actions/cache@v2"
         with:
           path: "cache"
-          key: "os=${{ matrix.os }};go=${{ matrix.go.version }}"
+          key: "os=${{ matrix.os }};go=${{ matrix.go.version }};v=1"
       - name: "Prepare workspace"
         run: |
           echo '#!/bin/bash' > entrypoint.sh
@@ -48,7 +48,7 @@ jobs:
               --test_output=errors
               --test_verbose_timeout_warnings
               --incompatible_strict_action_env
-              --repository_cache="${GITHUB_WORKSPACE}"/cache/repository_cache
-              --disk_cache="${GITHUB_WORKSPACE}"/cache/disk_cache
+              --repository_cache=/github/workspace/cache/repository_cache
+              --disk_cache=/github/workspace/cache/disk_cache
               --
               //...
