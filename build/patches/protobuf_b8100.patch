@@ -1,0 +1,31 @@
+Work around unnecessarily hard dependency on `@rules_python` in Protobuf.
+
+See https://github.com/protocolbuffers/protobuf/issues/8100
+
+diff --git BUILD BUILD
+index 112432160..8d59109d8 100644
+--- BUILD
++++ BUILD
+@@ -3,7 +3,6 @@
+ load("@bazel_skylib//rules:common_settings.bzl", "string_flag")
+ load("@rules_cc//cc:defs.bzl", "cc_binary", "cc_library", "cc_test", "objc_library", native_cc_proto_library = "cc_proto_library")
+ load("@rules_proto//proto:defs.bzl", "proto_lang_toolchain", "proto_library")
+-load("@rules_python//python:defs.bzl", "py_library")
+ load(":cc_proto_blacklist_test.bzl", "cc_proto_blacklist_test")
+ 
+ licenses(["notice"])
+diff --git protobuf.bzl protobuf.bzl
+index 12d3edb94..d592a7f4a 100644
+--- protobuf.bzl
++++ protobuf.bzl
+@@ -1,7 +1,9 @@
+ load("@bazel_skylib//lib:versions.bzl", "versions")
+ load("@rules_cc//cc:defs.bzl", "cc_library")
+ load("@rules_proto//proto:defs.bzl", "ProtoInfo")
+-load("@rules_python//python:defs.bzl", "py_library", "py_test")
++
++def py_library(*args, **kwargs): pass
++def py_test(*args, **kwargs): pass
+ 
+ def _GetPath(ctx, path):
+     if ctx.label.workspace_root:

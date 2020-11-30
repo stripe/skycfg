@@ -1,0 +1,20 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library")
+
+# gazelle:prefix github.com/stripe/skycfg
+# gazelle:build_file_name BUILD,BUILD.bazel
+# gazelle:go_naming_convention import
+
+# gazelle:exclude _examples
+
+go_library(
+    name = "skycfg",
+    srcs = ["skycfg.go"],
+    importpath = "github.com/stripe/skycfg",
+    visibility = ["//visibility:public"],
+    deps = [
+        "//internal/go/skycfg",
+        "@com_github_golang_protobuf//proto:go_default_library",
+        "@net_starlark_go//starlark",
+        "@net_starlark_go//starlarkstruct",
+    ],
+)
