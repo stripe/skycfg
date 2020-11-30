@@ -14,6 +14,7 @@ go_library(
 
 go_test(
     name = "gogocompat_test",
+    size = "small",
     srcs = ["gogocompat_test.go"],
     embed = [":gogocompat"],
     deps = [

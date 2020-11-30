@@ -1,0 +1,54 @@
+name: "Tests"
+on: ["push", "pull_request"]
+
+jobs:
+  tests:
+    name: "Go ${{ matrix.go.series }}"
+    runs-on: "${{ matrix.os }}"
+
+    strategy:
+      matrix:
+        os: ["ubuntu-20.04"]
+        go:
+          - series: "1.13"
+            version: "1.13.15"
+          - series: "1.14"
+            version: "1.14.12"
+          - series: "1.15"
+            version: "1.15.5"
+
+    steps:
+      - uses: "actions/checkout@v2"
+        with:
+          path: "src"
+      - uses: "actions/cache@v2"
+        with:
+          path: "cache"
+          key: "os=${{ matrix.os }};go=${{ matrix.go.version }}"
+      - name: "Prepare workspace"
+        run: |
+          echo '#!/bin/bash' > entrypoint.sh
+          echo 'cd "${GITHUB_WORKSPACE}"/src' >> entrypoint.sh
+          echo 'exec bazel "$@"' >> entrypoint.sh
+          chmod +x entrypoint.sh
+
+          echo "GO_VERSION = '${GO_VERSION}'" > src/build/go_version.bzl
+        env:
+          GO_VERSION: ${{ matrix.go.version }}
+      - name: "bazel test //..."
+        uses: "docker://l.gcr.io/google/bazel:3.5.0"
+        with:
+          entrypoint: "/github/workspace/entrypoint.sh"
+          args:
+            test
+              --announce_rc
+              --curses=no
+              --color=yes
+              --verbose_failures
+              --test_output=errors
+              --test_verbose_timeout_warnings
+              --incompatible_strict_action_env
+              --repository_cache="${GITHUB_WORKSPACE}"/cache/repository_cache
+              --disk_cache="${GITHUB_WORKSPACE}"/cache/disk_cache
+              --
+              //...

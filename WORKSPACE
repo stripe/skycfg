@@ -62,7 +62,8 @@ rules_proto_toolchains()
 
 go_rules_dependencies()
 
-go_register_toolchains()
+load("//build:go_version.bzl", "GO_VERSION")
+go_register_toolchains(go_version = GO_VERSION)
 
 gazelle_dependencies()
 

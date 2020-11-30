@@ -37,6 +37,7 @@ go_library(
 
 go_test(
     name = "skycfg_test",
+    size = "small",
     srcs = [
         "assert_test.go",
         "hash_test.go",
