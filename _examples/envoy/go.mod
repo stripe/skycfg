@@ -10,4 +10,5 @@ require (
 	github.com/stripe/skycfg v0.0.0-20200930043820-677b39f98fc6
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e
 	google.golang.org/grpc v1.27.0
+	google.golang.org/protobuf v1.25.1-0.20201016220047-aa45c4675289 // indirect
 )

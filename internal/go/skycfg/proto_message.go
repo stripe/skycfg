@@ -25,13 +25,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	dpb "github.com/golang/protobuf/ptypes/duration"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
+	"google.golang.org/protobuf/encoding/protojson"
+	duration_pb "google.golang.org/protobuf/types/known/durationpb"
+	wrappers "google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // A Starlark built-in type representing a Protobuf message. Provides attributes
@@ -93,8 +92,9 @@ func (msg *skyProtoMessage) MarshalJSON() ([]byte, error) {
 		return json.Marshal(msg.msg)
 	}
 
-	var jsonMarshaler = &jsonpb.Marshaler{OrigName: true}
-	jsonData, err := jsonMarshaler.MarshalToString(msg.msg)
+	jsonData, err := (protojson.MarshalOptions{
+		UseProtoNames: true,
+	}).Marshal(proto.MessageV2(msg.msg))
 	if err != nil {
 		return nil, err
 	}
@@ -333,7 +333,7 @@ func scalarToStarlark(val reflect.Value) starlark.Value {
 	case bool:
 		return starlark.Bool(f)
 	case time.Duration:
-		return NewSkyProtoMessage(ptypes.DurationProto(f))
+		return NewSkyProtoMessage(duration_pb.New(f))
 	}
 	if enum, ok := iface.(protoEnum); ok {
 		return &skyProtoEnumValue{
@@ -504,13 +504,13 @@ func valueFromStarlark(t reflect.Type, sky starlark.Value) (reflect.Value, error
 			return reflect.ValueOf(sky.msg).Elem(), nil
 		}
 
-		dpb, ok := sky.msg.(*dpb.Duration)
+		dpb, ok := sky.msg.(*duration_pb.Duration)
 		if ok && t == reflect.TypeOf(time.Duration(0)) {
-			d, err := ptypes.Duration(dpb)
-			if err != nil {
+			if err := dpb.CheckValid(); err != nil {
 				return reflect.Value{}, fmt.Errorf("ValueError: %v (type `%s') can't be coverted to `time.Duration': %v", dpb, reflect.TypeOf(dpb), err)
 			}
 
+			d := dpb.AsDuration()
 			return reflect.ValueOf(d), nil
 		}
 	case *protoRepeated:

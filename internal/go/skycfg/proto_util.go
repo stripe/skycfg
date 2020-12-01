@@ -26,7 +26,7 @@ import (
 
 	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
-	descriptor_pb "github.com/golang/protobuf/protoc-gen-go/descriptor"
+	descriptor_pb "google.golang.org/protobuf/types/descriptorpb"
 )
 
 func mustParseFileDescriptor(gzBytes []byte) *descriptor_pb.FileDescriptorProto {

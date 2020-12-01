@@ -24,8 +24,8 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"go.starlark.net/starlark"
+	wrappers "google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stripe/skycfg"
 	pb "github.com/stripe/skycfg/internal/testdata/test_proto"

@@ -21,9 +21,9 @@ import (
 	"sort"
 	"strings"
 
-	descriptor_pb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
+	descriptor_pb "google.golang.org/protobuf/types/descriptorpb"
 )
 
 type skyProtoEnumType struct {

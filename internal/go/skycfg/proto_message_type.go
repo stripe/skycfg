@@ -23,8 +23,8 @@ import (
 
 	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
-	descriptor_pb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"go.starlark.net/starlark"
+	descriptor_pb "google.golang.org/protobuf/types/descriptorpb"
 )
 
 // newMessageType creates a Starlark value representing a named Protobuf message type.

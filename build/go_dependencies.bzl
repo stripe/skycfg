@@ -10,8 +10,14 @@ def go_dependencies():
     go_repository(
         name = "com_github_golang_protobuf",
         importpath = "github.com/golang/protobuf",
-        sum = "h1:6nsPYzhq5kReh6QImI3k5qWzO4PEbvbIW2cwSfR/6xs=",
-        version = "v1.3.2",
+        sum = "h1:ZFgWrT+bLgsYPirOnRfKLYJLvssAegOj/hgyMFdJZe0=",
+        version = "v1.4.1",
+    )
+    go_repository(
+        name = "com_github_google_go_cmp",
+        importpath = "github.com/google/go-cmp",
+        sum = "h1:/QaMHBdZ26BB3SSst0Iwl10Epc+xhTquomWX0oZEB6w=",
+        version = "v0.5.0",
     )
     go_repository(
         name = "com_github_kisielk_errcheck",
@@ -51,8 +57,20 @@ def go_dependencies():
         version = "v0.0.0-20190604130855-6ddc71c0ba77",
     )
     go_repository(
+        name = "org_golang_google_protobuf",
+        importpath = "google.golang.org/protobuf",
+        sum = "h1:ieV9+8kKXheLmRJkIxAmpEA6oY01gnhqlpxEvc1e/tg=",
+        version = "v1.25.1-0.20201016220047-aa45c4675289",
+    )
+    go_repository(
         name = "org_golang_x_tools",
         importpath = "golang.org/x/tools",
         sum = "h1:NIou6eNFigscvKJmsbyez16S2cIS6idossORlFtSt2E=",
         version = "v0.0.0-20181030221726-6c7e314b6563",
+    )
+    go_repository(
+        name = "org_golang_x_xerrors",
+        importpath = "golang.org/x/xerrors",
+        sum = "h1:E7g+9GITq07hpfrRu66IVDexMakfv52eLZ2CXBWiKr4=",
+        version = "v0.0.0-20191204190536-9bdfabe68543",
     )

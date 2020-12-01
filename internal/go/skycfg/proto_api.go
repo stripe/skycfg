@@ -23,10 +23,10 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
 	"go.starlark.net/starlark"
+	"google.golang.org/protobuf/encoding/protojson"
+	any_pb "google.golang.org/protobuf/types/known/anypb"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -245,7 +245,7 @@ func fnProtoToAny(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple,
 	}
 
 	// Returns a golang any.Any type.
-	any, err := ptypes.MarshalAny(msg.msg)
+	any, err := any_pb.New(proto.MessageV2(msg.msg))
 	if err != nil {
 		return nil, err
 	}
@@ -260,12 +260,14 @@ func fnProtoToYaml(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 	if err := wantSingleProtoMessage("proto.to_yaml", args, kwargs, &msg); err != nil {
 		return nil, err
 	}
-	jsonData, err := (&jsonpb.Marshaler{OrigName: true}).MarshalToString(msg.msg)
+	jsonData, err := (protojson.MarshalOptions{
+		UseProtoNames: true,
+	}).Marshal(proto.MessageV2(msg.msg))
 	if err != nil {
 		return nil, err
 	}
 	var yamlMap yaml.MapSlice
-	if err := yaml.Unmarshal([]byte(jsonData), &yamlMap); err != nil {
+	if err := yaml.Unmarshal(jsonData, &yamlMap); err != nil {
 		return nil, err
 	}
 	yamlData, err := yaml.Marshal(yamlMap)
@@ -309,7 +311,7 @@ func fnProtoFromJson(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	}
 	msg := proto.Clone(protoMsgType.emptyMsg)
 	msg.Reset()
-	if err := jsonpb.UnmarshalString(string(value), msg); err != nil {
+	if err := (protojson.UnmarshalOptions{}).Unmarshal([]byte(value), proto.MessageV2(msg)); err != nil {
 		return nil, err
 	}
 	return NewSkyProtoMessage(msg), nil
@@ -341,7 +343,7 @@ func fnProtoFromYaml(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tup
 	}
 	msg := proto.Clone(protoMsgType.emptyMsg)
 	msg.Reset()
-	if err := jsonpb.UnmarshalString(string(jsonData), msg); err != nil {
+	if err := (protojson.UnmarshalOptions{}).Unmarshal(jsonData, proto.MessageV2(msg)); err != nil {
 		return nil, err
 	}
 	return NewSkyProtoMessage(msg), nil

@@ -8,7 +8,7 @@ require (
 	github.com/envoyproxy/go-control-plane v0.6.0
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/gogo/googleapis v1.1.0 // indirect
-	github.com/gogo/protobuf v1.2.0
+	github.com/gogo/protobuf v1.3.1
 	github.com/google/gofuzz v0.0.0-20170612174753-24818f796faf // indirect
 	github.com/json-iterator/go v1.1.5 // indirect
 	github.com/lyft/protoc-gen-validate v0.0.7 // indirect

@@ -30,16 +30,14 @@ import (
 
 	gogo_proto "github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/any"
 	"github.com/kylelemons/godebug/pretty"
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
+	"google.golang.org/protobuf/types/descriptorpb"
+	any "google.golang.org/protobuf/types/known/anypb"
 
 	_ "github.com/gogo/protobuf/types"
-
-	descriptorpb "github.com/golang/protobuf/protoc-gen-go/descriptor"
 
 	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
 	pb_gogo "github.com/stripe/skycfg/internal/testdata/test_proto_gogo"
@@ -378,7 +376,7 @@ func TestProtoToAnyV2(t *testing.T) {
 	}
 
 	msg := pb.MessageV2{}
-	err := ptypes.UnmarshalAny(myAny, &msg)
+	err := myAny.UnmarshalTo(&msg)
 	if err != nil {
 		t.Fatalf("to_any: could not unmarshal: %v", err)
 	}
@@ -401,7 +399,7 @@ func TestProtoToAnyV3(t *testing.T) {
 	}
 
 	msg := pb.MessageV3{}
-	err := ptypes.UnmarshalAny(myAny, &msg)
+	err := myAny.UnmarshalTo(&msg)
 	if err != nil {
 		t.Fatalf("to_any: could not unmarshal: %v", err)
 	}

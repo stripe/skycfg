@@ -21,8 +21,9 @@ import (
 	"fmt"
 	"syscall/js"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/encoding/prototext"
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/stripe/skycfg"
@@ -59,30 +60,35 @@ func runDemo(content string) ([]js.Value, error) {
 		return nil, err
 	}
 
-	json := &jsonpb.Marshaler{
-		OrigName:     true,
-		Indent:       "  ",
-		EmitDefaults: true,
-	}
-
 	var out []js.Value
 	for _, msg := range messages {
-		jsonData, err := json.MarshalToString(msg)
+		msg := proto.MessageV2(msg)
+		jsonData, err := (protojson.MarshalOptions{
+			UseProtoNames:   true,
+			Indent:          "  ",
+			EmitUnpopulated: true,
+		}).Marshal(msg)
 		if err != nil {
 			return nil, fmt.Errorf("json.Marshal: %v", err)
 		}
 		var yamlMap yaml.MapSlice
-		if err := yaml.Unmarshal([]byte(jsonData), &yamlMap); err != nil {
+		if err := yaml.Unmarshal(jsonData, &yamlMap); err != nil {
 			return nil, fmt.Errorf("yaml.Unmarshal: %v", err)
 		}
 		yamlData, err := yaml.Marshal(yamlMap)
 		if err != nil {
 			return nil, fmt.Errorf("yaml.Marshal: %v", err)
 		}
+		textData, err := (prototext.MarshalOptions{
+			Indent: "  ",
+		}).Marshal(msg)
+		if err != nil {
+			return nil, fmt.Errorf("prototext.Marshal: %v", err)
+		}
 		out = append(out, js.ValueOf(map[string]interface{}{
 			"yaml":  string(yamlData),
-			"json":  jsonData,
-			"proto": proto.MarshalTextString(msg),
+			"json":  string(jsonData),
+			"proto": string(textData),
 		}))
 	}
 	return out, nil
