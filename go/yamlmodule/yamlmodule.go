@@ -14,7 +14,8 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package skycfg
+// Package yamlmodule defines a Starlark module of YAML-related functions.
+package yamlmodule
 
 import (
 	"bytes"
@@ -22,33 +23,74 @@ import (
 	"reflect"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkjson"
+	"go.starlark.net/starlarkstruct"
 	yaml "gopkg.in/yaml.v2"
 )
 
-// YamlModule returns a Starlark module for YAML helpers.
-func YamlModule() starlark.Value {
-	return &Module{
+// NewModule returns a Starlark module of YAML-related functions.
+//
+//  yaml = module(
+//    decode,
+//    encode,
+//  )
+//
+// For compatibility with earlier Skycfg versions, the deprecated aliases
+// 'marshal' and 'unmarshal' are also supported. These aliases will be removed
+// in the v1.0 release.
+func NewModule() *starlarkstruct.Module {
+	return &starlarkstruct.Module{
 		Name: "yaml",
-		Attrs: starlark.StringDict{
-			"marshal":   yamlMarshal(),
-			"unmarshal": yamlUnmarshal(),
+		Members: starlark.StringDict{
+			"decode":    starlarkDecode,
+			"encode":    starlarkEncode,
+			"marshal":   starlarkEncode,
+			"unmarshal": starlarkDecode,
 		},
 	}
 }
 
-// yamlMarshal returns a Starlark function for marshaling plain values
-// (dicts, lists, etc) to YAML.
+var (
+	starlarkDecode = starlark.NewBuiltin("yaml.decode", yamlDecode)
+	starlarkEncode = starlark.NewBuiltin("yaml.encode", yamlEncode)
+)
+
+// Decode returns a Starlark function for decoding YAML.
 //
-//  def yaml.marshal(value) -> str
-func yamlMarshal() starlark.Callable {
-	return starlark.NewBuiltin("yaml.marshal", fnYamlMarshal)
+//  >>> yaml.decode("hello:\n- world\n")
+//  {"hello": ["world"]}
+func Decode() starlark.Callable {
+	return starlarkDecode
 }
 
-func fnYamlMarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var v starlark.Value
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "value", &v); err != nil {
+// Encode returns a Starlark function for encoding YAML.
+//
+//  >>> yaml.marshal({"hello": ["world"]})
+//  "hello:\n- world\n"
+func Encode() starlark.Callable {
+	return starlarkEncode
+}
+
+func yamlDecode(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var blob string
+	if err := starlark.UnpackPositionalArgs(fn.Name(), args, nil, 1, &blob); err != nil {
 		return nil, err
 	}
+	var inflated interface{}
+	if err := yaml.Unmarshal([]byte(blob), &inflated); err != nil {
+		return nil, err
+	}
+	return toStarlarkValue(inflated)
+}
+
+var jsonEncode = starlarkjson.Module.Members["encode"]
+
+func yamlEncode(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+	var v starlark.Value
+	if err := starlark.UnpackPositionalArgs(fn.Name(), args, nil, 1, &v); err != nil {
+		return nil, err
+	}
+
 	var buf bytes.Buffer
 	if err := writeJSON(&buf, v); err != nil {
 		return nil, err
@@ -62,26 +104,6 @@ func fnYamlMarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 		return nil, err
 	}
 	return starlark.String(yamlBytes), nil
-}
-
-// yamlUnmarshal returns a Starlark function for unmarshaling yaml content to
-// to starlark values.
-//
-// def yaml.unmarshal(yaml_content) -> (dicts, lists, etc)
-func yamlUnmarshal() starlark.Callable {
-	return starlark.NewBuiltin("yaml.unmarshal", fnYamlUnmarshal)
-}
-
-func fnYamlUnmarshal(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var blob string
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, nil, 1, &blob); err != nil {
-		return nil, err
-	}
-	var inflated interface{}
-	if err := yaml.Unmarshal([]byte(blob), &inflated); err != nil {
-		return nil, err
-	}
-	return toStarlarkValue(inflated)
 }
 
 // toStarlarkScalarValue converts a scalar [obj] value to its starlark Value

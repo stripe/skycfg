@@ -30,7 +30,7 @@
 //
 // SPDX-License-Identifier: BSD-3-Clause
 
-package skycfg
+package yamlmodule
 
 import (
 	"bytes"

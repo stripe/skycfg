@@ -5,8 +5,6 @@ go_library(
     srcs = [
         "assert.go",
         "fail.go",
-        "json.go",
-        "json_write.go",
         "module.go",
         "proto_api.go",
         "proto_enum.go",
@@ -15,7 +13,6 @@ go_library(
         "proto_package.go",
         "proto_util.go",
         "url.go",
-        "yaml.go",
     ],
     importpath = "github.com/stripe/skycfg/internal/go/skycfg",
     visibility = ["//:__subpackages__"],
@@ -39,11 +36,9 @@ go_test(
     size = "small",
     srcs = [
         "assert_test.go",
-        "json_test.go",
         "proto_test.go",
         "skycfg_test.go",
         "url_test.go",
-        "yaml_test.go",
     ],
     embed = [":skycfg"],
     deps = [

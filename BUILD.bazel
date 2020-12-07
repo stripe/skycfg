@@ -13,9 +13,11 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//go/hashmodule",
+        "//go/yamlmodule",
         "//internal/go/skycfg",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@net_starlark_go//starlark",
+        "@net_starlark_go//starlarkjson",
         "@net_starlark_go//starlarkstruct",
     ],
 )

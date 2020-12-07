@@ -48,7 +48,7 @@ def test_helper1(t):
 def main(ctx):
 	msg = test_proto.MessageV2()
 	msg.f_int64 = helper1()
-	msg.f_string = json.marshal(helper2(ctx))
+	msg.f_string = json.encode(helper2(ctx))
 
 	return [msg]
 `,
@@ -273,7 +273,7 @@ func TestSkycfgEndToEnd(t *testing.T) {
 				&pb.MessageV2{
 					FInt64: proto.Int64(12345),
 					FString: proto.String(
-						`{"key1": "value1", "key2": "key3=value3", "key4": {"key5": "value5", "var_key": "var_value"}}`,
+						`{"key1":"value1","key2":"key3=value3","key4":{"key5":"value5","var_key":"var_value"}}`,
 					),
 				},
 			},

@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package skycfg
+package yamlmodule
 
 import (
 	"fmt"
@@ -31,7 +31,7 @@ type YamlTestCase struct {
 func TestSkyToYaml(t *testing.T) {
 	thread := new(starlark.Thread)
 	env := starlark.StringDict{
-		"yaml": YamlModule(),
+		"yaml": NewModule(),
 	}
 
 	testCases := []YamlTestCase{
@@ -67,7 +67,7 @@ k:
 		v, err := starlark.Eval(
 			thread,
 			"<expr>",
-			fmt.Sprintf("yaml.marshal(%s)", testCase.skyExpr),
+			fmt.Sprintf("yaml.encode(%s)", testCase.skyExpr),
 			env,
 		)
 		if err != nil {
@@ -76,7 +76,7 @@ k:
 		exp := starlark.String(testCase.expOutput)
 		if v != exp {
 			t.Error(
-				"Bad return value from yaml.marshal",
+				"Bad return value from yaml.encode",
 				"\nExpected",
 				exp,
 				"\nGot",
@@ -89,7 +89,7 @@ k:
 func TestYamlToSky(t *testing.T) {
 	thread := new(starlark.Thread)
 	env := starlark.StringDict{
-		"yaml": YamlModule(),
+		"yaml": NewModule(),
 	}
 
 	skyExpr := `{
@@ -118,7 +118,7 @@ func TestYamlToSky(t *testing.T) {
 	v, err := starlark.Eval(
 		thread,
 		"<expr>",
-		fmt.Sprintf(`yaml.unmarshal(yaml.marshal(%s))`, skyExpr),
+		fmt.Sprintf(`yaml.decode(yaml.encode(%s))`, skyExpr),
 		env,
 	)
 	if err != nil {
@@ -174,7 +174,7 @@ func TestYamlToSky(t *testing.T) {
 		{
 			name: "key mapped to Overflow Uint64",
 			key:  starlark.String("overflowUintKey"),
-			want: `1.84467e+19`,
+			want: `1.8446744073709552e+19`,
 		},
 		{
 			name: "key mapped to Bool",
@@ -229,7 +229,7 @@ func TestYamlToSky(t *testing.T) {
 			}
 			if testCase.want != got.String() {
 				t.Error(
-					"Bad return value from yaml.unmarshal",
+					"Bad return value from yaml.decode",
 					"\nExpected:",
 					testCase.want,
 					"\nGot:",
