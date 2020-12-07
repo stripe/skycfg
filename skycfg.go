@@ -34,6 +34,7 @@ import (
 	"go.starlark.net/starlarkstruct"
 
 	"github.com/stripe/skycfg/go/hashmodule"
+	"github.com/stripe/skycfg/go/urlmodule"
 	"github.com/stripe/skycfg/go/yamlmodule"
 	impl "github.com/stripe/skycfg/internal/go/skycfg"
 )
@@ -190,7 +191,7 @@ func predeclaredModules() (modules starlark.StringDict, proto *impl.ProtoModule)
 		"proto":  proto,
 		"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 		"yaml":   yamlmodule.NewModule(),
-		"url":    impl.UrlModule(),
+		"url":    urlmodule.NewModule(),
 	}
 	return
 }

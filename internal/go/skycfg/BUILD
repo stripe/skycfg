@@ -12,7 +12,6 @@ go_library(
         "proto_message_type.go",
         "proto_package.go",
         "proto_util.go",
-        "url.go",
     ],
     importpath = "github.com/stripe/skycfg/internal/go/skycfg",
     visibility = ["//:__subpackages__"],
@@ -38,7 +37,6 @@ go_test(
         "assert_test.go",
         "proto_test.go",
         "skycfg_test.go",
-        "url_test.go",
     ],
     embed = [":skycfg"],
     deps = [

@@ -14,37 +14,48 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package skycfg
+// Package urlmodule defines a Starlark module of URL-related functions.
+package urlmodule
 
 import (
 	"fmt"
 	"net/url"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 )
 
-// UrlModule returns a Starlark module for URL helpers.
-func UrlModule() starlark.Value {
-	return &Module{
+// NewModule returns a Starlark module of URL-related functions.
+//
+//  url = module(
+//    encode_query,
+//  )
+func NewModule() *starlarkstruct.Module {
+	return &starlarkstruct.Module{
 		Name: "url",
-		Attrs: starlark.StringDict{
-			"encode_query": urlEncodeQuery(),
+		Members: starlark.StringDict{
+			"encode_query": starlarkEncodeQuery,
 		},
 	}
 }
 
-// urlEncodeQuery returns a Starlark function for encoding URL query strings.
+var (
+	starlarkEncodeQuery = starlark.NewBuiltin("url.encode_query", encodeQuery)
+)
+
+// EncodeQuery returns a Starlark function for encoding URL query strings.
 //
-//  def url.encode_query(query: dict[str, str]) -> str
+//  >>> url.encode_query({"hello": "a", "world": "b"})
+//  "hello=a&world=b"
 //
 // Query items will be encoded in starlark iteration order.
-func urlEncodeQuery() starlark.Callable {
-	return starlark.NewBuiltin("url.encode_query", fnEncodeQuery)
+func EncodeQuery() starlark.Callable {
+	return starlarkEncodeQuery
 }
 
-func fnEncodeQuery(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+func encodeQuery(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var d *starlark.Dict
-	if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "query", &d); err != nil {
+	if err := starlark.UnpackPositionalArgs(fn.Name(), args, nil, 1, &d); err != nil {
 		return nil, err
 	}
 

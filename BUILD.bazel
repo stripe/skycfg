@@ -13,6 +13,7 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "//go/hashmodule",
+        "//go/urlmodule",
         "//go/yamlmodule",
         "//internal/go/skycfg",
         "@com_github_golang_protobuf//proto:go_default_library",

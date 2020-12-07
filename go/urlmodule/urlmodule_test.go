@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package skycfg
+package urlmodule
 
 import (
 	"fmt"
@@ -33,7 +33,7 @@ type UrlTestCase struct {
 func TestEncodeQuery(t *testing.T) {
 	thread := new(starlark.Thread)
 	env := starlark.StringDict{
-		"url": UrlModule(),
+		"url": NewModule(),
 	}
 
 	testCases := []UrlTestCase{
