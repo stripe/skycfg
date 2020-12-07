@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package skycfg
+package hashmodule
 
 import (
 	"fmt"
@@ -32,7 +32,7 @@ type hashTestCase struct {
 func TestHashes(t *testing.T) {
 	thread := new(starlark.Thread)
 	env := starlark.StringDict{
-		"hash": HashModule(),
+		"hash": NewModule(),
 	}
 
 	testCases := []hashTestCase{

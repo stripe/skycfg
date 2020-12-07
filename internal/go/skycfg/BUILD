@@ -5,7 +5,6 @@ go_library(
     srcs = [
         "assert.go",
         "fail.go",
-        "hash.go",
         "json.go",
         "json_write.go",
         "module.go",
@@ -40,7 +39,6 @@ go_test(
     size = "small",
     srcs = [
         "assert_test.go",
-        "hash_test.go",
         "json_test.go",
         "proto_test.go",
         "skycfg_test.go",

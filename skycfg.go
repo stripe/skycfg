@@ -32,6 +32,7 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 
+	"github.com/stripe/skycfg/go/hashmodule"
 	impl "github.com/stripe/skycfg/internal/go/skycfg"
 )
 
@@ -182,7 +183,7 @@ func predeclaredModules() (modules starlark.StringDict, proto *impl.ProtoModule)
 	proto = impl.NewProtoModule(nil /* TODO: registry from options */)
 	modules = starlark.StringDict{
 		"fail":   impl.Fail,
-		"hash":   impl.HashModule(),
+		"hash":   hashmodule.NewModule(),
 		"json":   impl.JsonModule(),
 		"proto":  proto,
 		"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),

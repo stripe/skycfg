@@ -12,6 +12,7 @@ go_library(
     importpath = "github.com/stripe/skycfg",
     visibility = ["//visibility:public"],
     deps = [
+        "//go/hashmodule",
         "//internal/go/skycfg",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@net_starlark_go//starlark",
