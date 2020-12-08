@@ -5,7 +5,7 @@ Skycfg is an extension library for the [Starlark language](https://github.com/ba
 At present, only the Go implementation of Starlark is supported.
 
 [![API Documentation](https://godoc.org/github.com/stripe/skycfg?status.svg)](https://godoc.org/github.com/stripe/skycfg)
-[![Build Status](https://travis-ci.org/stripe/skycfg.svg?branch=master)](https://travis-ci.org/stripe/skycfg)
+[![Test Status](https://github.com/stripe/skycfg/workflows/Tests/badge.svg)](https://github.com/stripe/skycfg/actions)
 [![Test Coverage](https://coveralls.io/repos/github/stripe/skycfg/badge.svg?branch=master)](https://coveralls.io/github/stripe/skycfg?branch=master)
 
 ## Getting Started
