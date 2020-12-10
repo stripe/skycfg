@@ -32,8 +32,10 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkjson"
 	"go.starlark.net/starlarkstruct"
+	"google.golang.org/protobuf/reflect/protoregistry"
 
 	"github.com/stripe/skycfg/go/hashmodule"
+	"github.com/stripe/skycfg/go/protomodule"
 	"github.com/stripe/skycfg/go/urlmodule"
 	"github.com/stripe/skycfg/go/yamlmodule"
 	impl "github.com/stripe/skycfg/internal/go/skycfg"
@@ -128,6 +130,13 @@ type unstableProtoRegistry interface {
 	impl.ProtoRegistry
 }
 
+type unstableProtoRegistryV2 interface {
+	unstableProtoRegistry
+
+	// UNSTABLE go-protobuf v2 type registry
+	UnstableProtobufTypes() *protoregistry.Types
+}
+
 // WithGlobals adds additional global symbols to the Starlark environment
 // when loading a Skycfg config.
 func WithGlobals(globals starlark.StringDict) LoadOption {
@@ -175,39 +184,60 @@ func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
 //  * yaml   - same as "json" package but for YAML.
 //  * url    - utility package for encoding URL query string.
 func UnstablePredeclaredModules(r unstableProtoRegistry) starlark.StringDict {
-	modules, protoModule := predeclaredModules()
-	protoModule.Registry = r
-	return modules
-}
-
-// predeclaredModules is a helper that returns new predeclared modules.
-// Returns proto module separately for (optional) extra initialization.
-func predeclaredModules() (modules starlark.StringDict, proto *impl.ProtoModule) {
-	proto = impl.NewProtoModule(nil /* TODO: registry from options */)
-	modules = starlark.StringDict{
+	return starlark.StringDict{
 		"fail":   impl.Fail,
 		"hash":   hashmodule.NewModule(),
 		"json":   starlarkjson.Module,
-		"proto":  proto,
+		"proto":  UnstableProtoModule(r),
 		"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 		"yaml":   yamlmodule.NewModule(),
 		"url":    urlmodule.NewModule(),
 	}
-	return
+}
+
+func UnstableProtoModule(r unstableProtoRegistry) starlark.Value {
+	protoTypes := protoregistry.GlobalTypes
+	if r != nil {
+		if r2, ok := r.(unstableProtoRegistryV2); ok {
+			protoTypes = r2.UnstableProtobufTypes()
+		}
+	}
+
+	protoModule := protomodule.NewModule(protoTypes)
+	legacy := impl.NewProtoModule(r)
+
+	// Functions still using the go-protobuf v1 implementation
+	protoModule.Members["package"], _ = legacy.Attr("package")
+
+	// Deprecated functions
+	protoModule.Members["from_yaml"], _ = legacy.Attr("from_yaml")
+	protoModule.Members["to_yaml"], _ = legacy.Attr("to_yaml")
+
+	// Compatibility aliases
+	protoModule.Members["from_json"] = protoModule.Members["decode_json"]
+	protoModule.Members["from_text"] = protoModule.Members["decode_text"]
+	protoModule.Members["to_any"] = protoModule.Members["encode_any"]
+	protoModule.Members["to_json"] = protoModule.Members["encode_json"]
+	protoModule.Members["to_text"] = protoModule.Members["encode_text"]
+
+	return protoModule
 }
 
 // Load reads a Skycfg config file from the filesystem.
 func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, error) {
-	modules, protoModule := predeclaredModules()
 	parsedOpts := &loadOptions{
-		globals:    modules,
+		globals:    starlark.StringDict{},
 		fileReader: LocalFileReader(filepath.Dir(filename)),
 	}
-
 	for _, opt := range opts {
 		opt.applyLoad(parsedOpts)
 	}
-	protoModule.Registry = parsedOpts.protoRegistry
+
+	overriddenGlobals := parsedOpts.globals
+	parsedOpts.globals = UnstablePredeclaredModules(parsedOpts.protoRegistry)
+	for key, value := range overriddenGlobals {
+		parsedOpts.globals[key] = value
+	}
 	configLocals, tests, err := loadImpl(ctx, parsedOpts, filename)
 	if err != nil {
 		return nil, err

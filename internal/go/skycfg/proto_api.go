@@ -17,7 +17,6 @@
 package skycfg
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"reflect"
@@ -26,7 +25,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"go.starlark.net/starlark"
 	"google.golang.org/protobuf/encoding/protojson"
-	any_pb "google.golang.org/protobuf/types/known/anypb"
 	yaml "gopkg.in/yaml.v2"
 )
 
@@ -46,17 +44,9 @@ func NewProtoModule(registry ProtoRegistry) *ProtoModule {
 	mod := &ProtoModule{
 		Registry: registry,
 		attrs: starlark.StringDict{
-			"clear":        starlark.NewBuiltin("proto.clear", fnProtoClear),
-			"clone":        starlark.NewBuiltin("proto.clone", fnProtoClone),
-			"from_json":    starlark.NewBuiltin("proto.from_json", fnProtoFromJson),
-			"from_text":    starlark.NewBuiltin("proto.from_text", fnProtoFromText),
-			"from_yaml":    starlark.NewBuiltin("proto.from_yaml", fnProtoFromYaml),
-			"merge":        starlark.NewBuiltin("proto.merge", fnProtoMerge),
-			"set_defaults": starlark.NewBuiltin("proto.set_defaults", fnProtoSetDefaults),
-			"to_json":      starlark.NewBuiltin("proto.to_json", fnProtoToJson),
-			"to_any":       starlark.NewBuiltin("proto.to_any", fnProtoToAny),
-			"to_text":      starlark.NewBuiltin("proto.to_text", fnProtoToText),
-			"to_yaml":      starlark.NewBuiltin("proto.to_yaml", fnProtoToYaml),
+			// deprecated functions
+			"from_yaml": starlark.NewBuiltin("proto.from_yaml", fnProtoFromYaml),
+			"to_yaml":   starlark.NewBuiltin("proto.to_yaml", fnProtoToYaml),
 		},
 	}
 	mod.attrs["package"] = starlark.NewBuiltin("proto.package", mod.fnProtoPackage)
@@ -94,71 +84,6 @@ func (mod *ProtoModule) AttrNames() []string {
 	return names
 }
 
-// Implementation of the `proto.clear()` built-in function.
-// Reset protobuf state to the default values.
-func fnProtoClear(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var msg *skyProtoMessage
-	if err := wantSingleProtoMessage("proto.clear", args, kwargs, &msg); err != nil {
-		return nil, err
-	}
-	if err := msg.checkMutable("clear"); err != nil {
-		return nil, err
-	}
-	msg.msg.Reset()
-	msg.resetAttrCache()
-	return msg, nil
-}
-
-// Implementation of the `proto.clone()` built-in function.
-// Creates a deep copy of a protobuf.
-func fnProtoClone(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var msg *skyProtoMessage
-	if err := wantSingleProtoMessage("proto.clone", args, kwargs, &msg); err != nil {
-		return nil, err
-	}
-	return NewSkyProtoMessage(proto.Clone(msg.msg)), nil
-}
-
-// Implementation of the `proto.merge()` built-in function.
-// Merge merges src into dst. Repeated fields will be appended.
-func fnProtoMerge(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var val1, val2 starlark.Value
-	if err := starlark.UnpackPositionalArgs("proto.merge", args, kwargs, 2, &val1, &val2); err != nil {
-		return nil, err
-	}
-	dst, ok := val1.(*skyProtoMessage)
-	if !ok {
-		return nil, fmt.Errorf("%s: for parameter 1: got %s, want proto.Message", "proto.merge", val1.Type())
-	}
-	src, ok := val2.(*skyProtoMessage)
-	if !ok {
-		return nil, fmt.Errorf("%s: for parameter 2: got %s, want proto.Message", "proto.merge", val2.Type())
-	}
-	if src.Type() != dst.Type() {
-		return nil, fmt.Errorf("%s: types are not the same: got %s and %s", "proto.merge", src.Type(), dst.Type())
-	}
-	if err := dst.checkMutable("merge into"); err != nil {
-		return nil, err
-	}
-	proto.Merge(dst.msg, src.msg)
-	dst.resetAttrCache()
-	return dst, nil
-}
-
-// Implementation of the `proto.set_default()` built-in function.
-// Sets unset protobuf fields to their default values.
-func fnProtoSetDefaults(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var msg *skyProtoMessage
-	if err := wantSingleProtoMessage("proto.set_defaults", args, kwargs, &msg); err != nil {
-		return nil, err
-	}
-	if err := msg.checkMutable("set field defaults of"); err != nil {
-		return nil, err
-	}
-	proto.SetDefaults(msg.msg)
-	return msg, nil
-}
-
 // Implementation of the `proto.package()` built-in function.
 //
 // Note: doesn't do any sort of input validation, because the go-protobuf
@@ -185,74 +110,6 @@ func wantSingleProtoMessage(fnName string, args starlark.Tuple, kwargs []starlar
 	return nil
 }
 
-// Implementation of the `proto.to_text()` built-in function. Returns the
-// text-formatted content of a protobuf message.
-func fnProtoToText(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var msg *skyProtoMessage
-	if err := wantSingleProtoMessage("proto.to_text", args, []starlark.Tuple{}, &msg); err != nil {
-		return nil, err
-	}
-	var textMarshaler = &proto.TextMarshaler{Compact: true}
-	if len(kwargs) > 0 {
-		compact := true
-		if err := starlark.UnpackArgs("proto.to_text", nil, kwargs, "compact", &compact); err != nil {
-			return nil, err
-		}
-		if compact {
-			textMarshaler.Compact = true
-		} else {
-			textMarshaler.Compact = false
-		}
-	}
-	text := (textMarshaler).Text(msg.msg)
-	return starlark.String(text), nil
-}
-
-// Implementation of the `proto.to_json()` built-in function. Returns the
-// JSON-formatted content of a protobuf message.
-func fnProtoToJson(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var msg *skyProtoMessage
-	if err := wantSingleProtoMessage("proto.to_json", args, []starlark.Tuple{}, &msg); err != nil {
-		return nil, err
-	}
-	compact := true
-	if len(kwargs) > 0 {
-		if err := starlark.UnpackArgs("proto.to_json", nil, kwargs, "compact", &compact); err != nil {
-			return nil, err
-		}
-	}
-	jsonData, err := msg.MarshalJSON()
-	if err != nil {
-		return nil, err
-	}
-	if !compact {
-		var buf bytes.Buffer
-		if err := json.Indent(&buf, jsonData, "", "\t"); err != nil {
-			return nil, err
-		}
-		jsonData = buf.Bytes()
-	}
-	return starlark.String(jsonData), nil
-}
-
-// Implementation of the `proto.to_any()` built-in function. Returns a
-// skyProtoMessage with an `Any` proto.Message in it.
-func fnProtoToAny(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var msg *skyProtoMessage
-	err := wantSingleProtoMessage(fn.Name(), args, kwargs, &msg)
-	if err != nil {
-		return nil, err
-	}
-
-	// Returns a golang any.Any type.
-	any, err := any_pb.New(proto.MessageV2(msg.msg))
-	if err != nil {
-		return nil, err
-	}
-
-	return NewSkyProtoMessage(any), nil
-}
-
 // Implementation of the `proto.to_yaml()` built-in function. Returns the
 // YAML-formatted content of a protobuf message.
 func fnProtoToYaml(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
@@ -275,46 +132,6 @@ func fnProtoToYaml(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple
 		return nil, err
 	}
 	return starlark.String(yamlData), nil
-}
-
-// Implementation of the `proto.from_text()` built-in function.
-// Returns the Protobuf message for text-formatted content.
-func fnProtoFromText(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var msgType starlark.Value
-	var value starlark.String
-	if err := starlark.UnpackPositionalArgs("proto.from_text", args, kwargs, 2, &msgType, &value); err != nil {
-		return nil, err
-	}
-	protoMsgType, ok := msgType.(*skyProtoMessageType)
-	if !ok {
-		return nil, fmt.Errorf("%s: for parameter 2: got %s, want proto.MessageType", "proto.from_text", msgType.Type())
-	}
-	msg := proto.Clone(protoMsgType.emptyMsg)
-	msg.Reset()
-	if err := proto.UnmarshalText(string(value), msg); err != nil {
-		return nil, err
-	}
-	return NewSkyProtoMessage(msg), nil
-}
-
-// Implementation of the `proto.from_json()` built-in function.
-// Returns the Protobuf message for JSON-formatted content.
-func fnProtoFromJson(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
-	var msgType starlark.Value
-	var value starlark.String
-	if err := starlark.UnpackPositionalArgs("proto.from_json", args, kwargs, 2, &msgType, &value); err != nil {
-		return nil, err
-	}
-	protoMsgType, ok := msgType.(*skyProtoMessageType)
-	if !ok {
-		return nil, fmt.Errorf("%s: for parameter 2: got %s, want proto.MessageType", "proto.from_json", msgType.Type())
-	}
-	msg := proto.Clone(protoMsgType.emptyMsg)
-	msg.Reset()
-	if err := (protojson.UnmarshalOptions{}).Unmarshal([]byte(value), proto.MessageV2(msg)); err != nil {
-		return nil, err
-	}
-	return NewSkyProtoMessage(msg), nil
 }
 
 // Implementation of the `proto.from_yaml()` built-in function.

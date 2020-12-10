@@ -24,6 +24,7 @@ import (
 	"github.com/golang/protobuf/descriptor"
 	"github.com/golang/protobuf/proto"
 	"go.starlark.net/starlark"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	descriptor_pb "google.golang.org/protobuf/types/descriptorpb"
 )
 
@@ -142,6 +143,12 @@ func (mt *skyProtoMessageType) AttrNames() []string {
 	//
 	// https://github.com/golang/protobuf/issues/623
 	return nil
+}
+
+func (mt *skyProtoMessageType) NewMessage() protoreflect.ProtoMessage {
+	msg := proto.Clone(mt.emptyMsg)
+	msg.Reset()
+	return proto.MessageV2(msg)
 }
 
 func (mt *skyProtoMessageType) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {

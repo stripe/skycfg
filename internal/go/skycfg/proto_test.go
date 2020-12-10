@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package skycfg
+package skycfg_test
 
 import (
 	"bytes"
@@ -39,6 +39,8 @@ import (
 
 	_ "github.com/gogo/protobuf/types"
 
+	"github.com/stripe/skycfg"
+	impl "github.com/stripe/skycfg/internal/go/skycfg"
 	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
 	pb_gogo "github.com/stripe/skycfg/internal/testdata/test_proto_gogo"
 )
@@ -60,11 +62,18 @@ func (*gogoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
 	return gogo_proto.EnumValueMap(name)
 }
 
+func mustProtoMessage(v starlark.Value) proto.Message {
+	if msg, ok := impl.ToProtoMessage(v); ok {
+		return msg
+	}
+	panic("mustProtoMessage: not ok")
+}
+
 func skyEval(t *testing.T, src string) starlark.Value {
 	t.Helper()
 	globals := starlark.StringDict{
-		"proto":      NewProtoModule(nil),
-		"gogo_proto": NewProtoModule(&gogoRegistry{}),
+		"proto":      skycfg.UnstableProtoModule(nil),
+		"gogo_proto": skycfg.UnstableProtoModule(&gogoRegistry{}),
 	}
 	val, err := starlark.Eval(&starlark.Thread{}, "", src, globals)
 	if err != nil {
@@ -76,8 +85,8 @@ func skyEval(t *testing.T, src string) starlark.Value {
 func skyExecFun(t *testing.T, src string) starlark.Value {
 	t.Helper()
 	globals := starlark.StringDict{
-		"proto":      NewProtoModule(nil),
-		"gogo_proto": NewProtoModule(&gogoRegistry{}),
+		"proto":      skycfg.UnstableProtoModule(nil),
+		"gogo_proto": skycfg.UnstableProtoModule(&gogoRegistry{}),
 	}
 	globals, err := starlark.ExecFile(&starlark.Thread{}, "", src, globals)
 	if err != nil {
@@ -175,7 +184,7 @@ func TestNestedMessages(t *testing.T) {
 
 func TestProtoSetDefaultV2(t *testing.T) {
 	val := skyEval(t, `proto.set_defaults(proto.package("skycfg.test_proto").MessageV2())`)
-	gotMsg := val.(*skyProtoMessage).msg
+	gotMsg := mustProtoMessage(val)
 	wantMsg := &pb.MessageV2{
 		FString: proto.String("default_str"),
 	}
@@ -186,7 +195,7 @@ func TestProtoSetDefaultV2(t *testing.T) {
 
 func TestProtoSetDefaultV3(t *testing.T) {
 	val := skyEval(t, `proto.set_defaults(proto.package("skycfg.test_proto").MessageV3())`)
-	gotMsg := val.(*skyProtoMessage).msg
+	gotMsg := mustProtoMessage(val)
 	wantMsg := &pb.MessageV3{}
 	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
 		t.Fatalf("diff from expected message:\n%s", diff)
@@ -197,7 +206,7 @@ func TestProtoClearV2(t *testing.T) {
 	val := skyEval(t, `proto.clear(proto.package("skycfg.test_proto").MessageV2(
 		f_string = "some string",
 	))`)
-	gotMsg := val.(*skyProtoMessage).msg
+	gotMsg := mustProtoMessage(val)
 	wantMsg := &pb.MessageV2{}
 	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
 		t.Fatalf("diff from expected message:\n%s", diff)
@@ -208,7 +217,7 @@ func TestProtoClearV3(t *testing.T) {
 	val := skyEval(t, `proto.clear(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	))`)
-	gotMsg := val.(*skyProtoMessage).msg
+	gotMsg := mustProtoMessage(val)
 	wantMsg := &pb.MessageV3{
 		FInt32:   0,
 		FInt64:   0,
@@ -235,7 +244,7 @@ func TestProtoMergeV2(t *testing.T) {
 		f_string = "another string",
 		r_string = ["r_string3", "r_string4"],
 	))`)
-	gotMsg := val.(*skyProtoMessage).msg
+	gotMsg := mustProtoMessage(val)
 	wantMsg := &pb.MessageV2{
 		FInt32:  proto.Int32(2010),
 		FInt64:  proto.Int64(2020),
@@ -266,7 +275,7 @@ func TestProtoMergeV3(t *testing.T) {
 		f_string = "another string",
 		r_string = ["r_string3", "r_string4"],
 	))`)
-	gotMsg := val.(*skyProtoMessage).msg
+	gotMsg := mustProtoMessage(val)
 	wantMsg := &pb.MessageV3{
 		FInt32:   2010,
 		FInt64:   2020,
@@ -286,7 +295,7 @@ func TestProtoMergeV3(t *testing.T) {
 func TestProtoMergeDiffTypes(t *testing.T) {
 	errorMsg := "proto.merge: types are not the same: got skycfg.test_proto.MessageV3 and skycfg.test_proto.MessageV2"
 	globals := starlark.StringDict{
-		"proto": NewProtoModule(nil),
+		"proto": skycfg.UnstableProtoModule(nil),
 	}
 	src, err := starlark.Eval(&starlark.Thread{}, "",
 		`proto.merge(proto.package("skycfg.test_proto").MessageV2(), proto.package("skycfg.test_proto").MessageV3())`, globals)
@@ -303,7 +312,7 @@ func TestProtoToText(t *testing.T) {
 		f_string = "some string",
 	))`)
 	got := string(val.(starlark.String))
-	want := "f_string:\"some string\" "
+	want := "f_string:\"some string\""
 	if want != got {
 		t.Fatalf("to_text: wanted %q, got %q", want, got)
 	}
@@ -314,7 +323,7 @@ func TestProtoToTextCompact(t *testing.T) {
 		f_string = "some string",
 	), compact=True)`)
 	got := string(val.(starlark.String))
-	want := "f_string:\"some string\" "
+	want := "f_string:\"some string\""
 	if want != got {
 		t.Fatalf("to_text_compact: wanted %q, got %q", want, got)
 	}
@@ -324,7 +333,7 @@ func TestProtoToTextFull(t *testing.T) {
 	val := skyEval(t, `proto.to_text(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	), compact=False)`)
-	got := string(val.(starlark.String))
+	got := removeRandomSpace(string(val.(starlark.String)))
 	want := "f_string: \"some string\"\n"
 	if want != got {
 		t.Fatalf("to_text_full: wanted %q, got %q", want, got)
@@ -357,8 +366,8 @@ func TestProtoToJsonFull(t *testing.T) {
 	val := skyEval(t, `proto.to_json(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	), compact=False)`)
-	got := string(val.(starlark.String))
-	want := "{\n\t\"f_string\": \"some string\"\n}"
+	got := removeRandomSpace(string(val.(starlark.String)))
+	want := "{\n \"f_string\": \"some string\"\n}"
 	if want != got {
 		t.Fatalf("to_json_full: wanted %q, got %q", want, got)
 	}
@@ -368,7 +377,7 @@ func TestProtoToAnyV2(t *testing.T) {
 	val := skyEval(t, `proto.to_any(proto.package("skycfg.test_proto").MessageV2(
 		f_string = "some string",
 	))`)
-	myAny := val.(*skyProtoMessage).msg.(*any.Any)
+	myAny := mustProtoMessage(val).(*any.Any)
 
 	want := "type.googleapis.com/skycfg.test_proto.MessageV2"
 	if want != myAny.GetTypeUrl() {
@@ -391,7 +400,7 @@ func TestProtoToAnyV3(t *testing.T) {
 	val := skyEval(t, `proto.to_any(proto.package("skycfg.test_proto").MessageV3(
 		f_string = "some string",
 	))`)
-	myAny := val.(*skyProtoMessage).msg.(*any.Any)
+	myAny := mustProtoMessage(val).(*any.Any)
 
 	want := "type.googleapis.com/skycfg.test_proto.MessageV3"
 	if want != myAny.GetTypeUrl() {
@@ -495,7 +504,7 @@ func TestMessageV2(t *testing.T) {
 		f_oneof_a = "string in oneof",
 		f_bytes = "also some string",
 	)`)
-	gotMsg := val.(*skyProtoMessage).msg
+	gotMsg := mustProtoMessage(val)
 	wantMsg := &pb.MessageV2{
 		FInt32:   proto.Int32(1010),
 		FInt64:   proto.Int64(1020),
@@ -601,7 +610,7 @@ func TestMessageV3(t *testing.T) {
 		f_oneof_a = "string in oneof",
 		f_bytes = "also some string",
 	)`)
-	gotMsg := val.(*skyProtoMessage).msg
+	gotMsg := mustProtoMessage(val)
 	wantMsg := &pb.MessageV3{
 		FInt32:   1010,
 		FInt64:   1020,
@@ -708,7 +717,7 @@ func TestMessageGogo(t *testing.T) {
 		f_bytes = "also some string",
 		f_duration = proto.package("google.protobuf").Duration(seconds = 1),
 	)`)
-	gotMsg := val.(*skyProtoMessage).msg
+	gotMsg := mustProtoMessage(val)
 	wantMsg := &pb_gogo.MessageGogo{
 		FInt32:   proto.Int32(1010),
 		FInt64:   proto.Int64(1020),
@@ -783,7 +792,7 @@ func TestMessageGogo(t *testing.T) {
 
 func TestAttrValidation(t *testing.T) {
 	globals := starlark.StringDict{
-		"proto": NewProtoModule(nil),
+		"proto": skycfg.UnstableProtoModule(nil),
 	}
 	tests := []struct {
 		src     string
@@ -959,7 +968,7 @@ func TestListMutation(t *testing.T) {
 			RString: []string{"a", "b", "c"},
 		}
 		globals := starlark.StringDict{
-			"msg": NewSkyProtoMessage(msg),
+			"msg": impl.NewSkyProtoMessage(msg),
 		}
 		_, err := starlark.Eval(&starlark.Thread{}, "", test.src, globals)
 		if test.wantErr != "" {
@@ -1039,7 +1048,7 @@ func TestMapMutation(t *testing.T) {
 			},
 		}
 		globals := starlark.StringDict{
-			"msg": NewSkyProtoMessage(msg),
+			"msg": impl.NewSkyProtoMessage(msg),
 		}
 		_, err := starlark.Eval(&starlark.Thread{}, "", test.src, globals)
 		if test.wantErr != "" {
@@ -1108,13 +1117,13 @@ func TestProtoComparisonEqual(t *testing.T) {
 	msg := &pb.MessageV2{
 		RString: []string{"a", "b", "c"},
 	}
-	skyMsg := NewSkyProtoMessage(msg)
+	skyMsg := impl.NewSkyProtoMessage(msg)
 
 	// create a separate msg to ensure the underlying reference in skyMsgOther is different
 	msgOther := &pb.MessageV2{
 		RString: []string{"a", "b", "c"},
 	}
-	skyMsgOther := NewSkyProtoMessage(msgOther)
+	skyMsgOther := impl.NewSkyProtoMessage(msgOther)
 	ok, err := starlark.Compare(syntax.EQL, skyMsg, skyMsgOther)
 	if err != nil {
 		t.Error(err)
@@ -1128,13 +1137,13 @@ func TestProtoComparisonNotEqual(t *testing.T) {
 	msg := &pb.MessageV2{
 		RString: []string{"a", "b", "c"},
 	}
-	skyMsg := NewSkyProtoMessage(msg)
+	skyMsg := impl.NewSkyProtoMessage(msg)
 
 	// create a separate msg to ensure the underlying reference in skyMsgOther is different
 	msgOther := &pb.MessageV2{
 		RString: []string{"a", "b"},
 	}
-	skyMsgOther := NewSkyProtoMessage(msgOther)
+	skyMsgOther := impl.NewSkyProtoMessage(msgOther)
 	ok, err := starlark.Compare(syntax.EQL, skyMsg, skyMsgOther)
 	if err != nil {
 		t.Error(err)
@@ -1207,7 +1216,7 @@ func TestKubernetesMessage(t *testing.T) {
 	val := skyEval(t, `proto.package("skycfg.test_proto").KubernetesMessage(
 		f_string = "foobar",
 	)`)
-	gotMsg := val.(*skyProtoMessage).msg
+	gotMsg := mustProtoMessage(val)
 	var fString StringFieldAliasType = "foobar"
 	wantMsg := &KubernetesMessage{
 		FString: &fString,
@@ -1299,4 +1308,9 @@ proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A != proto.pa
 	if !bool(got) {
 		t.Error("Expected unequal enums")
 	}
+}
+
+// https://github.com/protocolbuffers/protobuf-go/commit/c3f4d486298baf0f69057fc51d4b5194f8dfbfdd
+func removeRandomSpace(s string) string {
+	return strings.ReplaceAll(s, "  ", " ")
 }

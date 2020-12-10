@@ -136,14 +136,14 @@ func ToProtoMessage(val starlark.Value) (proto.Message, bool) {
 	return nil, false
 }
 
-func (msg *skyProtoMessage) checkMutable(verb string) error {
+func (msg *skyProtoMessage) CheckMutable(verb string) error {
 	if msg.frozen {
 		return fmt.Errorf("cannot %s frozen message", verb)
 	}
 	return nil
 }
 
-func (msg *skyProtoMessage) resetAttrCache() {
+func (msg *skyProtoMessage) ResetAttrCache() {
 	msg.attrCache = make(map[string]starlark.Value)
 }
 
@@ -221,7 +221,7 @@ func (msg *skyProtoMessage) setOneofField(name string, prop *proto.OneofProperti
 	if err != nil {
 		return err
 	}
-	if err := msg.checkMutable("set field of"); err != nil {
+	if err := msg.CheckMutable("set field of"); err != nil {
 		return err
 	}
 
@@ -244,7 +244,7 @@ func (msg *skyProtoMessage) setSingleField(name string, prop *proto.Properties, 
 	if err != nil {
 		return err
 	}
-	if err := msg.checkMutable("set field of"); err != nil {
+	if err := msg.CheckMutable("set field of"); err != nil {
 		return err
 	}
 	delete(msg.attrCache, name)
