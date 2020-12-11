@@ -30,32 +30,20 @@ import (
 //  url = module(
 //    encode_query,
 //  )
+//
+// See `docs/modules.asciidoc` for details on the API of each function.
 func NewModule() *starlarkstruct.Module {
 	return &starlarkstruct.Module{
 		Name: "url",
 		Members: starlark.StringDict{
-			"encode_query": starlarkEncodeQuery,
+			"encode_query": starlark.NewBuiltin("url.encode_query", encodeQuery),
 		},
 	}
 }
 
-var (
-	starlarkEncodeQuery = starlark.NewBuiltin("url.encode_query", encodeQuery)
-)
-
-// EncodeQuery returns a Starlark function for encoding URL query strings.
-//
-//  >>> url.encode_query({"hello": "a", "world": "b"})
-//  "hello=a&world=b"
-//
-// Query items will be encoded in starlark iteration order.
-func EncodeQuery() starlark.Callable {
-	return starlarkEncodeQuery
-}
-
 func encodeQuery(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var d *starlark.Dict
-	if err := starlark.UnpackPositionalArgs(fn.Name(), args, nil, 1, &d); err != nil {
+	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &d); err != nil {
 		return nil, err
 	}
 

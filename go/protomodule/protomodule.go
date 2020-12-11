@@ -46,40 +46,24 @@ import (
 //    merge,
 //    set_defaults,
 //  )
+//
+// See `docs/modules.asciidoc` for details on the API of each function.
 func NewModule(registry *protoregistry.Types) *starlarkstruct.Module {
 	return &starlarkstruct.Module{
 		Name: "proto",
 		Members: starlark.StringDict{
 			"clear":        starlarkClear,
 			"clone":        starlarkClone,
-			"decode_any":   DecodeAny(registry),
-			"decode_json":  DecodeJSON(registry),
-			"decode_text":  DecodeText(registry),
+			"decode_any":   decodeAny(registry),
+			"decode_json":  decodeJSON(registry),
+			"decode_text":  decodeText(registry),
 			"encode_any":   starlarkEncodeAny,
-			"encode_json":  EncodeJSON(registry),
-			"encode_text":  EncodeText(registry),
+			"encode_json":  encodeJSON(registry),
+			"encode_text":  encodeText(registry),
 			"merge":        starlarkMerge,
 			"set_defaults": starlarkSetDefaults,
 		},
 	}
-}
-
-// Clear returns a Starlark function that clears every field of a Protobuf
-// message to an empty state.
-//
-//  >>> pb = proto.package("google.protobuf")
-//  >>> msg = pb.FileDescriptorProto(name = "helloworld")
-//  >>> msg
-//  <google.protobuf.FileDescriptorProto name:"helloworld" >
-//  >>> proto.clear(msg)
-//  >>> msg
-//  <google.protobuf.FileDescriptorProto >
-//  >>>
-//
-// For compatibility with earlier Skycfg versions, the message will also be
-// returned. This behavior will change to returning None in the v1.0 release.
-func Clear() starlark.Callable {
-	return starlarkClear
 }
 
 var starlarkClear = starlark.NewBuiltin("proto.clear", func(
@@ -100,22 +84,6 @@ var starlarkClear = starlark.NewBuiltin("proto.clear", func(
 	return skyProtoMsg, nil
 })
 
-// Clone returns a Starlark function that performs a deep copy of a Protobuf
-// message.
-//
-//  >>> pb = proto.package("google.protobuf")
-//  >>> msg = pb.StringValue(value = "hello")
-//  >>> clone = proto.clone(msg)
-//  >>> clone.value = "world"
-//  >>> msg
-//  <google.protobuf.StringValue value:"hello" >
-//  >>> clone
-//  <google.protobuf.StringValue value:"world" >
-//  >>>
-func Clone() starlark.Callable {
-	return starlarkClone
-}
-
 var starlarkClone = starlark.NewBuiltin("proto.clone", func(
 	t *starlark.Thread,
 	fn *starlark.Builtin,
@@ -129,18 +97,7 @@ var starlarkClone = starlark.NewBuiltin("proto.clone", func(
 	return impl.NewSkyProtoMessage(proto_v1.MessageV1(proto.Clone(msg))), nil
 })
 
-// DecodeAny returns a Starlark function that decodes google.protobuf.Any
-// messages into their original Protobuf message.
-//
-//  >>> pb = proto.package("google.protobuf")
-//  >>> any = pb.Any(
-//  ...   type_url = "type.googleapis.com/google.protobuf.StringValue",
-//  ...   value = "\n\014hello world!",
-//  ... )
-//  >>> proto.decode_any(any)
-//  <google.protobuf.StringValue value:"hello world!" >
-//  >>>
-func DecodeAny(registry *protoregistry.Types) starlark.Callable {
+func decodeAny(registry *protoregistry.Types) starlark.Callable {
 	return starlark.NewBuiltin("proto.decode_any", func(
 		t *starlark.Thread,
 		fn *starlark.Builtin,
@@ -166,15 +123,7 @@ func DecodeAny(registry *protoregistry.Types) starlark.Callable {
 	})
 }
 
-// DecodeJSON returns a Starlark function that decodes Protobuf's JSON encoding
-// into a Protobuf message of the given type.
-//
-//  >>> pb = proto.package("google.protobuf")
-//  >>> text = '{"name":"example.proto","options":{"java_package":"com.example"}}'
-//  >>> proto.decode_json(pb.FileDescriptorProto, text)
-//  <google.protobuf.FileDescriptorProto name:"example.proto" options:<java_package:"com.example" > >
-//  >>>
-func DecodeJSON(registry *protoregistry.Types) starlark.Callable {
+func decodeJSON(registry *protoregistry.Types) starlark.Callable {
 	return starlark.NewBuiltin("proto.decode_json", func(
 		t *starlark.Thread,
 		fn *starlark.Builtin,
@@ -202,15 +151,7 @@ func DecodeJSON(registry *protoregistry.Types) starlark.Callable {
 	})
 }
 
-// DecodeText returns a Starlark function that decodes Protobuf's text encoding
-// into a Protobuf message of the given type.
-//
-//  >>> pb = proto.package("google.protobuf")
-//  >>> text = 'name:"example.proto" options { java_package:"com.example"}'
-//  >>> proto.decode_text(pb.FileDescriptorProto, text)
-//  <google.protobuf.FileDescriptorProto name:"example.proto" options:<java_package:"com.example" > >
-//  >>>
-func DecodeText(registry *protoregistry.Types) starlark.Callable {
+func decodeText(registry *protoregistry.Types) starlark.Callable {
 	return starlark.NewBuiltin("proto.decode_text", func(
 		t *starlark.Thread,
 		fn *starlark.Builtin,
@@ -238,22 +179,6 @@ func DecodeText(registry *protoregistry.Types) starlark.Callable {
 	})
 }
 
-// EncodeAny returns a Starlark function that encodes a Protobuf message to
-// a google.protobuf.Any wrapper message.
-//
-//  >>> pb = proto.package("google.protobuf")
-//  >>> msg = pb.StringValue(value = "hello world!")
-//  >>> proto.encode_any(msg)
-//  <google.protobuf.Any type_url:"type.googleapis.com/google.protobuf.StringValue" value:"\n\014hello world!" >
-//  >>>
-//
-// Encoding is deterministic for all executions of the same binary, but is not
-// guaranteed to remain stable across different binaries or languages. Protobuf
-// does not have a canonical serialized format.
-func EncodeAny() starlark.Callable {
-	return starlarkEncodeAny
-}
-
 var starlarkEncodeAny = starlark.NewBuiltin("proto.encode_any", func(
 	t *starlark.Thread,
 	fn *starlark.Builtin,
@@ -273,25 +198,7 @@ var starlarkEncodeAny = starlark.NewBuiltin("proto.encode_any", func(
 	return impl.NewSkyProtoMessage(proto_v1.MessageV1(any)), nil
 })
 
-// EncodeJSON returns a Starlark function that encodes a Protobuf message to
-// JSON.
-//
-//  >>> pb = proto.package("google.protobuf")
-//  >>> msg = pb.FileDescriptorProto(
-//  ...   name = "example.proto",
-//  ...   options = pb.FileOptions(java_package = "com.example"),
-//  ... )
-//  >>> print(proto.encode_json(msg))
-//  {"name":"example.proto","options":{"java_package":"com.example"}}
-//  >>> print(proto.encode_json(msg, compact = False))
-//  {
-//    "name": "example.proto",
-//    "options": {
-//      "java_package": "com.example"
-//    }
-//  }
-//  >>>
-func EncodeJSON(registry *protoregistry.Types) starlark.Callable {
+func encodeJSON(registry *protoregistry.Types) starlark.Callable {
 	return starlark.NewBuiltin("proto.encode_json", func(
 		t *starlark.Thread,
 		fn *starlark.Builtin,
@@ -325,26 +232,7 @@ func EncodeJSON(registry *protoregistry.Types) starlark.Callable {
 	})
 }
 
-// EncodeText returns a Starlark function that encodes a Protobuf message to
-// a human-readable text format.
-//
-//  >>> pb = proto.package("google.protobuf")
-//  >>> msg = pb.FileDescriptorProto(
-//  ...   name = "example.proto",
-//  ...   options = pb.FileOptions(java_package = "com.example"),
-//  ... )
-//  >>> print(proto.encode_text(msg))
-//  name:"example.proto" options:{java_package:"com.example"}
-//  >>> print(proto.encode_text(msg, compact = False))
-//  name: "example.proto"
-//  options: {
-//    java_package: "com.example"
-//  }
-//  >>>
-//
-// Note that the Protobuf text format is not standardized, and is not guaranteed
-// to be stable between Protobuf versions or implementations.
-func EncodeText(registry *protoregistry.Types) starlark.Callable {
+func encodeText(registry *protoregistry.Types) starlark.Callable {
 	return starlark.NewBuiltin("proto.encode_text", func(
 		t *starlark.Thread,
 		fn *starlark.Builtin,
@@ -377,27 +265,6 @@ func EncodeText(registry *protoregistry.Types) starlark.Callable {
 	})
 }
 
-// Merge returns a Starlark function that merges one message into another. Both
-// messages must be of the same type.
-//
-// The destination message is modified in place, and also returned so that
-// `proto.merge()` may be used for bulk modification of a message template.
-//
-//  >>> pb = proto.package("google.protobuf")
-//  >>> msg = pb.FieldMask(paths = ["hello"])
-//  >>> proto.merge(msg, pb.FieldMask(paths = ["world"]))
-//  <google.protobuf.FieldMask paths:"hello" paths:"world" >
-//  >>> msg
-//  <google.protobuf.FieldMask paths:"hello" paths:"world" >
-//  >>>
-//
-// The semantics of message merging match that of the underlying Protobuf
-// implementation: scalar fields are replaced, repeated fields are concatenated,
-// and message fields are merged recursively.
-func Merge() starlark.Callable {
-	return starlarkMerge
-}
-
 var starlarkMerge = starlark.NewBuiltin("proto.merge", func(
 	t *starlark.Thread,
 	fn *starlark.Builtin,
@@ -428,24 +295,6 @@ var starlarkMerge = starlark.NewBuiltin("proto.merge", func(
 	dst.ResetAttrCache()
 	return dst, nil
 })
-
-// SetDefaults returns a Starlark function that sets every field of a Protobuf
-// message to its default value. A field's default value may be different from
-// its empty value in proto2.
-//
-//  >>> pb = proto.package("google.protobuf")
-//  >>> msg = pb.FileOptions()
-//  >>> msg.optimize_for
-//  >>> proto.set_defaults(msg)
-//  >>> msg.optimize_for
-//  <google.protobuf.FileOptions.OptimizeMode SPEED=1>
-//  >>>
-//
-// For compatibility with earlier Skycfg versions, the message will also be
-// returned. This behavior will change to returning None in the v1.0 release.
-func SetDefaults() starlark.Callable {
-	return starlarkSetDefaults
-}
 
 var starlarkSetDefaults = starlark.NewBuiltin("proto.set_defaults", func(
 	t *starlark.Thread,

@@ -190,9 +190,19 @@ func UnstablePredeclaredModules(r unstableProtoRegistry) starlark.StringDict {
 		"json":   starlarkjson.Module,
 		"proto":  UnstableProtoModule(r),
 		"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
-		"yaml":   yamlmodule.NewModule(),
+		"yaml":   newYamlModule(),
 		"url":    urlmodule.NewModule(),
 	}
+}
+
+func newYamlModule() starlark.Value {
+	module := yamlmodule.NewModule()
+
+	// Aliases for compatibility with pre-v1.0 Skycfg API.
+	module.Members["marshal"] = module.Members["encode"]
+	module.Members["unmarshal"] = module.Members["decode"]
+
+	return module
 }
 
 func UnstableProtoModule(r unstableProtoRegistry) starlark.Value {

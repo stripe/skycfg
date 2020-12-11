@@ -35,45 +35,17 @@ import (
 //    sha1,
 //    sha256,
 //  )
+//
+// See `docs/modules.asciidoc` for details on the API of each function.
 func NewModule() *starlarkstruct.Module {
 	return &starlarkstruct.Module{
 		Name: "hash",
 		Members: starlark.StringDict{
-			"md5":    starlarkMD5,
-			"sha1":   starlarkSHA1,
-			"sha256": starlarkSHA256,
+			"md5":    starlark.NewBuiltin("hash.md5", fnHash(md5.New)),
+			"sha1":   starlark.NewBuiltin("hash.sha1", fnHash(sha1.New)),
+			"sha256": starlark.NewBuiltin("hash.sha256", fnHash(sha256.New)),
 		},
 	}
-}
-
-var (
-	starlarkMD5    = starlark.NewBuiltin("hash.md5", fnHash(md5.New))
-	starlarkSHA1   = starlark.NewBuiltin("hash.sha1", fnHash(sha1.New))
-	starlarkSHA256 = starlark.NewBuiltin("hash.sha256", fnHash(sha256.New))
-)
-
-// MD5 returns a Starlark function for calculating MD5 checksums.
-//
-//  >>> hash.md5("hello")
-//  "5d41402abc4b2a76b9719d911017c592"
-func MD5() starlark.Callable {
-	return starlarkMD5
-}
-
-// SHA1 returns a Starlark function for calculating SHA1 checksums.
-//
-//  >>> hash.sha1("hello")
-//  "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"
-func SHA1() starlark.Callable {
-	return starlarkSHA1
-}
-
-// SHA256 returns a Starlark function for calculating SHA256 checksums.
-//
-//  >>> hash.sha256("hello")
-//  "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
-func SHA256() starlark.Callable {
-	return starlarkSHA256
 }
 
 func fnHash(hash func() hash.Hash) func(*starlark.Thread, *starlark.Builtin, starlark.Tuple, []starlark.Tuple) (starlark.Value, error) {
