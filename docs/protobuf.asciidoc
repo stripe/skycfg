@@ -1,0 +1,121 @@
+= Protobuf
+
+Skycfg supports the construction, modification, and encoding of
+https://en.wikipedia.org/wiki/Protocol_Buffers[Protobuf] messages. The
+user-facing API for interacting with Protobuf consists of Starlark types and
+values that mirror a set of Protobuf schemas.
+
+See link:modules.asciidoc[/docs/modules] for more details on the Skycfg API
+in general.
+
+== `Package`
+
+A `Package` provides access to registered message descriptors with a matching
+Protobuf package name.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> pb
+ <proto.Package "google.protobuf">
+ >>>
+
+Top-level messages and enums are available as attributes of the `Package`.
+
+ >>> dir(pb)[:5]
+ ["Any", "BoolValue", "BytesValue", "DescriptorProto", "DoubleValue"]
+ >>> pb.Any
+ <proto.MessageType "google.protobuf.Any">
+ >>>
+
+== `MessageType`
+
+A `MessageType` can be used to construct instances of `<<Message>>`, and can
+also be passed to functions such as `proto.decode_json`.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> pb.FileOptions
+ <proto.MessageType "google.protobuf.FileOptions">
+ >>>
+
+Nested messages and enums are available as attributes of the `MessageType`
+
+ >>> pb.FileOptions.OptimizeMode
+ <proto.EnumType "google.protobuf.FileOptions.OptimizeMode">
+ >>>
+
+== `Message`
+
+A `Message` is a single instance of a Protobuf message type. It provides access
+to and mediates mutation of the Protobuf data structures.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> msg = pb.FileOptions()
+ >>> msg
+ <google.protobuf.FileOptions >
+ >>> dir(msg)[:5]
+ ["cc_enable_arenas", "cc_generic_services", "csharp_namespace", "deprecated", "go_package"]
+
+Fields are available as attributes of the `Message`, with unset fields being
+a zero value or `None` depending on the field type and Protobuf dialect.
+
+ >>> pb.FileOptions().java_package
+ >>> type(pb.FileOptions().java_package)
+ "NoneType"
+ >>> pb.StringValue().value
+ ""
+ >>>
+
+Fields are strongly typed, and will reject assignments from values of a
+different type.
+
+If a repeated field is assigned to, it will make a shallow copy rather than a
+reference. Further modification of the value that was assigned has no effect.
+
+ >>> msg = pb.FileDescriptorProto()
+ >>> deps = ["a", "b"]
+ >>> msg.dependency = deps
+ >>> deps.append("c")
+ >>> msg
+ <google.protobuf.FileDescriptorProto dependency:"a" dependency:"b" >
+
+It is possible to modify repeated fields in-place via methods on the field
+itself.
+
+ >>> msg.dependency.append("d")
+ >>> msg
+ <google.protobuf.FileDescriptorProto dependency:"a" dependency:"b" dependency:"d" >
+
+== `EnumType`
+
+A Protobuf enum type provides access to its values.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> pb.FileOptions.OptimizeMode
+ <proto.EnumType "google.protobuf.FileOptions.OptimizeMode">
+ >>> dir(pb.FileOptions.OptimizeMode)
+ ["CODE_SIZE", "LITE_RUNTIME", "SPEED"]
+ >>>
+
+== `EnumValue`
+
+A Protobuf enum value can be inspected to determine its name and number.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> pb.FileOptions.OptimizeMode.SPEED
+ <google.protobuf.FileOptions.OptimizeMode SPEED=1>
+ >>>
+
+Enum fields can be assigned to by symbol or name.
+
+ >>> msg = pb.FileOptions()
+ >>> msg.optimize_for
+ >>> msg.optimize_for = pb.FileOptions.OptimizeMode.SPEED
+ >>> msg
+ <google.protobuf.FileOptions optimize_for:SPEED >
+ >>> msg.optimize_for = 'CODE_SIZE'
+ >>> msg
+ <google.protobuf.FileOptions optimize_for:CODE_SIZE >
+ >>>
+
+WARNING: Protobuf enums are allowed to have multiple names assigned to the same
+number. In this case, it is unspecified which name Skycfg will report for enum
+fields set to such a number.

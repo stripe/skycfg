@@ -1,0 +1,343 @@
+= Modules
+:sectanchors:
+
+== hash
+
+Functions for common hash algorithms.
+
+Hashing is useful in configuration files that need to generate deterministic
+identifiers. For example, a  Kubernetes `ConfigMap` might have a name derived
+from the hash of its contents.
+
+Index:
+
+ * `<<hash.md5>>`
+ * `<<hash.sha1>>`
+ * `<<hash.sha256>>`
+
+=== `hash.md5`
+[[hash.md5]]
+
+The https://en.wikipedia.org/wiki/MD5[MD5] hash function.
+
+ >>> hash.md5("hello")
+ "5d41402abc4b2a76b9719d911017c592"
+ >>>
+
+
+=== `hash.sha1`
+[[hash.sha1]]
+
+The https://en.wikipedia.org/wiki/SHA-1[SHA-1] hash function.
+
+ >>> hash.sha1("hello")
+ "aaf4c61ddcc5e8a2dabede0f3b482cd9aea9434d"
+ >>>
+
+=== `hash.sha256`
+[[hash.sha256]]
+
+The https://en.wikipedia.org/wiki/SHA-2[SHA-256] hash function.
+
+ >>> hash.sha256("hello")
+ "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+ >>>
+
+== url
+
+Functions for constructing https://en.wikipedia.org/wiki/URL[URL]s.
+
+Index:
+
+ * `<<url.encode_query>>`
+
+=== `url.encode_query`
+[[url.encode_query]]
+
+Converts a dictionary into a URL
+https://en.wikipedia.org/wiki/Query_string[query string], preserving iteration
+order.
+
+ >>> url.encode_query({"hello": "a", "world": "b"})
+ "hello=a&world=b"
+ >>>
+
+== proto
+
+Functions for constructing, modifying, and encoding
+https://en.wikipedia.org/wiki/Protocol_Buffers[Protobuf] messages.
+
+Index:
+
+ * `<<proto.clear>>`
+ * `<<proto.clone>>`
+ * `<<proto.decode_any>>`
+ * `<<proto.decode_json>>`
+ * `<<proto.decode_text>>`
+ * `<<proto.encode_any>>`
+ * `<<proto.encode_json>>`
+ * `<<proto.encode_text>>`
+ * `<<proto.merge>>`
+ * `<<proto.package>>`
+ * `<<proto.set_defaults>>`
+
+=== `proto.clear`
+[[proto.clear]]
+
+Clears every field of a Protobuf message to an empty state.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> msg = pb.FileDescriptorProto(name = "helloworld")
+ >>> msg
+ <google.protobuf.FileDescriptorProto name:"helloworld" >
+ >>> proto.clear(msg)
+ >>> msg
+ <google.protobuf.FileDescriptorProto >
+ >>>
+
+WARNING: For compatibility with earlier Skycfg versions, the provided message
+will also be returned. This behavior will change to returning `None` in the
+v1.0 release.
+
+=== `proto.clone`
+[[proto.clone]]
+
+Clone returns a deep copy of a Protobuf message.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> msg = pb.StringValue(value = "hello")
+ >>> clone = proto.clone(msg)
+ >>> clone.value = "world"
+ >>> msg
+ <google.protobuf.StringValue value:"hello" >
+ >>> clone
+ <google.protobuf.StringValue value:"world" >
+ >>>
+
+=== `proto.decode_any`
+[[proto.decode_any]]
+
+Decodes a https://developers.google.com/protocol-buffers/docs/proto3#any[`google.protobuf.Any`]
+into a Protobuf message.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> any = pb.Any(
+ ...   type_url = "type.googleapis.com/google.protobuf.StringValue",
+ ...   value = "\n\014hello world!",
+ ... )
+ >>> proto.decode_any(any)
+ <google.protobuf.StringValue value:"hello world!" >
+ >>>
+
+The message type must be registered with Skycfg -- this is typically handled by
+the underlying Protobuf library.
+
+=== `proto.decode_json`
+[[proto.decode_json]]
+
+Decodes https://en.wikipedia.org/wiki/JSON[JSON] conforming to the Protobuf
+https://developers.google.com/protocol-buffers/docs/proto3#json[JSON mapping]
+into a Protobuf message of the given type.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> text = '{"name":"example.proto","options":{"java_package":"com.example"}}'
+ >>> proto.decode_json(pb.FileDescriptorProto, text)
+ <google.protobuf.FileDescriptorProto name:"example.proto" options:<java_package:"com.example" > >
+ >>>
+
+=== `proto.decode_text`
+[[proto.decode_text]]
+
+Decodes a text-formatted Protobuf message of the given type.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> text = 'name:"example.proto" options { java_package:"com.example" }'
+ >>> proto.decode_text(pb.FileDescriptorProto, text)
+ <google.protobuf.FileDescriptorProto name:"example.proto" options:<java_package:"com.example" > >
+ >>>
+
+WARNING: The Protobuf text format is
+https://github.com/protocolbuffers/protobuf/issues/3755[intentionally unspecified],
+and may vary between implementations.
+
+=== `proto.encode_any`
+[[proto.encode_any]]
+
+Encodes a Protobuf message to a
+https://developers.google.com/protocol-buffers/docs/proto3#any[`google.protobuf.Any`]
+wrapper message.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> msg = pb.StringValue(value = "hello world!")
+ >>> proto.encode_any(msg)
+ <google.protobuf.Any type_url:"type.googleapis.com/google.protobuf.StringValue" value:"\n\014hello world!" >
+ >>>
+
+WARNING: The Protobuf binary encoder is deterministic for all executions of the
+same binary, but is not guaranteed to generate the same output between different
+binaries or Protobuf implementations.
+
+=== `proto.encode_json`
+[[proto.encode_json]]
+
+Encodes a Protobuf message to JSON that conforms to the Protobuf
+https://developers.google.com/protocol-buffers/docs/proto3#json[JSON mapping].
+
+ >>> pb = proto.package("google.protobuf")
+ >>> msg = pb.FileDescriptorProto(
+ ...   name = "example.proto",
+ ...   options = pb.FileOptions(java_package = "com.example"),
+ ... )
+ >>> print(proto.encode_json(msg))
+ {"name":"example.proto","options":{"java_package":"com.example"}}
+ >>>
+
+The `compact = False` option may be used to insert additional whitespace into
+the returned value.
+
+ >>> print(proto.encode_json(msg, compact = False))
+ {
+   "name": "example.proto",
+   "options": {
+     "java_package": "com.example"
+   }
+ }
+ >>>
+
+=== `proto.encode_text`
+[[proto.encode_text]]
+
+Encodes a Protobuf message to a human-readable text format. This function is
+useful for inspecting the content of large Protobuf messages, since it's easier
+to read than the output of `repr()`.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> msg = pb.FileDescriptorProto(
+ ...   name = "example.proto",
+ ...   options = pb.FileOptions(java_package = "com.example"),
+ ... )
+ >>> print(proto.encode_text(msg))
+ name:"example.proto" options:{java_package:"com.example"}
+ >>>
+
+WARNING: The Protobuf text format is
+https://github.com/protocolbuffers/protobuf/issues/3755[intentionally unspecified],
+and may vary between implementations.
+
+The `compact = False` option may be used to insert additional whitespace into
+the returned value.
+
+ >>> print(proto.encode_text(msg, compact = False))
+ name: "example.proto"
+ options: {
+   java_package: "com.example"
+ }
+ >>>
+
+=== `proto.merge`
+[[proto.merge]]
+
+Merges one Protobuf message into another. Both messages must be of the same type.
+
+The destination message is modified in place, and also returned so that
+`proto.merge()` may be used for bulk modification of a message template.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> msg = pb.FieldMask(paths = ["hello"])
+ >>> proto.merge(msg, pb.FieldMask(paths = ["world"]))
+ <google.protobuf.FieldMask paths:"hello" paths:"world" >
+ >>> msg
+ <google.protobuf.FieldMask paths:"hello" paths:"world" >
+ >>>
+
+The semantics of message merging match that of the underlying Protobuf
+implementation:
+
+* Scalar fields are replaced.
+* Repeated fields are concatenated.
+* Maps are unioned, with new keys overwriting old keys.
+* Message fields are merged recursively.
+
+=== `proto.package`
+
+Returns a value representing a single Protobuf package.
+
+This is the primary entry point to the Skycfg subsystem that converts Starlark
+value to and from Protobuf messages.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> pb
+ <proto.Package "google.protobuf">
+ >>> dir(pb)[:5]
+ ["Any", "BoolValue", "BytesValue", "DescriptorProto", "DoubleValue"]
+
+See link:protobuf.asciidoc[/docs/protobuf] for more details on the Protobuf API
+exported by Skycfg.
+
+=== `proto.set_defaults`
+[[proto.set_defaults]]
+
+Sets every field of a Protobuf message to its default value.
+
+ >>> pb = proto.package("google.protobuf")
+ >>> msg = pb.FileOptions()
+ >>> msg.optimize_for
+ >>> proto.set_defaults(msg)
+ >>> msg.optimize_for
+ <google.protobuf.FileOptions.OptimizeMode SPEED=1>
+ >>>
+
+For `proto3` messages, a field's default value and empty value are identical and
+this function will have the same behavior as `<<proto.clear>>`.
+
+WARNING: For compatibility with earlier Skycfg versions, the provided message
+will also be returned. This behavior will change to returning `None` in the
+v1.0 release.
+
+== yaml
+
+Functions for encoding and decoding https://en.wikipedia.org/wiki/YAML[YAML].
+
+Index:
+
+ * `<<yaml.decode>>`
+ * `<<yaml.encode>>`
+
+=== `yaml.decode`
+[[yaml.decode]]
+
+Decodes a single YAML expression into a Starlark value.
+
+ >>> yaml.decode('"hello"')
+ "hello"
+ >>> yaml.decode('["hello"]')
+ ["hello"]
+ >>> yaml.decode("hello:\n- world\n")
+ {"hello": ["world"]}
+ >>>
+
+This function is intended for use in migrating from existing YAML-based
+configuration systems, for example by wrapping entire YAML files in a Skycfg
+expression.
+
+The YAML dialect and version is unspecified and may change between Skycfg
+releases.
+
+=== `yaml.encode`
+[[yaml.encode]]
+
+Encodes a single Starlark value into YAML.
+
+ >>> yaml.encode("hello")
+ "hello\n"
+ >>> yaml.encode(["hello"])
+ "- hello\n"
+ >>> yaml.encode({"hello": ["world"]})
+ "hello:\n- world\n"
+
+This function is intended for use in migrating from existing YAML-based
+configuration systems, for example by diffing the output of a Skycfg function
+against a known-good YAML file.
+
+The YAML dialect and version is unspecified and may change between Skycfg
+releases.
