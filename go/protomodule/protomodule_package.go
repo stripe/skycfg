@@ -25,6 +25,14 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
+func NewPackage(
+	registry *protoregistry.Types,
+	packageName protoreflect.FullName,
+) starlark.Value {
+	// TODO: return an error and/or panic if !packageName.IsValid() ?
+	return newProtoPackage(registry, packageName)
+}
+
 func starlarkPackageFn(registry *protoregistry.Types) starlark.Callable {
 	return starlark.NewBuiltin("proto.package", func(
 		t *starlark.Thread,
@@ -40,7 +48,7 @@ func starlarkPackageFn(registry *protoregistry.Types) starlark.Callable {
 		if !packageName.IsValid() {
 			return nil, fmt.Errorf("invalid Protobuf package name %q", packageName)
 		}
-		return newProtoPackage(registry, packageName), nil
+		return NewPackage(registry, packageName), nil
 	})
 }
 

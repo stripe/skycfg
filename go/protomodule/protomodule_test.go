@@ -22,7 +22,6 @@ import (
 
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkstruct"
 	"google.golang.org/protobuf/reflect/protoregistry"
 
 	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
@@ -43,13 +42,7 @@ func newRegistry() *protoregistry.Types {
 
 func TestProtoPackage(t *testing.T) {
 	globals := starlark.StringDict{
-		//"proto": NewModule(newRegistry()),
-		"proto": &starlarkstruct.Module{
-			Name: "proto",
-			Members: starlark.StringDict{
-				"package": starlarkPackageFn(newRegistry()),
-			},
-		},
+		"proto": NewModule(newRegistry()),
 	}
 
 	tests := []struct {
@@ -100,7 +93,7 @@ func TestProtoPackage(t *testing.T) {
 
 func TestMessageType(t *testing.T) {
 	globals := starlark.StringDict{
-		"pb": newProtoPackage(newRegistry(), "skycfg.test_proto"),
+		"pb": NewPackage(newRegistry(), "skycfg.test_proto"),
 	}
 
 	tests := []struct {
@@ -151,7 +144,7 @@ func TestMessageType(t *testing.T) {
 
 func TestEnumType(t *testing.T) {
 	globals := starlark.StringDict{
-		"pb": newProtoPackage(newRegistry(), "skycfg.test_proto"),
+		"pb": NewPackage(newRegistry(), "skycfg.test_proto"),
 	}
 
 	tests := []struct {

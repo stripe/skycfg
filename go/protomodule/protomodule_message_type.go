@@ -95,5 +95,35 @@ func (t *protoMessageType) CallInternal(
 		return nil, err
 	}
 
+	// Parse the kwarg set into a map[string]starlark.Value, containing one
+	// entry for each provided kwarg. Keys are the original protobuf field names.
+	// This lets the starlark kwarg parser handle most of the error reporting,
+	// except type errors which are deferred until later.
+	var parserPairs []interface{}
+	parsedKwargs := make(map[string]*starlark.Value, len(kwargs))
+
+	var msgDesc protoreflect.MessageDescriptor // TODO
+	fields := msgDesc.Fields()
+	for ii := 0; ii < fields.Len(); ii++ {
+		fieldName := string(fields.Get(ii).Name())
+		v := new(starlark.Value)
+		parsedKwargs[fieldName] = v
+		parserPairs = append(parserPairs, fieldName+"?", v)
+	}
+	if err := starlark.UnpackArgs(t.Name(), nil, kwargs, parserPairs...); err != nil {
+		return nil, err
+	}
+
+	//wrapper := newMessage(t.messageType.New())
+	for fieldName, starlarkValue := range parsedKwargs {
+		if *starlarkValue == nil {
+			continue
+		}
+		var _ = fieldName
+		//if err := wrapper.SetField(fieldName, *starlarkValue); err != nil {
+		//	return nil, err
+		//}
+	}
+
 	return nil, fmt.Errorf("protoMessageType.CallInternal: not implemented yet")
 }

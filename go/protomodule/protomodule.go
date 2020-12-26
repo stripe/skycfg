@@ -44,6 +44,7 @@ import (
 //    encode_json,
 //    encode_text,
 //    merge,
+//    package,
 //    set_defaults,
 //  )
 //
@@ -61,6 +62,7 @@ func NewModule(registry *protoregistry.Types) *starlarkstruct.Module {
 			"encode_json":  encodeJSON(registry),
 			"encode_text":  encodeText(registry),
 			"merge":        starlarkMerge,
+			"package":      starlarkPackageFn(registry),
 			"set_defaults": starlarkSetDefaults,
 		},
 	}

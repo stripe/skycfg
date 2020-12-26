@@ -5,6 +5,7 @@ go_library(
     srcs = [
         "protomodule.go",
         "protomodule_enum.go",
+        "protomodule_message.go",
         "protomodule_message_type.go",
         "protomodule_package.go",
     ],
@@ -33,7 +34,6 @@ go_test(
         "//internal/testdata/test_proto:test_proto_go_proto",
         "@net_starlark_go//resolve",
         "@net_starlark_go//starlark",
-        "@net_starlark_go//starlarkstruct",
         "@org_golang_google_protobuf//reflect/protoregistry",
     ],
 )
