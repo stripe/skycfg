@@ -3,8 +3,6 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "skycfg",
     srcs = [
-        "assert.go",
-        "fail.go",
         "module.go",
         "proto_api.go",
         "proto_enum.go",
@@ -34,7 +32,6 @@ go_test(
     name = "skycfg_test",
     size = "small",
     srcs = [
-        "assert_test.go",
         "proto_test.go",
         "skycfg_test.go",
     ],
