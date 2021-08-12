@@ -34,6 +34,7 @@ import (
 	"go.starlark.net/starlarkstruct"
 	"google.golang.org/protobuf/reflect/protoregistry"
 
+	"github.com/stripe/skycfg/go/assertmodule"
 	"github.com/stripe/skycfg/go/hashmodule"
 	"github.com/stripe/skycfg/go/protomodule"
 	"github.com/stripe/skycfg/go/urlmodule"
@@ -185,7 +186,7 @@ func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
 //  * url    - utility package for encoding URL query string.
 func UnstablePredeclaredModules(r unstableProtoRegistry) starlark.StringDict {
 	return starlark.StringDict{
-		"fail":   impl.Fail,
+		"fail":   assertmodule.Fail,
 		"hash":   hashmodule.NewModule(),
 		"json":   starlarkjson.Module,
 		"proto":  UnstableProtoModule(r),
@@ -443,7 +444,7 @@ func (t *Test) Run(ctx context.Context) (*TestResult, error) {
 	}
 	thread.SetLocal("context", ctx)
 
-	assertModule := impl.AssertModule()
+	assertModule := assertmodule.AssertModule()
 	testCtx := &impl.Module{
 		Name: "skycfg_test_ctx",
 		Attrs: starlark.StringDict(map[string]starlark.Value{

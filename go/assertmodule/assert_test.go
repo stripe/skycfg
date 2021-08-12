@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package skycfg
+package assertmodule
 
 import (
 	"fmt"
@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
 )
 
@@ -338,9 +339,9 @@ func evalAndReportResults(t *testing.T, cmd string, testCase assertTestCase) {
 	assertModule := AssertModule()
 
 	// set it up like it would be used, off a param
-	testCtx := &Module{
+	testCtx := &starlarkstruct.Module{
 		Name: "skycfg_test_ctx",
-		Attrs: starlark.StringDict(map[string]starlark.Value{
+		Members: starlark.StringDict(map[string]starlark.Value{
 			"assert": assertModule,
 		}),
 	}

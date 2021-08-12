@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package skycfg
+package assertmodule
 
 import (
 	"fmt"
@@ -89,7 +89,7 @@ type TestContext struct {
 	Failures []error
 }
 
-var _ starlark.HasAttrs = (*Module)(nil)
+var _ starlark.HasAttrs = (*TestContext)(nil)
 var _ starlark.Value = (*TestContext)(nil)
 var _ starlark.Callable = (*TestContext)(nil)
 

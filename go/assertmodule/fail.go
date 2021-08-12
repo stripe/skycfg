@@ -1,4 +1,4 @@
-package skycfg
+package assertmodule
 
 import (
 	"fmt"
