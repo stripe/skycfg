@@ -87,7 +87,7 @@ func (r *localFileReader) ReadFile(ctx context.Context, path string) ([]byte, er
 // NewProtoMessage returns a Starlark value representing the given Protobuf
 // message. It can be returned back to a proto.Message() via AsProtoMessage().
 func NewProtoMessage(msg proto.Message) starlark.Value {
-	return impl.NewSkyProtoMessage(msg)
+	return protomodule.NewMessage(msg)
 }
 
 // AsProtoMessage returns a Protobuf message underlying the given Starlark

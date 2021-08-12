@@ -36,6 +36,7 @@ go_test(
     name = "protomodule_test",
     srcs = [
         "protomodule_test.go",
+        "protomodule_message_test.go",
     ],
     embed = [":protomodule"],
     deps = [
