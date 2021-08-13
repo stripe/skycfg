@@ -93,6 +93,10 @@ func (v *protoEnumValue) Hash() (uint32, error) {
 	return starlark.MakeInt64(int64(v.value.Number())).Hash()
 }
 
+func (v *protoEnumValue) enumNumber() protoreflect.EnumNumber {
+	return v.value.Number()
+}
+
 func (v *protoEnumValue) CompareSameType(op syntax.Token, y starlark.Value, depth int) (bool, error) {
 	other := y.(*protoEnumValue)
 	switch op {
