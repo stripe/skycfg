@@ -436,9 +436,39 @@ func (t *Test) Name() string {
 	return t.callable.Name()
 }
 
+// An TestOption adjusts details of how a Skycfg config's test functions are
+// executed.
+type TestOption interface {
+	applyTest(*testOptions)
+}
+
+type testOptions struct {
+	vars *starlark.Dict
+}
+
+type fnTestOption func(*testOptions)
+
+func (fn fnTestOption) applyTest(opts *testOptions) { fn(opts) }
+
+// WithVars adds key:value pairs to the ctx.vars dict passed to tests
+func WithTestVars(vars starlark.StringDict) TestOption {
+	return fnTestOption(func(opts *testOptions) {
+		for key, value := range vars {
+			opts.vars.SetKey(starlark.String(key), value)
+		}
+	})
+}
+
 // Run actually executes a test. It returns a TestResult if the test completes (even if it fails)
 // The error return value will only be non-nil if the test execution itself errors.
-func (t *Test) Run(ctx context.Context) (*TestResult, error) {
+func (t *Test) Run(ctx context.Context, opts ...TestOption) (*TestResult, error) {
+	parsedOpts := &testOptions{
+		vars: &starlark.Dict{},
+	}
+	for _, opt := range opts {
+		opt.applyTest(parsedOpts)
+	}
+
 	thread := &starlark.Thread{
 		Print: skyPrint,
 	}
@@ -448,7 +478,7 @@ func (t *Test) Run(ctx context.Context) (*TestResult, error) {
 	testCtx := &impl.Module{
 		Name: "skycfg_test_ctx",
 		Attrs: starlark.StringDict(map[string]starlark.Value{
-			"vars":   &starlark.Dict{},
+			"vars":   parsedOpts.vars,
 			"assert": assertModule,
 		}),
 	}
