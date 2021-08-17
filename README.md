@@ -179,5 +179,5 @@ Our existing public APIs are expected to be stable even before the v1.0 release.
 
 Skycfg has dropped support for
 [gogo/protobuf](https://github.com/gogo/protobuf), an alternative protobuf go
-code generator, when upgrading to using the go-protobuf v2 `pi. For using gogo
+code generator, when upgrading to using the go-protobuf v2 api. For using gogo
 support, see `Skycfg@v0.1.0` (Skycfg prior to switching to v2).
