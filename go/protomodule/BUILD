@@ -5,8 +5,11 @@ go_library(
     srcs = [
         "protomodule.go",
         "protomodule_enum.go",
+        "protomodule_list.go",
+        "protomodule_map.go",
         "protomodule_message_type.go",
         "protomodule_package.go",
+        "type_conversions.go",
     ],
     importpath = "github.com/stripe/skycfg/go/protomodule",
     visibility = ["//visibility:public"],
