@@ -408,7 +408,7 @@ func TestSkycfgTesting(t *testing.T) {
 
 	tests := config.Tests()
 	if len(tests) != len(cases) {
-		t.Error("Expected %d tests but found", len(cases), len(tests))
+		t.Error("Expected %d tests but found %d", len(cases), len(tests))
 	}
 
 	for _, test := range tests {

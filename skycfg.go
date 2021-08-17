@@ -450,7 +450,7 @@ type fnTestOption func(*testOptions)
 
 func (fn fnTestOption) applyTest(opts *testOptions) { fn(opts) }
 
-// WithVars adds key:value pairs to the ctx.vars dict passed to tests
+// WithTestVars adds key:value pairs to the ctx.vars dict passed to tests
 func WithTestVars(vars starlark.StringDict) TestOption {
 	return fnTestOption(func(opts *testOptions) {
 		for key, value := range vars {
