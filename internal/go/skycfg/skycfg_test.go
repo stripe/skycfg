@@ -45,10 +45,16 @@ def test_helper1(t):
 	x = helper1()
 	t.assert(x == 12345)
 
+def test_main(ctx):
+	msg = main(ctx)[0]
+	ctx.assert(len(msg.r_string) == 1)
+	ctx.assert(msg.r_string[0] == "var_value")
+
 def main(ctx):
 	msg = test_proto.MessageV2()
 	msg.f_int64 = helper1()
 	msg.f_string = json.encode(helper2(ctx))
+	msg.r_string.append(ctx.vars["var_key"])
 
 	return [msg]
 `,
@@ -275,6 +281,7 @@ func TestSkycfgEndToEnd(t *testing.T) {
 					FString: proto.String(
 						`{"key1":"value1","key2":"key3=value3","key4":{"key5":"value5","var_key":"var_value"}}`,
 					),
+					RString: []string{"var_value"},
 				},
 			},
 		},
@@ -380,11 +387,6 @@ func TestSkycfgTesting(t *testing.T) {
 		t.Error("Unexpected error loading test1.sky", err)
 	}
 
-	tests := config.Tests()
-	if len(tests) != 4 {
-		t.Error("Expected 4 tests but found", len(tests))
-	}
-
 	cases := map[string]testTestCase{
 		"test_helper1": testTestCase{
 			passes: true,
@@ -399,10 +401,20 @@ func TestSkycfgTesting(t *testing.T) {
 		"test_helper2_errors": testTestCase{
 			errors: true,
 		},
+		"test_main": testTestCase{
+			passes: true,
+		},
+	}
+
+	tests := config.Tests()
+	if len(tests) != len(cases) {
+		t.Error("Expected %d tests but found", len(cases), len(tests))
 	}
 
 	for _, test := range tests {
-		result, err := test.Run(ctx)
+		result, err := test.Run(ctx, skycfg.WithTestVars(starlark.StringDict{
+			"var_key": starlark.String("var_value"),
+		}))
 		testCase, ok := cases[test.Name()]
 		if !ok {
 			t.Error("Could not find test case for test", test.Name())
