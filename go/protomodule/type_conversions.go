@@ -24,6 +24,7 @@ import (
 
 	"go.starlark.net/starlark"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func valueFromStarlark(msg protoreflect.Message, fieldDesc protoreflect.FieldDescriptor, val starlark.Value) (protoreflect.Value, error) {
@@ -117,7 +118,19 @@ func scalarValueFromStarlark(fieldDesc protoreflect.FieldDescriptor, val starlar
 			return protoreflect.Value{}, fmt.Errorf("ValueError: value %v overflows type \"uint32\".", valInt)
 		}
 	case protoreflect.MessageKind:
-		return protoreflect.Value{}, fmt.Errorf("MessageKind: Unimplemented")
+		msg, err := maybeConvertToWrapper(fieldDesc, val)
+		if err != nil {
+			return protoreflect.Value{}, err
+		}
+		if msg != nil {
+			return protoreflect.ValueOf(msg.toProtoMessage().ProtoReflect()), nil
+		}
+
+		if msg, ok := val.(*protoMessage); ok {
+			if msg.Type() == typeName(fieldDesc) {
+				return protoreflect.ValueOf(msg.toProtoMessage().ProtoReflect()), nil
+			}
+		}
 	case protoreflect.EnumKind:
 		if enum, ok := val.(*protoEnumValue); ok {
 			return protoreflect.ValueOf(enum.enumNumber()), nil
@@ -204,10 +217,112 @@ func scalarValueToStarlark(val protoreflect.Value, fieldDesc protoreflect.FieldD
 		// Handle []byte ([]uint8) -> string special case.
 		return starlark.String(val.Bytes()), nil
 	case protoreflect.MessageKind:
-		return nil, fmt.Errorf("MessageKind: Unimplemented")
+		if val.Interface() == nil {
+			return starlark.None, nil
+		}
+		return NewMessage(val.Message().Interface())
 	}
 
 	return starlark.None, fmt.Errorf("valueToStarlark: Value unuspported: %s\n", string(fieldDesc.FullName()))
+}
+
+// maybeConvertToWrapper checks if [val] is a primitive and [fieldDesc] is a corresponding
+// protobuf wrapper type and attempts to convert it.
+//
+// Returns
+// - (val, nil) on success
+// - (nil, err) on unsuccessful conversion
+// - (nil, nil) on no relevant conversion
+func maybeConvertToWrapper(fieldDesc protoreflect.FieldDescriptor, val starlark.Value) (*protoMessage, error) {
+	if fieldDesc.Kind() != protoreflect.MessageKind || fieldDesc.Message() == nil {
+		return nil, nil
+	}
+
+	BoolValueType := (&wrapperspb.BoolValue{}).ProtoReflect().Descriptor().FullName()
+	StringValueType := (&wrapperspb.StringValue{}).ProtoReflect().Descriptor().FullName()
+	DoubleValueType := (&wrapperspb.DoubleValue{}).ProtoReflect().Descriptor().FullName()
+	Int32ValueType := (&wrapperspb.Int32Value{}).ProtoReflect().Descriptor().FullName()
+	Int64ValueType := (&wrapperspb.Int64Value{}).ProtoReflect().Descriptor().FullName()
+	BytesValueType := (&wrapperspb.BytesValue{}).ProtoReflect().Descriptor().FullName()
+	UInt32ValueType := (&wrapperspb.UInt32Value{}).ProtoReflect().Descriptor().FullName()
+	UInt64ValueType := (&wrapperspb.UInt64Value{}).ProtoReflect().Descriptor().FullName()
+
+	messageType := fieldDesc.Message().FullName()
+
+	switch messageType {
+	case UInt32ValueType:
+		switch valInt := val.(type) {
+		case starlark.Int:
+			uint64Val, ok := valInt.Uint64()
+			if ok && uint64Val <= math.MaxUint32 {
+				return NewMessage(&wrapperspb.UInt32Value{Value: uint32(uint64Val)})
+			}
+			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `uint32'.", valInt)
+		}
+	case UInt64ValueType:
+		switch val := val.(type) {
+		case starlark.Int:
+			uint64Val, ok := val.Uint64()
+			if ok {
+				return NewMessage(&wrapperspb.UInt64Value{Value: uint64Val})
+			}
+			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `uint64'.", val)
+		}
+	case BoolValueType:
+		switch val := val.(type) {
+		case starlark.Bool:
+			return NewMessage(&wrapperspb.BoolValue{Value: bool(val)})
+		}
+	case BytesValueType:
+		if stringVal, ok := starlark.AsString(val); ok {
+			return NewMessage(&wrapperspb.BytesValue{Value: []byte(stringVal)})
+		}
+	case StringValueType:
+		if stringVal, ok := starlark.AsString(val); ok {
+			return NewMessage(&wrapperspb.StringValue{Value: stringVal})
+		}
+	case DoubleValueType:
+		if float64Val, ok := starlark.AsFloat(val); ok {
+			return NewMessage(&wrapperspb.DoubleValue{Value: float64Val})
+		}
+	case Int32ValueType:
+		switch val := val.(type) {
+		case starlark.Int:
+			int32Val, err := starlark.AsInt32(val)
+			if err == nil {
+				return NewMessage(&wrapperspb.Int32Value{Value: int32(int32Val)})
+			}
+			return nil, fmt.Errorf("ValueError: value %v overflows type `int32'.", val)
+		}
+	case Int64ValueType:
+		switch val := val.(type) {
+		case starlark.Int:
+			int64Val, ok := val.Int64()
+			if ok {
+				return NewMessage(&wrapperspb.Int64Value{Value: int64Val})
+			}
+			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `int64'.", val)
+		}
+	case UInt32ValueType:
+		switch val := val.(type) {
+		case starlark.Int:
+			uint64Val, ok := val.Uint64()
+			if ok && uint64Val <= math.MaxUint32 {
+				return NewMessage(&wrapperspb.UInt32Value{Value: uint32(uint64Val)})
+			}
+			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `uint32'.", val)
+		}
+	case UInt64ValueType:
+		switch val := val.(type) {
+		case starlark.Int:
+			uint64Val, ok := val.Uint64()
+			if ok {
+				return NewMessage(&wrapperspb.UInt64Value{Value: uint64Val})
+			}
+			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `uint64'.", val)
+		}
+	}
+	return nil, nil
 }
 
 // Verify v can act as fieldDesc
