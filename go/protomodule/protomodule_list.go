@@ -1,4 +1,4 @@
-// Copyright 2021 The Skycfg Authors.
+// Copyright 2020 The Skycfg Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -118,7 +118,7 @@ func (r *protoRepeated) SetIndex(i int, v starlark.Value) error {
 		return err
 	}
 
-	r.list.SetIndex(i, v)
+	err = r.list.SetIndex(i, v)
 	if err != nil {
 		return err
 	}
