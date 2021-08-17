@@ -3,7 +3,6 @@ module github.com/stripe/skycfg
 go 1.16
 
 require (
-	github.com/gogo/protobuf v1.3.1
 	github.com/golang/protobuf v1.4.1
 	github.com/kylelemons/godebug v0.0.0-20170820004349-d65d576e9348
 	go.starlark.net v0.0.0-20201204201740-42d4f566359b
