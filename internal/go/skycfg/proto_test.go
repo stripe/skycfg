@@ -26,9 +26,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
-	"time"
 
-	gogo_proto "github.com/gogo/protobuf/proto"
 	"github.com/golang/protobuf/proto"
 	"github.com/kylelemons/godebug/pretty"
 	"go.starlark.net/resolve"
@@ -37,29 +35,13 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 	any "google.golang.org/protobuf/types/known/anypb"
 
-	_ "github.com/gogo/protobuf/types"
-
 	"github.com/stripe/skycfg"
 	impl "github.com/stripe/skycfg/internal/go/skycfg"
 	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
-	pb_gogo "github.com/stripe/skycfg/internal/testdata/test_proto_gogo"
 )
 
 func init() {
 	resolve.AllowFloat = true
-}
-
-type gogoRegistry struct{}
-
-func (*gogoRegistry) UnstableProtoMessageType(name string) (reflect.Type, error) {
-	if t := gogo_proto.MessageType(name); t != nil {
-		return t, nil
-	}
-	return nil, nil
-}
-
-func (*gogoRegistry) UnstableEnumValueMap(name string) map[string]int32 {
-	return gogo_proto.EnumValueMap(name)
 }
 
 func mustProtoMessage(v starlark.Value) proto.Message {
@@ -72,8 +54,7 @@ func mustProtoMessage(v starlark.Value) proto.Message {
 func skyEval(t *testing.T, src string) starlark.Value {
 	t.Helper()
 	globals := starlark.StringDict{
-		"proto":      skycfg.UnstableProtoModule(nil),
-		"gogo_proto": skycfg.UnstableProtoModule(&gogoRegistry{}),
+		"proto": skycfg.UnstableProtoModule(nil),
 	}
 	val, err := starlark.Eval(&starlark.Thread{}, "", src, globals)
 	if err != nil {
@@ -85,8 +66,7 @@ func skyEval(t *testing.T, src string) starlark.Value {
 func skyExecFun(t *testing.T, src string) starlark.Value {
 	t.Helper()
 	globals := starlark.StringDict{
-		"proto":      skycfg.UnstableProtoModule(nil),
-		"gogo_proto": skycfg.UnstableProtoModule(&gogoRegistry{}),
+		"proto": skycfg.UnstableProtoModule(nil),
 	}
 	globals, err := starlark.ExecFile(&starlark.Thread{}, "", src, globals)
 	if err != nil {
@@ -140,7 +120,6 @@ func TestProtoMessageString(t *testing.T) {
 
 func TestNestedMessages(t *testing.T) {
 	testPb := `proto.package("skycfg.test_proto").`
-	gogoPb := `gogo_proto.package("skycfg.test_proto").`
 
 	tests := []struct {
 		src     string
@@ -162,15 +141,6 @@ func TestNestedMessages(t *testing.T) {
 		{
 			src:     testPb + `MessageV3.NestedMessage.DoubleNestedMessage()`,
 			wantVal: `<skycfg.test_proto.MessageV3.NestedMessage.DoubleNestedMessage >`,
-		},
-
-		{
-			src:     gogoPb + `MessageGogo.NestedMessage()`,
-			wantVal: `<skycfg.test_proto.MessageGogo.NestedMessage >`,
-		},
-		{
-			src:     gogoPb + `MessageGogo.NestedMessage.DoubleNestedMessage()`,
-			wantVal: `<skycfg.test_proto.MessageGogo.NestedMessage.DoubleNestedMessage >`,
 		},
 	}
 	for _, test := range tests {
@@ -667,115 +637,6 @@ func TestMessageV3(t *testing.T) {
 		"f_oneof_a":       `"string in oneof"`,
 		"f_oneof_b":       `None`,
 		"f_bytes":         `"also some string"`,
-	}
-	attrs := val.(starlark.HasAttrs)
-	for attrName, wantAttr := range wantAttrs {
-		attr, err := attrs.Attr(attrName)
-		if err != nil {
-			t.Fatalf("val.Attr(%q): %v", attrName, err)
-		}
-		gotAttr := attr.String()
-		if wantAttr != gotAttr {
-			t.Errorf("val.Attr(%q): wanted %q, got %q", attrName, wantAttr, gotAttr)
-		}
-	}
-}
-
-func TestMessageGogo(t *testing.T) {
-	val := skyEval(t, `gogo_proto.package("skycfg.test_proto").MessageGogo(
-		f_int32 = 1010,
-		f_int64 = 1020,
-		f_uint32 = 1030,
-		f_uint64 = 1040,
-		f_float32 = 10.50,
-		f_float64 = 10.60,
-		f_string = "some string",
-		f_bool = True,
-		f_submsg = proto.package("skycfg.test_proto").MessageV2(
-			f_string = "string in submsg",
-		),
-		r_string = ["r_string1", "r_string2"],
-		r_submsg = [
-			proto.package("skycfg.test_proto").MessageV2(
-				f_string = "string in r_submsg",
-			),
-		],
-		map_string = {
-			"map_string key": "map_string val",
-		},
-		map_submsg = {
-			"map_submsg key": proto.package("skycfg.test_proto").MessageV2(
-				f_string = "map_submsg val",
-			),
-		},
-		f_nested_submsg = gogo_proto.package("skycfg.test_proto").MessageGogo.NestedMessage(
-			f_string = "nested_submsg val",
-		),
-		f_toplevel_enum = proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B,
-		f_nested_enum = gogo_proto.package("skycfg.test_proto").MessageGogo.NestedEnum.NESTED_ENUM_B,
-		f_oneof_a = "string in oneof",
-		f_bytes = "also some string",
-		f_duration = proto.package("google.protobuf").Duration(seconds = 1),
-	)`)
-	gotMsg := mustProtoMessage(val)
-	wantMsg := &pb_gogo.MessageGogo{
-		FInt32:   proto.Int32(1010),
-		FInt64:   proto.Int64(1020),
-		FUint32:  proto.Uint32(1030),
-		FUint64:  proto.Uint64(1040),
-		FFloat32: proto.Float32(10.50),
-		FFloat64: proto.Float64(10.60),
-		FString:  proto.String("some string"),
-		FBool:    proto.Bool(true),
-		FSubmsg: pb.MessageV2{
-			FString: proto.String("string in submsg"),
-		},
-		RString: []string{"r_string1", "r_string2"},
-		RSubmsg: []pb.MessageV2{{
-			FString: proto.String("string in r_submsg"),
-		}},
-		MapString: map[string]string{
-			"map_string key": "map_string val",
-		},
-		MapSubmsg: map[string]*pb.MessageV2{
-			"map_submsg key": &pb.MessageV2{
-				FString: proto.String("map_submsg val"),
-			},
-		},
-		FNestedSubmsg: &pb_gogo.MessageGogo_NestedMessage{
-			FString: proto.String("nested_submsg val"),
-		},
-		FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_B.Enum(),
-		FNestedEnum:   pb_gogo.MessageGogo_NESTED_ENUM_B.Enum(),
-		FOneof:        &pb_gogo.MessageGogo_FOneofA{"string in oneof"},
-		FBytes:        []byte("also some string"),
-		FDuration:     time.Second,
-	}
-	if diff := ProtoDiff(wantMsg, gotMsg); diff != "" {
-		t.Fatalf("diff from expected message:\n%s", diff)
-	}
-
-	wantAttrs := map[string]string{
-		"f_int32":         "1010",
-		"f_int64":         "1020",
-		"f_uint32":        "1030",
-		"f_uint64":        "1040",
-		"f_float32":       "10.5",
-		"f_float64":       "10.6",
-		"f_string":        `"some string"`,
-		"f_bool":          "True",
-		"f_submsg":        `<skycfg.test_proto.MessageV2 f_string:"string in submsg" >`,
-		"r_string":        `["r_string1", "r_string2"]`,
-		"r_submsg":        `[<skycfg.test_proto.MessageV2 f_string:"string in r_submsg" >]`,
-		"map_string":      `{"map_string key": "map_string val"}`,
-		"map_submsg":      `{"map_submsg key": <skycfg.test_proto.MessageV2 f_string:"map_submsg val" >}`,
-		"f_nested_submsg": `<skycfg.test_proto.MessageGogo.NestedMessage f_string:"nested_submsg val" >`,
-		"f_toplevel_enum": `<skycfg.test_proto.ToplevelEnumV2 TOPLEVEL_ENUM_V2_B=1>`,
-		"f_nested_enum":   `<skycfg.test_proto.MessageGogo.NestedEnum NESTED_ENUM_B=1>`,
-		"f_oneof_a":       `"string in oneof"`,
-		"f_oneof_b":       `None`,
-		"f_bytes":         `"also some string"`,
-		"f_duration":      `<google.protobuf.Duration seconds:1 >`,
 	}
 	attrs := val.(starlark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {

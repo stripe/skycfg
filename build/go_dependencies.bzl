@@ -2,12 +2,6 @@ load("@bazel_gazelle//:deps.bzl", "go_repository")
 
 def go_dependencies():
     go_repository(
-        name = "com_github_gogo_protobuf",
-        importpath = "github.com/gogo/protobuf",
-        sum = "h1:DqDEcV5aeaTmdFBePNpYsp3FlcVH/2ISVVM9Qf8PSls=",
-        version = "v1.3.1",
-    )
-    go_repository(
         name = "com_github_golang_protobuf",
         importpath = "github.com/golang/protobuf",
         sum = "h1:ZFgWrT+bLgsYPirOnRfKLYJLvssAegOj/hgyMFdJZe0=",
