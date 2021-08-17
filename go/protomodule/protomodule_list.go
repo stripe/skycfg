@@ -31,7 +31,7 @@ var allowedListMethods = map[string]func(*protoRepeated) starlark.Value{
 }
 
 // protoRepeated wraps an underlying starlark.List to provide typechecking on
-// wrties
+// writes
 //
 // starlark.List is heterogeneous, where protoRepeated enforces all values
 // conform to the given fieldDesc
@@ -104,12 +104,7 @@ func (r *protoRepeated) Append(v starlark.Value) error {
 		return err
 	}
 
-	err = r.list.Append(v)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.list.Append(v)
 }
 
 func (r *protoRepeated) SetIndex(i int, v starlark.Value) error {
@@ -118,12 +113,7 @@ func (r *protoRepeated) SetIndex(i int, v starlark.Value) error {
 		return err
 	}
 
-	err = r.list.SetIndex(i, v)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.list.SetIndex(i, v)
 }
 
 func (r *protoRepeated) Extend(iterable starlark.Iterable) error {

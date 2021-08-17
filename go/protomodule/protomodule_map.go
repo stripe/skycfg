@@ -150,12 +150,7 @@ func (m *protoMap) SetKey(k, v starlark.Value) error {
 		return err
 	}
 
-	err = m.dict.SetKey(k, v)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return m.dict.SetKey(k, v)
 }
 
 func (m *protoMap) typeCheck(k, v starlark.Value) error {
@@ -164,10 +159,5 @@ func (m *protoMap) typeCheck(k, v starlark.Value) error {
 		return err
 	}
 
-	err = scalarTypeCheck(m.mapValue, v)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return scalarTypeCheck(m.mapValue, v)
 }

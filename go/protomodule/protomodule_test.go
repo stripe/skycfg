@@ -218,21 +218,25 @@ func TestListType(t *testing.T) {
 	}
 
 	tests := []struct {
+		name    string
 		expr    string
 		exprFun string
 		want    string
 		wantErr error
 	}{
 		{
+			name: "new list",
 			expr: `list()`,
 			want: `[]`,
 		},
 		{
+			name: "list AttrNames",
 			expr: `dir(list())`,
 			want: `["append", "clear", "extend", "index", "insert", "pop", "remove"]`,
 		},
 		// List methods
 		{
+			name: "list.Append",
 			exprFun: `
 def fun():
     l = list()
@@ -242,6 +246,7 @@ def fun():
 			want: `["some string"]`,
 		},
 		{
+			name: "list.Extend",
 			exprFun: `
 def fun():
     l = list()
@@ -251,6 +256,7 @@ def fun():
 			want: `["a", "b"]`,
 		},
 		{
+			name: "list.Clear",
 			exprFun: `
 def fun():
     l = list()
@@ -261,6 +267,7 @@ def fun():
 			want: `[]`,
 		},
 		{
+			name: "list.SetIndex",
 			exprFun: `
 def fun():
     l = list()
@@ -270,17 +277,33 @@ def fun():
 `,
 			want: `["a", "c"]`,
 		},
+		{
+			name: "list binary add operation",
+			exprFun: `
+def fun():
+    l = list()
+    l2 = list()
+    l2.extend(["a", "b"])
+    l += l2
+    l += ["c", "d"]
+    return l
+`,
+			want: `["a", "b", "c", "d"]`,
+		},
 
 		// List typechecking
 		{
+			name:    "list append typchecks",
 			expr:    `list().append(1)`,
 			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
 		},
 		{
+			name:    "list extend typchecks",
 			expr:    `list().extend([1,2])`,
 			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
 		},
 		{
+			name: "list set index typchecks",
 			exprFun: `
 def fun():
     l = list()
@@ -292,7 +315,7 @@ def fun():
 		},
 	}
 	for _, test := range tests {
-		t.Run("", func(t *testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			var val starlark.Value
 			var err error
 			if test.expr != "" {
@@ -334,21 +357,25 @@ func TestMapType(t *testing.T) {
 	}
 
 	tests := []struct {
+		name    string
 		expr    string
 		exprFun string
 		want    string
 		wantErr error
 	}{
 		{
+			name: "new map",
 			expr: `map()`,
 			want: `{}`,
 		},
 		{
+			name: "map AttrNames",
 			expr: `dir(map())`,
 			want: `["clear", "get", "items", "keys", "pop", "popitem", "setdefault", "update", "values"]`,
 		},
 		// Map methods
 		{
+			name: "map.SetDefault",
 			exprFun: `
 def fun():
     m = map()
@@ -360,6 +387,7 @@ def fun():
 			want: `{"a": "A", "b": "Z"}`,
 		},
 		{
+			name: "map.SetKey",
 			exprFun: `
 def fun():
     m = map()
@@ -369,6 +397,7 @@ def fun():
 			want: `{"a": "some string"}`,
 		},
 		{
+			name: "map.Update",
 			exprFun: `
 def fun():
     m = map()
@@ -378,6 +407,7 @@ def fun():
 			want: `{"a": "a_string", "b": "b_string"}`,
 		},
 		{
+			name: "map.Clear",
 			exprFun: `
 def fun():
     m = map()
@@ -387,19 +417,10 @@ def fun():
 `,
 			want: `{}`,
 		},
-		{
-			exprFun: `
-def fun():
-    l = list()
-    l.extend(["a", "b"])
-    l[1] = "c"
-    return l
-`,
-			want: `["a", "c"]`,
-		},
 
 		// Map typechecking
 		{
+			name: "map.SetKey typechecks",
 			exprFun: `
 def fun():
     m = map()
@@ -409,11 +430,18 @@ def fun():
 			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
 		},
 		{
+			name:    "map.Update typechecks",
 			expr:    `map().update([("a", 1)])`,
 			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
 		},
 		{
+			name:    "map.SetDefault typechecks",
 			expr:    `map().setdefault("a", 1)`,
+			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
+		},
+		{
+			name:    "map.SetDefault typechecks key",
+			expr:    `map().setdefault(1, "a")`,
 			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
 		},
 	}
