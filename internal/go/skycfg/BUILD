@@ -39,9 +39,6 @@ go_test(
     deps = [
         "//:skycfg",
         "//internal/testdata/test_proto:test_proto_go_proto",
-        "//internal/testdata/test_proto_gogo:test_proto_gogo_go_proto",
-        "@com_github_gogo_protobuf//proto",
-        "@com_github_gogo_protobuf//types",
         "@com_github_golang_protobuf//proto:go_default_library",
         "@com_github_kylelemons_godebug//pretty",
         "@net_starlark_go//resolve",

@@ -175,23 +175,9 @@ Our existing public APIs are expected to be stable even before the v1.0 release.
 
 ## Known issues
 
-### TypeError with the same type names
+### gogo/protobuf support
 
-E.g.:
-```
-panic: TypeError: value <google.protobuf.UInt32Value value:20 > (type `google.protobuf.UInt32Value') can't be assigned to type `google.protobuf.UInt32Value'.
-```
-
-On the face of it this looks confusing, and it is. It's an effect of a
-project that use `gogo_protobuf`, where some fundamental types are
-wrapped in messages that shadow the same messages defined by
-`google.protobuf`. Even though the messages seem to say that they are
-of the same type, they are actually two different types with the same
-name.
-
-For projects that use `gogo_protobuf`, e.g. envoy, this can be very confusing.
-
-To resolve this, use the package `github.com/stripe/skycfg/gogocompat`
-in your go code. This will allow skycfg code to load
-`proto.package("gogo:google.protobuf") and the internal registry it
-creates will handle the conversion of these types.
+Skycfg has dropped support for
+[gogo/protobuf](https://github.com/gogo/protobuf), an alternative protobuf go
+code generator, when upgrading to using the go-protobuf v2 api. For using gogo
+support, see `Skycfg@v0.1.0` (Skycfg prior to switching to v2).
