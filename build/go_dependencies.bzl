@@ -53,8 +53,8 @@ def go_dependencies():
     go_repository(
         name = "org_golang_google_protobuf",
         importpath = "google.golang.org/protobuf",
-        sum = "h1:ieV9+8kKXheLmRJkIxAmpEA6oY01gnhqlpxEvc1e/tg=",
-        version = "v1.25.1-0.20201016220047-aa45c4675289",
+        sum = "h1:Ejskq+SyPohKW+1uil0JJMtmHCgJPJ/qWTxr8qp+R4c=",
+        version = "v1.25.0",
     )
     go_repository(
         name = "org_golang_x_tools",
