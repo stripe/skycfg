@@ -40,7 +40,7 @@ func starlarkPackageFn(registry *protoregistry.Types) starlark.Callable {
 		if !packageName.IsValid() {
 			return nil, fmt.Errorf("invalid Protobuf package name %q", packageName)
 		}
-		return newProtoPackage(registry, packageName), nil
+		return NewProtoPackage(registry, packageName), nil
 	})
 }
 
@@ -50,7 +50,7 @@ type protoPackage struct {
 	attrs    starlark.StringDict
 }
 
-func newProtoPackage(
+func NewProtoPackage(
 	registry *protoregistry.Types,
 	packageName protoreflect.FullName,
 ) *protoPackage {
@@ -69,7 +69,8 @@ func newProtoPackage(
 		desc := t.Descriptor()
 		name := desc.Name()
 		if packageName.Append(name) == desc.FullName() {
-			attrs[string(name)] = newMessageType(desc)
+			msgType := newMessageType(registry, t.New().Interface())
+			attrs[string(name)] = msgType
 		}
 		return true
 	})

@@ -17,11 +17,11 @@ go_library(
         "//go/protomodule",
         "//go/urlmodule",
         "//go/yamlmodule",
-        "//internal/go/skycfg",
-        "@com_github_golang_protobuf//proto:go_default_library",
+        "@org_golang_google_protobuf//proto",
         "@net_starlark_go//starlark",
         "@net_starlark_go//starlarkjson",
         "@net_starlark_go//starlarkstruct",
+        "@org_golang_google_protobuf//reflect/protoreflect",
         "@org_golang_google_protobuf//reflect/protoregistry",
     ],
 )

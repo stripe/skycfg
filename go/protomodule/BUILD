@@ -16,8 +16,6 @@ go_library(
     importpath = "github.com/stripe/skycfg/go/protomodule",
     visibility = ["//visibility:public"],
     deps = [
-        "//internal/go/skycfg",
-        "@com_github_golang_protobuf//proto:go_default_library",
         "@net_starlark_go//starlark",
         "@net_starlark_go//starlarkstruct",
         "@net_starlark_go//syntax",
@@ -41,7 +39,6 @@ go_test(
     embed = [":protomodule"],
     deps = [
         "//:skycfg",
-        "//internal/go/skycfg",
         "//internal/testdata/test_proto:test_proto_go_proto",
         "@net_starlark_go//resolve",
         "@net_starlark_go//starlark",
