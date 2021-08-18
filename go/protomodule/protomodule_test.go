@@ -18,11 +18,14 @@ package protomodule
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 
@@ -471,7 +474,23 @@ def fun():
 	}
 }
 
+func eval(src string, globals starlark.StringDict) (starlark.Value, error) {
+	if globals == nil {
+		globals = starlark.StringDict{
+			"proto": NewModule(newRegistry()),
+		}
+	}
+
+	return starlark.Eval(&starlark.Thread{}, "", src, globals)
+}
+
 func evalFunc(src string, globals starlark.StringDict) (starlark.Value, error) {
+	if globals == nil {
+		globals = starlark.StringDict{
+			"proto": NewModule(newRegistry()),
+		}
+	}
+
 	globals, err := starlark.ExecFile(&starlark.Thread{}, "", src, globals)
 	if err != nil {
 		return nil, err
@@ -487,9 +506,40 @@ func evalFunc(src string, globals starlark.StringDict) (starlark.Value, error) {
 	return starlark.Call(&starlark.Thread{}, fun, nil, nil)
 }
 
+func mustProtoMessage(t *testing.T, v starlark.Value) proto.Message {
+	t.Helper()
+	if msg, ok := AsProtoMessage(v); ok {
+		return msg
+	}
+	t.Fatalf("Expected *protoMessage value, got %T", v)
+	return nil
+}
+
 func checkError(got, want error) bool {
 	if got == nil {
 		return false
 	}
 	return got.Error() == want.Error()
+}
+
+// Generate a diff of two structs, which may contain protobuf messages.
+func checkProtoEqual(t *testing.T, want, got proto.Message) {
+	t.Helper()
+	if proto.Equal(want, got) {
+		return
+	}
+
+	t.Fatalf(
+		"Protobuf messages differ\n--- WANT:\n%v\n--- GOT:\n%v\n",
+		(prototext.MarshalOptions{Multiline: true}).Format(want),
+		(prototext.MarshalOptions{Multiline: true}).Format(got),
+	)
+}
+
+// https://github.com/protocolbuffers/protobuf-go/commit/c3f4d486298baf0f69057fc51d4b5194f8dfbfdd
+func removeRandomSpace(s string) string {
+	return strings.ReplaceAll(
+		strings.ReplaceAll(s, "  ", " "),
+		" >", ">",
+	)
 }
