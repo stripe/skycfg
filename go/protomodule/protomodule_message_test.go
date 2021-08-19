@@ -966,3 +966,51 @@ func TestProtoMergeDiffTypes(t *testing.T) {
 		t.Errorf("expected error %q, got %q", errorMsg, err.Error())
 	}
 }
+
+// Pre 1.0 Skycfg allowed maps to be constructed with None values for proto2 (see protoMap.SetKey)
+func TestMapNoneCompatibility(t *testing.T) {
+	val, err := evalFunc(`
+def fun():
+    pb = proto.package("skycfg.test_proto")
+    msg = pb.MessageV2()
+    m = {
+	    "a": pb.MessageV2(),
+	    "b": pb.MessageV2(),
+	    "c": pb.MessageV2(),
+	    "d": None,
+    }
+    msg.map_submsg = m
+
+    m2 = msg.map_submsg
+    m2["b"] = None
+    m2.setdefault("e", None)
+    m2.update([("c", None)])
+
+    return msg
+`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := mustProtoMessage(t, val).(*pb.MessageV2)
+
+	checkProtoEqual(t, &pb.MessageV2{
+		MapSubmsg: map[string]*pb.MessageV2{
+			"a": &pb.MessageV2{},
+		},
+	}, got)
+
+	// Confirm this only works for message values
+	val, err = evalFunc(`
+def fun():
+    pb = proto.package("skycfg.test_proto")
+    msg = pb.MessageV2()
+    msg.map_string = {
+	    "a": None
+    }
+    return msg
+`, nil)
+	wantErr := fmt.Errorf(`TypeError: value None (type "NoneType") can't be assigned to type "string".`)
+	if !checkError(err, wantErr) {
+		t.Fatalf("eval: expected error %v, got %v", wantErr, err)
+	}
+}

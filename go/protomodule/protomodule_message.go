@@ -238,7 +238,7 @@ func (msg *protoMessage) SetField(name string, val starlark.Value) error {
 	}
 
 	// Allow using msg_field = None to unset a scalar message field
-	if fieldDesc.Kind() == protoreflect.MessageKind && val == starlark.None && !fieldDesc.IsList() && !fieldDesc.IsMap() {
+	if fieldAllowsNone(fieldDesc) && val == starlark.None {
 		delete(msg.fields, name)
 		return nil
 	}
@@ -366,4 +366,8 @@ func isFieldSet(v protoreflect.Value, fieldDesc protoreflect.FieldDescriptor) bo
 	default:
 		return v.Interface() != fieldDesc.Default().Interface()
 	}
+}
+
+func fieldAllowsNone(fieldDesc protoreflect.FieldDescriptor) bool {
+	return fieldDesc.Kind() == protoreflect.MessageKind && !fieldDesc.IsList() && !fieldDesc.IsMap()
 }
