@@ -33,12 +33,11 @@ import (
 //
 // NewMessage copies the input proto.Message and therefore does not modify it
 func NewMessage(msg proto.Message) (*protoMessage, error) {
-	msgDesc := msg.ProtoReflect().Descriptor()
+	msgReflect := msg.ProtoReflect()
 
 	fields := make(map[string]starlark.Value)
 
 	// Copy any existing set fields
-	msgReflect := msg.ProtoReflect()
 	msgReflect.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
 		if isFieldSet(v, fd) {
 			starlarkValue, err := valueToStarlark(v, fd)
@@ -58,7 +57,7 @@ func NewMessage(msg proto.Message) (*protoMessage, error) {
 
 	return &protoMessage{
 		msg:     cloned,
-		msgDesc: msgDesc,
+		msgDesc: msgReflect.Descriptor(),
 		fields:  fields,
 		frozen:  false,
 	}, nil

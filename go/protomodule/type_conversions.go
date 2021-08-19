@@ -303,24 +303,6 @@ func maybeConvertToWrapper(fieldDesc protoreflect.FieldDescriptor, val starlark.
 			}
 			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `int64'.", val)
 		}
-	case UInt32ValueType:
-		switch val := val.(type) {
-		case starlark.Int:
-			uint64Val, ok := val.Uint64()
-			if ok && uint64Val <= math.MaxUint32 {
-				return NewMessage(&wrapperspb.UInt32Value{Value: uint32(uint64Val)})
-			}
-			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `uint32'.", val)
-		}
-	case UInt64ValueType:
-		switch val := val.(type) {
-		case starlark.Int:
-			uint64Val, ok := val.Uint64()
-			if ok {
-				return NewMessage(&wrapperspb.UInt64Value{Value: uint64Val})
-			}
-			return nil, fmt.Errorf("ValueError: value %v is not exactly representable as type `uint64'.", val)
-		}
 	}
 	return nil, nil
 }

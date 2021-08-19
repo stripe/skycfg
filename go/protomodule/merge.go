@@ -37,56 +37,62 @@ func mergeField(dst, src starlark.Value) (starlark.Value, error) {
 
 	switch dst := dst.(type) {
 	case *protoRepeated:
-		if src, ok := src.(*protoRepeated); ok {
-			newList := newProtoRepeated(dst.fieldDesc)
-
-			err := newList.Extend(dst)
-			if err != nil {
-				return nil, err
-			}
-
-			err = newList.Extend(src)
-			if err != nil {
-				return nil, err
-			}
-
-			return newList, nil
+		src, ok := src.(*protoRepeated)
+		if !ok {
+			return nil, mergeError(dst, src)
 		}
-		return nil, mergeError(dst, src)
+
+		newList := newProtoRepeated(dst.fieldDesc)
+
+		err := newList.Extend(dst)
+		if err != nil {
+			return nil, err
+		}
+
+		err = newList.Extend(src)
+		if err != nil {
+			return nil, err
+		}
+
+		return newList, nil
 	case *protoMap:
-		if src, ok := src.(*protoMap); ok {
-			newMap := newProtoMap(dst.mapKey, dst.mapValue)
-
-			for _, item := range dst.Items() {
-				err := newMap.SetKey(item[0], item[1])
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			for _, item := range src.Items() {
-				err := newMap.SetKey(item[0], item[1])
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			return newMap, nil
+		src, ok := src.(*protoMap)
+		if !ok {
+			return nil, mergeError(dst, src)
 		}
-		return nil, mergeError(dst, src)
-	case *protoMessage:
-		if src, ok := src.(*protoMessage); ok {
-			newMessage, err := NewMessage(dst.msg)
+
+		newMap := newProtoMap(dst.mapKey, dst.mapValue)
+
+		for _, item := range dst.Items() {
+			err := newMap.SetKey(item[0], item[1])
 			if err != nil {
 				return nil, err
 			}
-
-			newMessage.Merge(dst)
-			newMessage.Merge(src)
-
-			return newMessage, nil
 		}
-		return nil, mergeError(dst, src)
+
+		for _, item := range src.Items() {
+			err := newMap.SetKey(item[0], item[1])
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		return newMap, nil
+	case *protoMessage:
+		src, ok := src.(*protoMessage)
+		if !ok {
+			return nil, mergeError(dst, src)
+		}
+
+		newMessage, err := NewMessage(dst.msg)
+		if err != nil {
+			return nil, err
+		}
+
+		newMessage.Merge(dst)
+		newMessage.Merge(src)
+
+		return newMessage, nil
 	default:
 		return src, nil
 	}
