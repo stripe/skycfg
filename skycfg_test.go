@@ -19,12 +19,11 @@ package skycfg_test
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	"go.starlark.net/starlark"
+	"google.golang.org/protobuf/proto"
 	wrappers "google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stripe/skycfg"
@@ -257,12 +256,16 @@ func runTestCases(t *testing.T, testCases []endToEndTestCase, execSkycfg ExecSky
 			}
 		}
 
-		if !reflect.DeepEqual(protos, testCase.expProtos) {
-			t.Error(
-				"Wrong protos result from ExecMain for case", testCase.caseName,
-				"\nExpected", testCase.expProtos,
-				"\nGot", protos,
-			)
+		if len(protos) != len(testCase.expProtos) {
+			t.Fatalf("Expected %d protos, got %d", len(testCase.expProtos), len(protos))
+		}
+
+		for i := range testCase.expProtos {
+			expected := testCase.expProtos[i]
+			got := protos[i]
+			if !proto.Equal(expected, got) {
+				t.Errorf("Test %q: protos differed\nExpected: %s\nGot     : %s", testCase.caseName, expected, got)
+			}
 		}
 	}
 }

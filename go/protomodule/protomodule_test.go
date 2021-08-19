@@ -1,4 +1,4 @@
-// Copyright 2020 The Skycfg Authors.
+// Copyright 2021 The Skycfg Authors.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,13 +18,18 @@ package protomodule
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
+	"google.golang.org/protobuf/encoding/prototext"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/known/anypb"
+	any "google.golang.org/protobuf/types/known/anypb"
 
 	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
 )
@@ -36,7 +41,9 @@ func init() {
 func newRegistry() *protoregistry.Types {
 	registry := &protoregistry.Types{}
 	registry.RegisterMessage((&pb.MessageV2{}).ProtoReflect().Type())
+	registry.RegisterMessage((&pb.MessageV2_NestedMessage{}).ProtoReflect().Type())
 	registry.RegisterMessage((&pb.MessageV3{}).ProtoReflect().Type())
+	registry.RegisterMessage((&pb.MessageV3_NestedMessage{}).ProtoReflect().Type())
 	registry.RegisterEnum((pb.ToplevelEnumV2)(0).Type())
 	registry.RegisterEnum((pb.ToplevelEnumV3)(0).Type())
 	return registry
@@ -101,7 +108,7 @@ func TestProtoPackage(t *testing.T) {
 
 func TestMessageType(t *testing.T) {
 	globals := starlark.StringDict{
-		"pb": newProtoPackage(newRegistry(), "skycfg.test_proto"),
+		"pb": NewProtoPackage(newRegistry(), "skycfg.test_proto"),
 	}
 
 	tests := []struct {
@@ -152,7 +159,7 @@ func TestMessageType(t *testing.T) {
 
 func TestEnumType(t *testing.T) {
 	globals := starlark.StringDict{
-		"pb": newProtoPackage(newRegistry(), "skycfg.test_proto"),
+		"pb": NewProtoPackage(newRegistry(), "skycfg.test_proto"),
 	}
 
 	tests := []struct {
@@ -471,7 +478,242 @@ def fun():
 	}
 }
 
+func TestRepeatedProtoFieldMutation(t *testing.T) {
+	val, err := evalFunc(`
+def fun():
+    pkg = proto.package("skycfg.test_proto")
+    msg = pkg.MessageV3()
+    msg.r_submsg.append(pkg.MessageV3())
+    msg.r_submsg[0].f_string = "foo"
+    msg.r_submsg.extend([pkg.MessageV3()])
+    msg.r_submsg[1].f_string = "bar"
+    return msg`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := removeRandomSpace(val.String())
+	want := `<skycfg.test_proto.MessageV3 r_submsg:{f_string:"foo"} r_submsg:{f_string:"bar"}>`
+	if want != got {
+		t.Fatalf("skyProtoMessage.String(): wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoEnumEqual(t *testing.T) {
+	val, err := eval(`proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A == proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := val.(starlark.Bool)
+	if !bool(got) {
+		t.Error("Expected equal enums")
+	}
+
+	val, err = eval(`proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A == proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got = val.(starlark.Bool)
+	if bool(got) {
+		t.Error("Expected unequal enums")
+	}
+
+	val, err = eval(`proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A != proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got = val.(starlark.Bool)
+	if bool(got) {
+		t.Error("Expected equal enums")
+	}
+
+	val, err = eval(`proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A != proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got = val.(starlark.Bool)
+	if !bool(got) {
+		t.Error("Expected unequal enums")
+	}
+}
+
+func TestProtoToText(t *testing.T) {
+	val, err := eval(`proto.encode_text(proto.package("skycfg.test_proto").MessageV3(
+		f_string = "some string",
+	))`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(val.(starlark.String))
+	want := "f_string:\"some string\""
+	if want != got {
+		t.Fatalf("encode_text: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoToTextCompact(t *testing.T) {
+	val, err := eval(`proto.encode_text(proto.package("skycfg.test_proto").MessageV3(
+		f_string = "some string",
+	), compact=True)`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(val.(starlark.String))
+	want := "f_string:\"some string\""
+	if want != got {
+		t.Fatalf("encode_text_compact: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoToTextFull(t *testing.T) {
+	val, err := eval(`proto.encode_text(proto.package("skycfg.test_proto").MessageV3(
+		f_string = "some string",
+	), compact=False)`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := removeRandomSpace(string(val.(starlark.String)))
+	want := "f_string: \"some string\"\n"
+	if want != got {
+		t.Fatalf("encode_text_full: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoFromText(t *testing.T) {
+	val, err := eval(`proto.decode_text(proto.package("skycfg.test_proto").MessageV3, "f_int32: 1010").f_int32`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := val.String()
+	want := "1010"
+	if want != got {
+		t.Fatalf("decode_text: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoToJson(t *testing.T) {
+	val, err := eval(`proto.encode_json(proto.package("skycfg.test_proto").MessageV3(
+		f_string = "some string",
+	))`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(val.(starlark.String))
+	want := `{"f_string":"some string"}`
+	if want != got {
+		t.Fatalf("encode_json: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoToJsonCompact(t *testing.T) {
+	val, err := eval(`proto.encode_json(proto.package("skycfg.test_proto").MessageV3(
+		f_string = "some string",
+	), compact=True)`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := string(val.(starlark.String))
+	want := `{"f_string":"some string"}`
+	if want != got {
+		t.Fatalf("encode_json_compact: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoToJsonFull(t *testing.T) {
+	val, err := eval(`proto.encode_json(proto.package("skycfg.test_proto").MessageV3(
+		f_string = "some string",
+	), compact=False)`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := removeRandomSpace(string(val.(starlark.String)))
+	want := "{\n \"f_string\": \"some string\"\n}"
+	if want != got {
+		t.Fatalf("encode_json_full: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoFromJson(t *testing.T) {
+	val, err := eval(`proto.decode_json(proto.package("skycfg.test_proto").MessageV3, "{\"f_int32\": 1010}").f_int32`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := val.String()
+	want := "1010"
+	if want != got {
+		t.Fatalf("decode_json: wanted %q, got %q", want, got)
+	}
+}
+
+func TestProtoToAnyV2(t *testing.T) {
+	val, err := eval(`proto.encode_any(proto.package("skycfg.test_proto").MessageV2(
+		f_string = "some string",
+	))`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	myProto := mustProtoMessage(t, val)
+	myAny := myProto.(*anypb.Any)
+
+	want := "type.googleapis.com/skycfg.test_proto.MessageV2"
+	if want != myAny.GetTypeUrl() {
+		t.Fatalf("encode_any: wanted %q, got %q", want, myAny.GetTypeUrl())
+	}
+
+	msg := pb.MessageV2{}
+	err = myAny.UnmarshalTo(&msg)
+	if err != nil {
+		t.Fatalf("encode_any: could not unmarshal: %v", err)
+	}
+
+	want = "some string"
+	if want != msg.GetFString() {
+		t.Fatalf("encode_any: wanted %q, got %q", want, msg.GetFString())
+	}
+}
+
+func TestProtoToAnyV3(t *testing.T) {
+	val, err := eval(`proto.encode_any(proto.package("skycfg.test_proto").MessageV3(
+		f_string = "some string",
+	))`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	myAny := mustProtoMessage(t, val).(*any.Any)
+
+	want := "type.googleapis.com/skycfg.test_proto.MessageV3"
+	if want != myAny.GetTypeUrl() {
+		t.Fatalf("encode_any: wanted %q, got %q", want, myAny.GetTypeUrl())
+	}
+
+	msg := pb.MessageV3{}
+	err = myAny.UnmarshalTo(&msg)
+	if err != nil {
+		t.Fatalf("encode_any: could not unmarshal: %v", err)
+	}
+
+	want = "some string"
+	if want != msg.GetFString() {
+		t.Fatalf("encode_any: wanted %q, got %q", want, msg.GetFString())
+	}
+}
+
+func eval(src string, globals starlark.StringDict) (starlark.Value, error) {
+	if globals == nil {
+		globals = starlark.StringDict{
+			"proto": NewModule(newRegistry()),
+		}
+	}
+
+	return starlark.Eval(&starlark.Thread{}, "", src, globals)
+}
+
 func evalFunc(src string, globals starlark.StringDict) (starlark.Value, error) {
+	if globals == nil {
+		globals = starlark.StringDict{
+			"proto": NewModule(newRegistry()),
+		}
+	}
+
 	globals, err := starlark.ExecFile(&starlark.Thread{}, "", src, globals)
 	if err != nil {
 		return nil, err
@@ -487,9 +729,40 @@ func evalFunc(src string, globals starlark.StringDict) (starlark.Value, error) {
 	return starlark.Call(&starlark.Thread{}, fun, nil, nil)
 }
 
+func mustProtoMessage(t *testing.T, v starlark.Value) proto.Message {
+	t.Helper()
+	if msg, ok := AsProtoMessage(v); ok {
+		return msg
+	}
+	t.Fatalf("Expected *protoMessage value, got %T", v)
+	return nil
+}
+
 func checkError(got, want error) bool {
 	if got == nil {
 		return false
 	}
 	return got.Error() == want.Error()
+}
+
+// Generate a diff of two structs, which may contain protobuf messages.
+func checkProtoEqual(t *testing.T, want, got proto.Message) {
+	t.Helper()
+	if proto.Equal(want, got) {
+		return
+	}
+
+	t.Fatalf(
+		"Protobuf messages differ\n--- WANT:\n%v\n--- GOT:\n%v\n",
+		(prototext.MarshalOptions{Multiline: true}).Format(want),
+		(prototext.MarshalOptions{Multiline: true}).Format(got),
+	)
+}
+
+// https://github.com/protocolbuffers/protobuf-go/commit/c3f4d486298baf0f69057fc51d4b5194f8dfbfdd
+func removeRandomSpace(s string) string {
+	return strings.ReplaceAll(
+		strings.ReplaceAll(s, "  ", " "),
+		" >", ">",
+	)
 }

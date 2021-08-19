@@ -20,16 +20,14 @@ package protomodule
 import (
 	"fmt"
 
-	proto_v1 "github.com/golang/protobuf/proto"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	any_pb "google.golang.org/protobuf/types/known/anypb"
-
-	impl "github.com/stripe/skycfg/internal/go/skycfg"
 )
 
 // NewModule returns a Starlark module of Protobuf-related functions.
@@ -61,6 +59,7 @@ func NewModule(registry *protoregistry.Types) *starlarkstruct.Module {
 			"encode_json":  encodeJSON(registry),
 			"encode_text":  encodeText(registry),
 			"merge":        starlarkMerge,
+			"package":      starlarkPackageFn(registry),
 			"set_defaults": starlarkSetDefaults,
 		},
 	}
@@ -72,15 +71,16 @@ var starlarkClear = starlark.NewBuiltin("proto.clear", func(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	protoMsg, skyProtoMsg, err := wantSingleProtoMessage(fn, args, kwargs)
+	_, skyProtoMsg, err := wantSingleProtoMessage(fn, args, kwargs)
 	if err != nil {
 		return nil, err
 	}
-	if err := skyProtoMsg.CheckMutable("clear"); err != nil {
+
+	err = skyProtoMsg.Clear()
+	if err != nil {
 		return nil, err
 	}
-	proto.Reset(protoMsg)
-	skyProtoMsg.ResetAttrCache()
+
 	return skyProtoMsg, nil
 })
 
@@ -94,7 +94,7 @@ var starlarkClone = starlark.NewBuiltin("proto.clone", func(
 	if err != nil {
 		return nil, err
 	}
-	return impl.NewSkyProtoMessage(proto_v1.MessageV1(proto.Clone(msg))), nil
+	return NewMessage(proto.Clone(msg))
 })
 
 func decodeAny(registry *protoregistry.Types) starlark.Callable {
@@ -119,7 +119,7 @@ func decodeAny(registry *protoregistry.Types) starlark.Callable {
 		if err != nil {
 			return nil, err
 		}
-		return impl.NewSkyProtoMessage(proto_v1.MessageV1(decoded)), nil
+		return NewMessage(decoded)
 	})
 }
 
@@ -147,7 +147,7 @@ func decodeJSON(registry *protoregistry.Types) starlark.Callable {
 		if err := unmarshal.Unmarshal([]byte(value), decoded); err != nil {
 			return nil, err
 		}
-		return impl.NewSkyProtoMessage(proto_v1.MessageV1(decoded)), nil
+		return NewMessage(decoded)
 	})
 }
 
@@ -175,7 +175,7 @@ func decodeText(registry *protoregistry.Types) starlark.Callable {
 		if err := unmarshal.Unmarshal([]byte(value), decoded); err != nil {
 			return nil, err
 		}
-		return impl.NewSkyProtoMessage(proto_v1.MessageV1(decoded)), nil
+		return NewMessage(decoded)
 	})
 }
 
@@ -195,7 +195,8 @@ var starlarkEncodeAny = starlark.NewBuiltin("proto.encode_any", func(
 	}); err != nil {
 		return nil, err
 	}
-	return impl.NewSkyProtoMessage(proto_v1.MessageV1(any)), nil
+
+	return NewMessage(any)
 })
 
 func encodeJSON(registry *protoregistry.Types) starlark.Callable {
@@ -275,24 +276,18 @@ var starlarkMerge = starlark.NewBuiltin("proto.merge", func(
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 2, &val1, &val2); err != nil {
 		return nil, err
 	}
-	dstMsg, ok := impl.ToProtoMessage(val1)
-	if !ok {
-		return nil, fmt.Errorf("%s: for parameter 1: got %s, want proto.Message", fn.Name(), val1.Type())
-	}
-	srcMsg, ok := impl.ToProtoMessage(val2)
-	if !ok {
-		return nil, fmt.Errorf("%s: for parameter 2: got %s, want proto.Message", fn.Name(), val2.Type())
-	}
-	dst := val1.(skyProtoMessage)
-	src := val2.(skyProtoMessage)
+
+	dst := val1.(*protoMessage)
+	src := val2.(*protoMessage)
 	if src.Type() != dst.Type() {
 		return nil, fmt.Errorf("%s: types are not the same: got %s and %s", fn.Name(), src.Type(), dst.Type())
 	}
-	if err := dst.CheckMutable("merge into"); err != nil {
+
+	err := dst.Merge(src)
+	if err != nil {
 		return nil, err
 	}
-	proto.Merge(proto_v1.MessageV2(dstMsg), proto_v1.MessageV2(srcMsg))
-	dst.ResetAttrCache()
+
 	return dst, nil
 })
 
@@ -302,26 +297,29 @@ var starlarkSetDefaults = starlark.NewBuiltin("proto.set_defaults", func(
 	args starlark.Tuple,
 	kwargs []starlark.Tuple,
 ) (starlark.Value, error) {
-	protoMsg, skyProtoMsg, err := wantSingleProtoMessage(fn, args, kwargs)
+	_, skyProtoMsg, err := wantSingleProtoMessage(fn, args, kwargs)
 	if err != nil {
 		return nil, err
 	}
-	if err := skyProtoMsg.CheckMutable("set field defaults of"); err != nil {
+
+	err = skyProtoMsg.SetDefaults()
+	if err != nil {
 		return nil, err
 	}
-	proto_v1.SetDefaults(proto_v1.MessageV1(protoMsg))
-	skyProtoMsg.ResetAttrCache()
+
 	return skyProtoMsg, nil
 })
 
 type skyProtoMessageType interface {
-	NewMessage() proto.Message
+	NewMessage() protoreflect.ProtoMessage
 }
 
 type skyProtoMessage interface {
 	starlark.Value
 	MarshalJSON() ([]byte, error)
-	ResetAttrCache()
+	Clear() error
+	Merge(*protoMessage) error
+	SetDefaults() error
 	CheckMutable(string) error
 }
 
@@ -334,9 +332,9 @@ func wantSingleProtoMessage(
 	if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &val); err != nil {
 		return nil, nil, err
 	}
-	gotMsg, ok := impl.ToProtoMessage(val)
+	gotMsg, ok := AsProtoMessage(val)
 	if !ok {
 		return nil, nil, fmt.Errorf("%s: for parameter 1: got %s, want proto.Message", fn.Name(), val.Type())
 	}
-	return proto_v1.MessageV2(gotMsg), val.(skyProtoMessage), nil
+	return gotMsg, val.(skyProtoMessage), nil
 }

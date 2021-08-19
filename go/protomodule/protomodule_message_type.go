@@ -21,12 +21,20 @@ import (
 	"sort"
 
 	"go.starlark.net/starlark"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/dynamicpb"
 )
 
-func newMessageType(descriptor protoreflect.MessageDescriptor) starlark.Callable {
+// newMessageType creates a Starlark value representing a named Protobuf message
+// type that can be used for constructing new concrete protobuf objects.
+func newMessageType(registry *protoregistry.Types, msg protoreflect.ProtoMessage) starlark.Callable {
 	attrs := make(starlark.StringDict)
 
+	descriptor := msg.ProtoReflect().Type().Descriptor()
+
+	// Register child messages, enums as attrs
 	for ii := 0; ii < descriptor.Enums().Len(); ii++ {
 		child := descriptor.Enums().Get(ii)
 		attrs[string(child.Name())] = newEnumType(child)
@@ -34,23 +42,40 @@ func newMessageType(descriptor protoreflect.MessageDescriptor) starlark.Callable
 	for ii := 0; ii < descriptor.Messages().Len(); ii++ {
 		child := descriptor.Messages().Get(ii)
 		if !child.IsMapEntry() {
-			attrs[string(child.Name())] = newMessageType(child)
+			childMsg, err := registry.FindMessageByName(child.FullName())
+			if err != nil {
+				// Fallback to dynamicpb if nested message is
+				// unavailable in registry. This points to the
+				// registry having been incompletely
+				// constructed, missing nested types
+				childMsg = dynamicpb.NewMessageType(child)
+			}
+
+			attrs[string(child.Name())] = newMessageType(registry, childMsg.New().Interface())
 		}
 	}
+
+	emptyMsg := proto.Clone(msg)
+	proto.Reset(emptyMsg)
 
 	return &protoMessageType{
 		descriptor: descriptor,
 		attrs:      attrs,
+		emptyMsg:   emptyMsg,
 	}
 }
 
 type protoMessageType struct {
 	descriptor protoreflect.MessageDescriptor
 	attrs      starlark.StringDict
+
+	// An empty protobuf message of the appropriate type.
+	emptyMsg protoreflect.ProtoMessage
 }
 
 var _ starlark.HasAttrs = (*protoMessageType)(nil)
 var _ starlark.Callable = (*protoMessageType)(nil)
+var _ skyProtoMessageType = (*protoMessageType)(nil)
 
 func (t *protoMessageType) String() string {
 	return fmt.Sprintf("<proto.MessageType %q>", t.Name())
@@ -95,5 +120,43 @@ func (t *protoMessageType) CallInternal(
 		return nil, err
 	}
 
-	return nil, fmt.Errorf("protoMessageType.CallInternal: not implemented yet")
+	// Parse the kwarg set into a map[string]starlark.Value, containing one
+	// entry for each provided kwarg. Keys are the original protobuf field names.
+	// This lets the starlark kwarg parser handle most of the error reporting,
+	// except type errors which are deferred until later.
+	var parserPairs []interface{}
+	parsedKwargs := make(map[string]*starlark.Value, len(kwargs))
+
+	fields := t.descriptor.Fields()
+	for ii := 0; ii < fields.Len(); ii++ {
+		fieldName := string(fields.Get(ii).Name())
+		v := new(starlark.Value)
+		parsedKwargs[fieldName] = v
+		parserPairs = append(parserPairs, fieldName+"?", v)
+	}
+
+	if err := starlark.UnpackArgs(t.Name(), nil, kwargs, parserPairs...); err != nil {
+		return nil, err
+	}
+
+	// Instantiate a new message and populate the fields
+	out, err := NewMessage(t.emptyMsg)
+	if err != nil {
+		return nil, err
+	}
+	for fieldName, starlarkValue := range parsedKwargs {
+		if *starlarkValue == nil {
+			continue
+		}
+
+		if err := out.SetField(fieldName, *starlarkValue); err != nil {
+			return nil, err
+		}
+	}
+
+	return out, nil
+}
+
+func (t *protoMessageType) NewMessage() protoreflect.ProtoMessage {
+	return proto.Clone(t.emptyMsg)
 }

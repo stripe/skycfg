@@ -28,10 +28,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang/protobuf/proto"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkjson"
 	"go.starlark.net/starlarkstruct"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 
 	"github.com/stripe/skycfg/go/assertmodule"
@@ -39,7 +40,6 @@ import (
 	"github.com/stripe/skycfg/go/protomodule"
 	"github.com/stripe/skycfg/go/urlmodule"
 	"github.com/stripe/skycfg/go/yamlmodule"
-	impl "github.com/stripe/skycfg/internal/go/skycfg"
 )
 
 // A FileReader controls how load() calls resolve and read other modules.
@@ -87,20 +87,21 @@ func (r *localFileReader) ReadFile(ctx context.Context, path string) ([]byte, er
 // NewProtoMessage returns a Starlark value representing the given Protobuf
 // message. It can be returned back to a proto.Message() via AsProtoMessage().
 func NewProtoMessage(msg proto.Message) starlark.Value {
-	return impl.NewSkyProtoMessage(msg)
+	v, _ := protomodule.NewMessage(msg)
+	return v
 }
 
 // AsProtoMessage returns a Protobuf message underlying the given Starlark
 // value, which must have been created by NewProtoMessage(). Returns
 // (_, false) if the value is not a valid message.
 func AsProtoMessage(v starlark.Value) (proto.Message, bool) {
-	return impl.ToProtoMessage(v)
+	return protomodule.AsProtoMessage(v)
 }
 
 // NewProtoPackage returns a Starlark value representing the given Protobuf
 // package. It can be added to global symbols when loading a Skycfg config file.
-func NewProtoPackage(r unstableProtoRegistry, name string) starlark.Value {
-	return impl.NewSkyProtoPackage(r, name)
+func NewProtoPackage(r unstableProtoRegistryV2, name string) starlark.Value {
+	return protomodule.NewProtoPackage(r.UnstableProtobufTypes(), protoreflect.FullName(name))
 }
 
 // A Config is a Skycfg config file that has been fully loaded and is ready
@@ -120,23 +121,12 @@ type LoadOption interface {
 type loadOptions struct {
 	globals       starlark.StringDict
 	fileReader    FileReader
-	protoRegistry impl.ProtoRegistry
+	protoRegistry unstableProtoRegistryV2
 }
 
 type fnLoadOption func(*loadOptions)
 
 func (fn fnLoadOption) applyLoad(opts *loadOptions) { fn(opts) }
-
-type unstableProtoRegistry interface {
-	impl.ProtoRegistry
-}
-
-type unstableProtoRegistryV2 interface {
-	unstableProtoRegistry
-
-	// UNSTABLE go-protobuf v2 type registry
-	UnstableProtobufTypes() *protoregistry.Types
-}
 
 // WithGlobals adds additional global symbols to the Starlark environment
 // when loading a Skycfg config.
@@ -159,9 +149,28 @@ func WithFileReader(r FileReader) LoadOption {
 	})
 }
 
+type unstableProtoRegistryV2 interface {
+	// UNSTABLE go-protobuf v2 type registry
+	UnstableProtobufTypes() *protoregistry.Types
+}
+
+type protoRegistryWrapper struct {
+	protoRegistry *protoregistry.Types
+}
+
+var _ (unstableProtoRegistryV2) = (*protoRegistryWrapper)(nil)
+
+func (pr *protoRegistryWrapper) UnstableProtobufTypes() *protoregistry.Types {
+	return pr.protoRegistry
+}
+
+func NewUnstableProtobufRegistryV2(r *protoregistry.Types) unstableProtoRegistryV2 {
+	return &protoRegistryWrapper{r}
+}
+
 // WithProtoRegistry is an EXPERIMENTAL and UNSTABLE option to override
 // how Protobuf message type names are mapped to Go types.
-func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
+func WithProtoRegistry(r unstableProtoRegistryV2) LoadOption {
 	if r == nil {
 		panic("WithProtoRegistry: nil registry")
 	}
@@ -184,7 +193,7 @@ func WithProtoRegistry(r unstableProtoRegistry) LoadOption {
 //  * struct - experimental Starlark struct support.
 //  * yaml   - same as "json" package but for YAML.
 //  * url    - utility package for encoding URL query string.
-func UnstablePredeclaredModules(r unstableProtoRegistry) starlark.StringDict {
+func UnstablePredeclaredModules(r unstableProtoRegistryV2) starlark.StringDict {
 	return starlark.StringDict{
 		"fail":   assertmodule.Fail,
 		"hash":   hashmodule.NewModule(),
@@ -206,23 +215,13 @@ func newYamlModule() starlark.Value {
 	return module
 }
 
-func UnstableProtoModule(r unstableProtoRegistry) starlark.Value {
+func UnstableProtoModule(r unstableProtoRegistryV2) starlark.Value {
 	protoTypes := protoregistry.GlobalTypes
 	if r != nil {
-		if r2, ok := r.(unstableProtoRegistryV2); ok {
-			protoTypes = r2.UnstableProtobufTypes()
-		}
+		protoTypes = r.UnstableProtobufTypes()
 	}
 
 	protoModule := protomodule.NewModule(protoTypes)
-	legacy := impl.NewProtoModule(r)
-
-	// Functions still using the go-protobuf v1 implementation
-	protoModule.Members["package"], _ = legacy.Attr("package")
-
-	// Deprecated functions
-	protoModule.Members["from_yaml"], _ = legacy.Attr("from_yaml")
-	protoModule.Members["to_yaml"], _ = legacy.Attr("to_yaml")
 
 	// Compatibility aliases
 	protoModule.Members["from_json"] = protoModule.Members["decode_json"]
@@ -389,9 +388,9 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 		Print: skyPrint,
 	}
 	thread.SetLocal("context", ctx)
-	mainCtx := &impl.Module{
+	mainCtx := &starlarkstruct.Module{
 		Name: "skycfg_ctx",
-		Attrs: starlark.StringDict(map[string]starlark.Value{
+		Members: starlark.StringDict(map[string]starlark.Value{
 			"vars": parsedOpts.vars,
 		}),
 	}
@@ -475,9 +474,9 @@ func (t *Test) Run(ctx context.Context, opts ...TestOption) (*TestResult, error)
 	thread.SetLocal("context", ctx)
 
 	assertModule := assertmodule.AssertModule()
-	testCtx := &impl.Module{
+	testCtx := &starlarkstruct.Module{
 		Name: "skycfg_test_ctx",
-		Attrs: starlark.StringDict(map[string]starlark.Value{
+		Members: starlark.StringDict(map[string]starlark.Value{
 			"vars":   parsedOpts.vars,
 			"assert": assertModule,
 		}),
