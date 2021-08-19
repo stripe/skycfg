@@ -459,7 +459,7 @@ func TestAttrValidation(t *testing.T) {
 				if err == nil {
 					t.Errorf("eval(%q): expected error", test.src)
 				} else if test.wantErr != err.Error() {
-					t.Errorf("eval(%q): expected error \n%q\n%q", test.src, test.wantErr, err.Error())
+					t.Errorf("eval(%q): expected error\nexpected: %q\ngot: %q", test.src, test.wantErr, err.Error())
 				}
 			} else {
 				if err != nil {
@@ -551,11 +551,20 @@ func TestProtoComparisonNotEqual(t *testing.T) {
 		RString: []string{"a", "b"},
 	}
 	skyMsgOther, _ := NewMessage(msgOther)
+
 	ok, err := starlark.Compare(syntax.EQL, skyMsg, skyMsgOther)
 	if err != nil {
 		t.Error(err)
 	}
 	if ok {
+		t.Error("Expected protos to not be equal")
+	}
+
+	ok, err = starlark.Compare(syntax.NEQ, skyMsg, skyMsgOther)
+	if err != nil {
+		t.Error(err)
+	}
+	if !ok {
 		t.Error("Expected protos to not be equal")
 	}
 }
@@ -951,7 +960,7 @@ func TestProtoMergeDiffTypes(t *testing.T) {
 	src, err := starlark.Eval(&starlark.Thread{}, "",
 		`proto.merge(proto.package("skycfg.test_proto").MessageV2(), proto.package("skycfg.test_proto").MessageV3())`, globals)
 	if err == nil {
-		t.Errorf("expected error, got %q", src)
+		t.Errorf("expected error %q, got %q", errorMsg, src)
 	}
 	if errorMsg != err.Error() {
 		t.Errorf("expected error %q, got %q", errorMsg, err.Error())
