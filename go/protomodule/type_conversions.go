@@ -327,8 +327,14 @@ func typeError(fieldDesc protoreflect.FieldDescriptor, val starlark.Value, scala
 		}
 	}
 
-	return fmt.Errorf("TypeError: value %s (type %q) can't be assigned to type %q.",
-		val.String(), val.Type(), expectedType,
+	// Add special error message for = None not allowed in proto3
+	proto3SpecialCase := ""
+	if scalar && val == starlark.None {
+		proto3SpecialCase = " in proto3 mode"
+	}
+
+	return fmt.Errorf("TypeError: value %s (type %q) can't be assigned to type %q%s.",
+		val.String(), val.Type(), expectedType, proto3SpecialCase,
 	)
 }
 

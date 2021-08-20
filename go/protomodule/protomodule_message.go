@@ -369,5 +369,5 @@ func isFieldSet(v protoreflect.Value, fieldDesc protoreflect.FieldDescriptor) bo
 }
 
 func fieldAllowsNone(fieldDesc protoreflect.FieldDescriptor) bool {
-	return fieldDesc.Kind() == protoreflect.MessageKind && !fieldDesc.IsList() && !fieldDesc.IsMap()
+	return (fieldDesc.Kind() == protoreflect.MessageKind && !fieldDesc.IsList() && !fieldDesc.IsMap()) || fieldDesc.Syntax() == protoreflect.Proto2
 }

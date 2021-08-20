@@ -379,10 +379,11 @@ func TestAttrValidation(t *testing.T) {
 		},
 
 		// Repeated and map fields can't be assigned `None`. Scalar fields can't be assigned `None`
+		// in proto3, but the error message is specialized.
 		{
 			name:    "none to scalar",
 			src:     `MessageV3(f_int32 = None)`,
-			wantErr: `TypeError: value None (type "NoneType") can't be assigned to type "int32".`,
+			wantErr: `TypeError: value None (type "NoneType") can't be assigned to type "int32" in proto3 mode.`,
 		},
 		{
 			name:    "none to string list",
@@ -999,18 +1000,49 @@ def fun():
 		},
 	}, got)
 
-	// Confirm this only works for message values
+	// Confirm this only works for all in proto2, only message values in proto3
+	// This is an artifact of set to None being allow for scalar values in proto2
 	val, err = evalFunc(`
 def fun():
     pb = proto.package("skycfg.test_proto")
-    msg = pb.MessageV2()
-    msg.map_string = {
+    msg = pb.MessageV2(
+	map_string = {
 	    "a": None
-    }
+        }
+    )
     return msg
 `, nil)
-	wantErr := fmt.Errorf(`TypeError: value None (type "NoneType") can't be assigned to type "string".`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	val, err = evalFunc(`
+def fun():
+    pb = proto.package("skycfg.test_proto")
+    msg = pb.MessageV3(
+	map_string = {
+	    "a": None
+        }
+    )
+    return msg
+`, nil)
+	wantErr := fmt.Errorf(`TypeError: value None (type "NoneType") can't be assigned to type "string" in proto3 mode.`)
 	if !checkError(err, wantErr) {
 		t.Fatalf("eval: expected error %v, got %v", wantErr, err)
 	}
+}
+
+func TestUnsetProto2Fields(t *testing.T) {
+	// Proto v2 distinguishes between unset and set-to-empty.
+	msg, err := eval(`proto.package("skycfg.test_proto").MessageV2(
+                f_string = None,
+        )`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := mustProtoMessage(t, msg)
+	want := &pb.MessageV2{
+		FString: nil,
+	}
+	checkProtoEqual(t, want, got)
 }
