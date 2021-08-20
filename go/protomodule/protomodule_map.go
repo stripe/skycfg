@@ -60,11 +60,11 @@ func newProtoMapFromDict(mapKey protoreflect.FieldDescriptor, mapValue protorefl
 	out := &protoMap{
 		mapKey:   mapKey,
 		mapValue: mapValue,
-		dict:     d,
+		dict:     starlark.NewDict(d.Len()),
 	}
 
 	for _, item := range d.Items() {
-		err := out.typeCheck(item[0], item[1])
+		err := out.SetKey(item[0], item[1])
 		if err != nil {
 			return nil, err
 		}
@@ -145,19 +145,25 @@ func (m *protoMap) wrapUpdate() starlark.Value {
 }
 
 func (m *protoMap) SetKey(k, v starlark.Value) error {
-	err := m.typeCheck(k, v)
-	if err != nil {
-		return err
-	}
-
-	return m.dict.SetKey(k, v)
-}
-
-func (m *protoMap) typeCheck(k, v starlark.Value) error {
+	// Typecheck key
 	err := scalarTypeCheck(m.mapKey, k)
 	if err != nil {
 		return err
 	}
 
-	return scalarTypeCheck(m.mapValue, v)
+	// Pre 1.0 compatibility allowed maps to be constructed with None in proto2
+	// with the value treated as nil. protoreflect does not allow setting
+	// with a value of nil, so instead treat it as an unset
+	if fieldAllowsNone(m.mapValue) && v == starlark.None {
+		_, _, err = m.dict.Delete(k)
+		return err
+	}
+
+	// Typecheck value
+	err = scalarTypeCheck(m.mapValue, v)
+	if err != nil {
+		return err
+	}
+
+	return m.dict.SetKey(k, v)
 }
