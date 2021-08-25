@@ -498,6 +498,108 @@ def fun():
 	}
 }
 
+// Skycfg has had inconsistent copy on assignment behavior
+// Test that Skycfg does not copy lists/maps on assignment, matching Starlark/Python's behavior
+func TestNoCopyOnAssignment(t *testing.T) {
+	tests := []struct {
+		name string
+		fun  string
+		want string
+	}{
+		{
+			name: "list does not copy on assignment, *protoRepeated",
+			fun: `
+def fun():
+    pkg = proto.package("skycfg.test_proto")
+    msg1 = pkg.MessageV3()
+    msg2 = pkg.MessageV3()
+    msg1.r_string = ["a","b"]
+    a = msg1.r_string
+    msg2.r_string = msg1.r_string
+    a.append("c")
+    return [msg1.r_string, msg2.r_string, a]
+`,
+			want: `[["a", "b", "c"], ["a", "b", "c"], ["a", "b", "c"]]`,
+		},
+		{
+			name: "list does not copy on assignment, *stalark.List",
+			fun: `
+def fun():
+    pkg = proto.package("skycfg.test_proto")
+    a = ["a","b"]
+    msg1 = pkg.MessageV3()
+    msg1.r_string = a
+    a.append("c")
+    msg1.r_string.append("d")
+    return [msg1.r_string, a]
+`,
+			want: `[["a", "b", "c", "d"], ["a", "b", "c", "d"]]`,
+		},
+		{
+			name: "map does not copy on assignment, *protoMap",
+			fun: `
+def fun():
+    pkg = proto.package("skycfg.test_proto")
+    msg1 = pkg.MessageV3()
+    msg2 = pkg.MessageV3()
+    msg1.map_string = {
+        "ka": "va",
+        "kb": "vb",
+    }
+    a = msg1.map_string
+    msg2.map_string = msg1.map_string
+    a["kc"] = "vc"
+    return [msg1.map_string, msg2.map_string, a]
+`,
+			want: `[{"ka": "va", "kb": "vb", "kc": "vc"}, {"ka": "va", "kb": "vb", "kc": "vc"}, {"ka": "va", "kb": "vb", "kc": "vc"}]`,
+		},
+		{
+			name: "map does not copy on assignment, *stalark.Dict",
+			fun: `
+def fun():
+    pkg = proto.package("skycfg.test_proto")
+    msg1 = pkg.MessageV3()
+    a = {
+        "ka": "va",
+        "kb": "vb",
+    }
+    msg1.map_string = a
+    a["kc"] = "vc"
+    msg1.map_string["kd"] = "vd"
+    return [msg1.map_string, a]
+`,
+			want: `[{"ka": "va", "kb": "vb", "kc": "vc", "kd": "vd"}, {"ka": "va", "kb": "vb", "kc": "vc", "kd": "vd"}]`,
+		},
+		{
+			name: "message does not copy on assignment",
+			fun: `
+def fun():
+    pkg = proto.package("skycfg.test_proto")
+    msg1 = pkg.MessageV3()
+    msg2 = pkg.MessageV3()
+    msg1.f_submsg = pkg.MessageV3()
+    msg2.f_submsg = msg1.f_submsg
+    a = msg1.f_submsg
+    a.f_string = "a"
+    return [msg1.f_submsg.f_string, msg2.f_submsg.f_string, a.f_string]
+`,
+			want: `["a", "a", "a"]`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			val, err := evalFunc(test.fun, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := val.String()
+			if test.want != got {
+				t.Fatalf("Output differed\nwanted: %s\ngot   : %s", test.want, got)
+			}
+		})
+	}
+}
+
 func TestProtoEnumEqual(t *testing.T) {
 	val, err := eval(`proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A == proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A`, nil)
 	if err != nil {
