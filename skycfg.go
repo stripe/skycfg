@@ -197,7 +197,7 @@ func UnstablePredeclaredModules(r unstableProtoRegistryV2) starlark.StringDict {
 	return starlark.StringDict{
 		"fail":   assertmodule.Fail,
 		"hash":   hashmodule.NewModule(),
-		"json":   newJsonModule(),
+		"json":   starlarkjson.Module,
 		"proto":  UnstableProtoModule(r),
 		"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 		"yaml":   newYamlModule(),
@@ -206,7 +206,15 @@ func UnstablePredeclaredModules(r unstableProtoRegistryV2) starlark.StringDict {
 }
 
 func newJsonModule() starlark.Value {
-	module := starlarkjson.Module
+	// Copy starlarkjson and add compatibility fields
+	starlarjsonModule := starlarkjson.Module
+	module := &starlarkstruct.Module{
+		Name:    starlarjsonModule.Name,
+		Members: make(starlark.StringDict),
+	}
+	for k, v := range starlarjsonModule.Members {
+		module.Members[k] = v
+	}
 
 	// Aliases for compatibility with pre-v1.0 Skycfg API.
 	module.Members["marshal"] = module.Members["encode"]
