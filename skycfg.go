@@ -197,7 +197,7 @@ func UnstablePredeclaredModules(r unstableProtoRegistryV2) starlark.StringDict {
 	return starlark.StringDict{
 		"fail":   assertmodule.Fail,
 		"hash":   hashmodule.NewModule(),
-		"json":   starlarkjson.Module,
+		"json":   newJsonModule(),
 		"proto":  UnstableProtoModule(r),
 		"struct": starlark.NewBuiltin("struct", starlarkstruct.Make),
 		"yaml":   newYamlModule(),
