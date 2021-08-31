@@ -1030,6 +1030,29 @@ def fun():
 	if !checkError(err, wantErr) {
 		t.Fatalf("eval: expected error %v, got %v", wantErr, err)
 	}
+
+	// An odd resulting behavior of both ensuring assignment does not copy
+	// and setting to None deletes is that assignment can mutate a raw starlark dict
+	// This is not ideal but this test is here to just document the behavior
+	val, err = evalFunc(`
+def fun():
+    pb = proto.package("skycfg.test_proto")
+    a = {
+        "ka": "va",
+        "ba": None,
+    }
+    msg = pb.MessageV2(
+	map_string = a
+    )
+    return a
+`, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `{"ka": "va"}`
+	if want != val.String() {
+		t.Fatalf("Result differed\nwant: %s\ngot : %s", want, val.String())
+	}
 }
 
 func TestUnsetProto2Fields(t *testing.T) {

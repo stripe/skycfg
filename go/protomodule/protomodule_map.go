@@ -60,13 +60,27 @@ func newProtoMapFromDict(mapKey protoreflect.FieldDescriptor, mapValue protorefl
 	out := &protoMap{
 		mapKey:   mapKey,
 		mapValue: mapValue,
-		dict:     starlark.NewDict(d.Len()),
+		dict:     d,
 	}
 
+	// SetKey is used to typecheck fields appropriately but done on a temporary object
+	// so that the underlying out.dict still has a reference to the given
+	// dict rather than copying
+	tmpMap := newProtoMap(mapKey, mapValue)
 	for _, item := range d.Items() {
-		err := out.SetKey(item[0], item[1])
+		err := tmpMap.SetKey(item[0], item[1])
 		if err != nil {
 			return nil, err
+		}
+	}
+
+	// Remove any None values from map, see SetKey for compatibility behavior
+	for _, item := range d.Items() {
+		if item[1] == starlark.None {
+			_, _, err := d.Delete(item[0])
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
