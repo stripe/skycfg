@@ -74,7 +74,7 @@ func newProtoMapFromDict(mapKey protoreflect.FieldDescriptor, mapValue protorefl
 		}
 	}
 
-	// Remove any None values from map, see SetKey for compability behavior
+	// Remove any None values from map, see SetKey for compatibility behavior
 	for _, item := range d.Items() {
 		if item[1] == starlark.None {
 			_, _, err := d.Delete(item[0])
