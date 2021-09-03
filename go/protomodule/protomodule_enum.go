@@ -25,9 +25,9 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-func newEnumType(descriptor protoreflect.EnumDescriptor) starlark.Value {
+func newEnumType(descriptor protoreflect.EnumDescriptor) *protoEnumType {
 	values := descriptor.Values()
-	attrs := make(map[string]starlark.Value, values.Len())
+	attrs := make(map[string]*protoEnumValue, values.Len())
 	for ii := 0; ii < values.Len(); ii++ {
 		value := values.Get(ii)
 		attrs[string(value.Name())] = &protoEnumValue{
@@ -44,10 +44,11 @@ func newEnumType(descriptor protoreflect.EnumDescriptor) starlark.Value {
 
 type protoEnumType struct {
 	name  protoreflect.FullName
-	attrs starlark.StringDict
+	attrs map[string]*protoEnumValue
 }
 
 var _ starlark.HasAttrs = (*protoEnumType)(nil)
+var _ starlark.Value = (*protoEnumType)(nil)
 
 func (t *protoEnumType) String() string {
 	return fmt.Sprintf("<proto.EnumType %q>", t.name)
@@ -76,12 +77,22 @@ func (t *protoEnumType) AttrNames() []string {
 	return names
 }
 
+func (t *protoEnumType) ByNum(enumNumber protoreflect.EnumNumber) (starlark.Value, error) {
+	for _, enum := range t.attrs {
+		if enum.enumNumber() == enumNumber {
+			return enum, nil
+		}
+	}
+	return nil, fmt.Errorf("ValueError: enum %d out of bounds for %s", enumNumber, string(t.name))
+}
+
 type protoEnumValue struct {
 	typeName protoreflect.FullName
 	value    protoreflect.EnumValueDescriptor
 }
 
 var _ starlark.Comparable = (*protoEnumValue)(nil)
+var _ starlark.Value = (*protoEnumValue)(nil)
 
 func (v *protoEnumValue) String() string {
 	return fmt.Sprintf("<%s %s=%d>", v.typeName, v.value.Name(), v.value.Number())

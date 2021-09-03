@@ -216,6 +216,10 @@ func scalarValueToStarlark(val protoreflect.Value, fieldDesc protoreflect.FieldD
 	case protoreflect.BytesKind:
 		// Handle []byte ([]uint8) -> string special case.
 		return starlark.String(val.Bytes()), nil
+	case protoreflect.EnumKind:
+		enumNumber := val.Enum()
+		enumType := newEnumType(fieldDesc.Enum())
+		return enumType.ByNum(enumNumber)
 	case protoreflect.MessageKind:
 		if val.Interface() == nil {
 			return starlark.None, nil
