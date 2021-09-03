@@ -214,9 +214,23 @@ func (msg *protoMessage) SetField(name string, val starlark.Value) error {
 		return err
 	}
 
-	// Convert starlark.List and starlark.Dict on assignment
+	// Autoconvert starlark.List, starlark.Dict, wrapperspb on assignment
 	if fieldDesc.IsList() {
 		if starlarkListVal, ok := val.(*starlark.List); ok {
+			// To support repeated StringValue support autoboxing
+			// if relevant conversion, mutate incoming list
+			if fieldDesc.Kind() == protoreflect.MessageKind {
+				for i := 0; i < starlarkListVal.Len(); i++ {
+					msg, err := maybeConvertToWrapper(fieldDesc, starlarkListVal.Index(i))
+					if err != nil {
+						return err
+					}
+					if msg != nil {
+						starlarkListVal.SetIndex(i, msg)
+					}
+				}
+			}
+
 			// Convert starlark.List to protoRepeated
 			list, err := newProtoRepeatedFromList(fieldDesc, starlarkListVal)
 			if err != nil {
@@ -234,6 +248,14 @@ func (msg *protoMessage) SetField(name string, val starlark.Value) error {
 			}
 
 			val = mapVal
+		}
+	} else if fieldDesc.Kind() == protoreflect.MessageKind {
+		msg, err := maybeConvertToWrapper(fieldDesc, val)
+		if err != nil {
+			return err
+		}
+		if msg != nil {
+			val = msg
 		}
 	}
 
