@@ -223,7 +223,7 @@ func scalarValueToStarlark(val protoreflect.Value, fieldDesc protoreflect.FieldD
 		return NewMessage(val.Message().Interface())
 	}
 
-	return starlark.None, fmt.Errorf("valueToStarlark: Value unuspported: %s\n", string(fieldDesc.FullName()))
+	return starlark.None, fmt.Errorf("valueToStarlark: Value unuspported: %T for %s (%s)\n", val.Interface(), string(fieldDesc.FullName()), fieldDesc.Kind().String())
 }
 
 // maybeConvertToWrapper checks if [val] is a primitive and [fieldDesc] is a corresponding
