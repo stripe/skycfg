@@ -40,6 +40,7 @@ func NewMessage(msg proto.Message) (*protoMessage, error) {
 	// Copy any existing set fields
 	var rangeErr error
 	msgReflect.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		// TODO: Range only iterates over populated fields so isFieldSet may be redundant
 		if isFieldSet(v, fd) {
 			starlarkValue, err := valueToStarlark(v, fd)
 			if err != nil {

@@ -145,6 +145,16 @@ func TestMessageV2(t *testing.T) {
 	}
 	checkProtoEqual(t, wantMsg, gotMsg)
 
+	toStarlark, err := NewMessage(wantMsg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fromStarlark, ok := AsProtoMessage(toStarlark)
+	if !ok {
+		t.Fatal("AsProtoMessage returned false")
+	}
+	checkProtoEqual(t, wantMsg, fromStarlark)
+
 	wantAttrs := map[string]string{
 		"f_int32":         "1010",
 		"f_int64":         "1020",
@@ -252,6 +262,16 @@ func TestMessageV3(t *testing.T) {
 		FBytes:        []byte("also some string"),
 	}
 	checkProtoEqual(t, wantMsg, gotMsg)
+
+	toStarlark, err := NewMessage(wantMsg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fromStarlark, ok := AsProtoMessage(toStarlark)
+	if !ok {
+		t.Fatal("AsProtoMessage returned false")
+	}
+	checkProtoEqual(t, wantMsg, fromStarlark)
 
 	wantAttrs := map[string]string{
 		"f_int32":         "1010",
