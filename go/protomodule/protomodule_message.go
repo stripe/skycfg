@@ -38,18 +38,23 @@ func NewMessage(msg proto.Message) (*protoMessage, error) {
 	fields := make(map[string]starlark.Value)
 
 	// Copy any existing set fields
+	var rangeErr error
 	msgReflect.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
+		// TODO: Range only iterates over populated fields so isFieldSet may be redundant
 		if isFieldSet(v, fd) {
 			starlarkValue, err := valueToStarlark(v, fd)
 			if err != nil {
-				// Skip field rather than erroring to maintain skycfg.NewProtoMessage api
-				return true
+				rangeErr = err
+				return false
 			}
 			fields[string(fd.Name())] = starlarkValue
 
 		}
 		return true
 	})
+	if rangeErr != nil {
+		return nil, rangeErr
+	}
 
 	// Clone and reset the input msg to ensure no mutations
 	cloned := proto.Clone(msg)

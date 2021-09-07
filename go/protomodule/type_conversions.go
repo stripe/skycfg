@@ -216,6 +216,10 @@ func scalarValueToStarlark(val protoreflect.Value, fieldDesc protoreflect.FieldD
 	case protoreflect.BytesKind:
 		// Handle []byte ([]uint8) -> string special case.
 		return starlark.String(val.Bytes()), nil
+	case protoreflect.EnumKind:
+		enumNumber := val.Enum()
+		enumType := newEnumType(fieldDesc.Enum())
+		return enumType.ByNum(enumNumber)
 	case protoreflect.MessageKind:
 		if val.Interface() == nil {
 			return starlark.None, nil
@@ -223,7 +227,7 @@ func scalarValueToStarlark(val protoreflect.Value, fieldDesc protoreflect.FieldD
 		return NewMessage(val.Message().Interface())
 	}
 
-	return starlark.None, fmt.Errorf("valueToStarlark: Value unuspported: %s\n", string(fieldDesc.FullName()))
+	return starlark.None, fmt.Errorf("valueToStarlark: Value unuspported: %T for %s (%s)\n", val.Interface(), string(fieldDesc.FullName()), fieldDesc.Kind().String())
 }
 
 // maybeConvertToWrapper checks if [val] is a primitive and [fieldDesc] is a corresponding
