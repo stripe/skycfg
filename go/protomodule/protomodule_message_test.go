@@ -26,6 +26,7 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
 )
@@ -106,10 +107,22 @@ func TestMessageV2(t *testing.T) {
 		f_nested_enum = proto.package("skycfg.test_proto").MessageV2.NestedEnum.NESTED_ENUM_B,
 		f_oneof_a = "string in oneof",
 		f_bytes = "also some string",
+
+		# Autoboxed wrappers
+		f_BoolValue = True,
+		f_StringValue = "something",
+		f_DoubleValue = 3110.4120,
+		f_Int32Value = 110,
+		f_Int64Value = 2148483647,
+		f_BytesValue = "foo/bar/baz",
+		f_Uint32Value = 4294967295,
+		f_Uint64Value = 8294967295,
+		r_StringValue = ["s1","s2","s3"],
 	)`, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	gotMsg := mustProtoMessage(t, val)
 	wantMsg := &pb.MessageV2{
 		FInt32:   proto.Int32(1010),
@@ -142,6 +155,19 @@ func TestMessageV2(t *testing.T) {
 		FNestedEnum:   pb.MessageV2_NESTED_ENUM_B.Enum(),
 		FOneof:        &pb.MessageV2_FOneofA{"string in oneof"},
 		FBytes:        []byte("also some string"),
+		F_BoolValue:   &wrapperspb.BoolValue{Value: true},
+		F_StringValue: &wrapperspb.StringValue{Value: "something"},
+		F_DoubleValue: &wrapperspb.DoubleValue{Value: 3110.4120},
+		F_Int32Value:  &wrapperspb.Int32Value{Value: 110},
+		F_Int64Value:  &wrapperspb.Int64Value{Value: 2148483647},
+		F_BytesValue:  &wrapperspb.BytesValue{Value: []byte("foo/bar/baz")},
+		F_Uint32Value: &wrapperspb.UInt32Value{Value: 4294967295},
+		F_Uint64Value: &wrapperspb.UInt64Value{Value: 8294967295},
+		R_StringValue: []*wrapperspb.StringValue([]*wrapperspb.StringValue{
+			&wrapperspb.StringValue{Value: "s1"},
+			&wrapperspb.StringValue{Value: "s2"},
+			&wrapperspb.StringValue{Value: "s3"},
+		}),
 	}
 	checkProtoEqual(t, wantMsg, gotMsg)
 
@@ -175,6 +201,15 @@ func TestMessageV2(t *testing.T) {
 		"f_oneof_a":       `"string in oneof"`,
 		"f_oneof_b":       `""`,
 		"f_bytes":         `"also some string"`,
+		"f_BoolValue":     `<google.protobuf.BoolValue value:true>`,
+		"f_StringValue":   `<google.protobuf.StringValue value:"something">`,
+		"f_DoubleValue":   `<google.protobuf.DoubleValue value:3110.412>`,
+		"f_Int32Value":    `<google.protobuf.Int32Value value:110>`,
+		"f_Int64Value":    `<google.protobuf.Int64Value value:2148483647>`,
+		"f_BytesValue":    `<google.protobuf.BytesValue value:"foo/bar/baz">`,
+		"f_Uint32Value":   `<google.protobuf.UInt32Value value:4294967295>`,
+		"f_Uint64Value":   `<google.protobuf.UInt64Value value:8294967295>`,
+		"r_StringValue":   `[<google.protobuf.StringValue value:"s1">, <google.protobuf.StringValue value:"s2">, <google.protobuf.StringValue value:"s3">]`,
 	}
 	attrs := val.(starlark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {
@@ -224,6 +259,17 @@ func TestMessageV3(t *testing.T) {
 		f_nested_enum = proto.package("skycfg.test_proto").MessageV3.NestedEnum.NESTED_ENUM_B,
 		f_oneof_a = "string in oneof",
 		f_bytes = "also some string",
+
+		# Autoboxed wrappers
+		f_BoolValue = True,
+		f_StringValue = "something",
+		f_DoubleValue = 3110.4120,
+		f_Int32Value = 110,
+		f_Int64Value = 2148483647,
+		f_BytesValue = "foo/bar/baz",
+		f_Uint32Value = 4294967295,
+		f_Uint64Value = 8294967295,
+		r_StringValue = ["s1","s2","s3"],
 	)`, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -260,6 +306,19 @@ func TestMessageV3(t *testing.T) {
 		FNestedEnum:   pb.MessageV3_NESTED_ENUM_B,
 		FOneof:        &pb.MessageV3_FOneofA{"string in oneof"},
 		FBytes:        []byte("also some string"),
+		F_BoolValue:   &wrapperspb.BoolValue{Value: true},
+		F_StringValue: &wrapperspb.StringValue{Value: "something"},
+		F_DoubleValue: &wrapperspb.DoubleValue{Value: 3110.4120},
+		F_Int32Value:  &wrapperspb.Int32Value{Value: 110},
+		F_Int64Value:  &wrapperspb.Int64Value{Value: 2148483647},
+		F_BytesValue:  &wrapperspb.BytesValue{Value: []byte("foo/bar/baz")},
+		F_Uint32Value: &wrapperspb.UInt32Value{Value: 4294967295},
+		F_Uint64Value: &wrapperspb.UInt64Value{Value: 8294967295},
+		R_StringValue: []*wrapperspb.StringValue([]*wrapperspb.StringValue{
+			&wrapperspb.StringValue{Value: "s1"},
+			&wrapperspb.StringValue{Value: "s2"},
+			&wrapperspb.StringValue{Value: "s3"},
+		}),
 	}
 	checkProtoEqual(t, wantMsg, gotMsg)
 
@@ -293,6 +352,15 @@ func TestMessageV3(t *testing.T) {
 		"f_oneof_a":       `"string in oneof"`,
 		"f_oneof_b":       `""`,
 		"f_bytes":         `"also some string"`,
+		"f_BoolValue":     `<google.protobuf.BoolValue value:true>`,
+		"f_StringValue":   `<google.protobuf.StringValue value:"something">`,
+		"f_DoubleValue":   `<google.protobuf.DoubleValue value:3110.412>`,
+		"f_Int32Value":    `<google.protobuf.Int32Value value:110>`,
+		"f_Int64Value":    `<google.protobuf.Int64Value value:2148483647>`,
+		"f_BytesValue":    `<google.protobuf.BytesValue value:"foo/bar/baz">`,
+		"f_Uint32Value":   `<google.protobuf.UInt32Value value:4294967295>`,
+		"f_Uint64Value":   `<google.protobuf.UInt64Value value:8294967295>`,
+		"r_StringValue":   `[<google.protobuf.StringValue value:"s1">, <google.protobuf.StringValue value:"s2">, <google.protobuf.StringValue value:"s3">]`,
 	}
 	attrs := val.(starlark.HasAttrs)
 	for attrName, wantAttr := range wantAttrs {

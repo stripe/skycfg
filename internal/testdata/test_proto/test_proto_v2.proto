@@ -19,6 +19,8 @@ syntax = "proto2";
 option go_package = "github.com/stripe/skycfg/internal/testdata/test_proto";
 package skycfg.test_proto;
 
+import "google/protobuf/wrappers.proto";
+
 message MessageV2 {
   optional int32  f_int32   = 1;
   optional int64  f_int64   = 2;
@@ -60,7 +62,18 @@ message MessageV2 {
 
   optional bytes f_bytes = 19;
 
-  // NEXT: 20
+  optional google.protobuf.BoolValue f_BoolValue = 20;
+  optional google.protobuf.StringValue f_StringValue = 21;
+  optional google.protobuf.DoubleValue f_DoubleValue = 22;
+  optional google.protobuf.Int32Value f_Int32Value = 23;
+  optional google.protobuf.Int64Value f_Int64Value = 24;
+  optional google.protobuf.BytesValue f_BytesValue = 25;
+  optional google.protobuf.UInt32Value f_Uint32Value = 26;
+  optional google.protobuf.UInt64Value f_Uint64Value = 27;
+
+  repeated google.protobuf.StringValue r_StringValue = 28;
+
+  // NEXT: 29
 }
 
 enum ToplevelEnumV2 {

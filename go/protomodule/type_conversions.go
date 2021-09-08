@@ -118,14 +118,6 @@ func scalarValueFromStarlark(fieldDesc protoreflect.FieldDescriptor, val starlar
 			return protoreflect.Value{}, fmt.Errorf("ValueError: value %v overflows type \"uint32\".", valInt)
 		}
 	case protoreflect.MessageKind:
-		msg, err := maybeConvertToWrapper(fieldDesc, val)
-		if err != nil {
-			return protoreflect.Value{}, err
-		}
-		if msg != nil {
-			return protoreflect.ValueOf(msg.toProtoMessage().ProtoReflect()), nil
-		}
-
 		if msg, ok := val.(*protoMessage); ok {
 			if msg.Type() == typeName(fieldDesc) {
 				return protoreflect.ValueOf(msg.toProtoMessage().ProtoReflect()), nil
