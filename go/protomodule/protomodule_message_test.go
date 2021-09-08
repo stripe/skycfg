@@ -380,7 +380,7 @@ func TestAttrValidation(t *testing.T) {
 		"pb": NewProtoPackage(newRegistry(), "skycfg.test_proto"),
 	}
 
-	runSkycfgTests(t, []skycfgTest{
+	tests := []skycfgTest{
 		// Scalar type mismatch
 		{
 			name:    "int32",
@@ -535,7 +535,8 @@ func TestAttrValidation(t *testing.T) {
 			src:     fmt.Sprintf(`pb.MessageV3(f_uint64 = %d - 1)`, 0),
 			wantErr: fmt.Errorf(`ValueError: value -1 overflows type "uint64".`),
 		},
-	}, withGlobals(globals))
+	}
+	runSkycfgTests(t, tests, withGlobals(globals))
 }
 
 func TestProtoMessageString(t *testing.T) {

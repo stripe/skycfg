@@ -664,12 +664,12 @@ func runSkycfgTests(t *testing.T, tests []skycfgTest, opts ...globalTestOption) 
 					got = removeRandomSpace(got)
 				}
 				if want != got {
-					t.Fatalf("Expected\nwanted: %s\ngot   : %s", want, got)
+					t.Fatalf("wanted: %s\ngot   : %s", want, got)
 				}
 			case bool:
 				got := val.(starlark.Bool)
 				if bool(got) != want {
-					t.Fatalf("Expected\nwanted: %t\ngot   : %t", want, got)
+					t.Fatalf("wanted: %t\ngot   : %t", want, got)
 				}
 			default:
 				t.Fatalf("runSkycfgTests does not support comparing %T yet", want)
@@ -730,6 +730,8 @@ func checkError(t *testing.T, got, want error) {
 
 	if want == nil && got != nil {
 		t.Fatalf("Expected no error, got: %v\n", got)
+	} else if want != nil && got == nil {
+		t.Fatalf("Expected error got nil\nwanted: %q", want.Error())
 	} else if want != nil && got.Error() != want.Error() {
 		t.Fatalf("Expected error\nwanted: %q\ngot   : %q", want.Error(), got.Error())
 	}
