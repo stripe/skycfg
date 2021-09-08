@@ -376,237 +376,202 @@ func TestMessageV3(t *testing.T) {
 }
 
 func TestAttrValidation(t *testing.T) {
-	tests := []struct {
-		name    string
-		src     string
-		wantErr string
-	}{
+	globals := starlark.StringDict{
+		"pb": NewProtoPackage(newRegistry(), "skycfg.test_proto"),
+	}
 
+	tests := []skycfgTest{
 		// Scalar type mismatch
 		{
 			name:    "int32",
-			src:     `MessageV3(f_int32 = '')`,
-			wantErr: `TypeError: value "" (type "string") can't be assigned to type "int32".`,
+			src:     `pb.MessageV3(f_int32 = '')`,
+			wantErr: fmt.Errorf(`TypeError: value "" (type "string") can't be assigned to type "int32".`),
 		},
 		{
 			name:    "int64",
-			src:     `MessageV3(f_int64 = '')`,
-			wantErr: `TypeError: value "" (type "string") can't be assigned to type "int64".`,
+			src:     `pb.MessageV3(f_int64 = '')`,
+			wantErr: fmt.Errorf(`TypeError: value "" (type "string") can't be assigned to type "int64".`),
 		},
 		{
 			name:    "uint32",
-			src:     `MessageV3(f_uint32 = '')`,
-			wantErr: `TypeError: value "" (type "string") can't be assigned to type "uint32".`,
+			src:     `pb.MessageV3(f_uint32 = '')`,
+			wantErr: fmt.Errorf(`TypeError: value "" (type "string") can't be assigned to type "uint32".`),
 		},
 		{
 			name:    "uint64",
-			src:     `MessageV3(f_uint64 = '')`,
-			wantErr: `TypeError: value "" (type "string") can't be assigned to type "uint64".`,
+			src:     `pb.MessageV3(f_uint64 = '')`,
+			wantErr: fmt.Errorf(`TypeError: value "" (type "string") can't be assigned to type "uint64".`),
 		},
 		{
 			name:    "float32",
-			src:     `MessageV3(f_float32 = '')`,
-			wantErr: `TypeError: value "" (type "string") can't be assigned to type "float".`,
+			src:     `pb.MessageV3(f_float32 = '')`,
+			wantErr: fmt.Errorf(`TypeError: value "" (type "string") can't be assigned to type "float".`),
 		},
 		{
 			name:    "float64",
-			src:     `MessageV3(f_float64 = '')`,
-			wantErr: `TypeError: value "" (type "string") can't be assigned to type "double".`,
+			src:     `pb.MessageV3(f_float64 = '')`,
+			wantErr: fmt.Errorf(`TypeError: value "" (type "string") can't be assigned to type "double".`),
 		},
 		{
 			name:    "string",
-			src:     `MessageV3(f_string = 0)`,
-			wantErr: `TypeError: value 0 (type "int") can't be assigned to type "string".`,
+			src:     `pb.MessageV3(f_string = 0)`,
+			wantErr: fmt.Errorf(`TypeError: value 0 (type "int") can't be assigned to type "string".`),
 		},
 		{
 			name:    "bool",
-			src:     `MessageV3(f_bool = '')`,
-			wantErr: `TypeError: value "" (type "string") can't be assigned to type "bool".`,
+			src:     `pb.MessageV3(f_bool = '')`,
+			wantErr: fmt.Errorf(`TypeError: value "" (type "string") can't be assigned to type "bool".`),
 		},
 		{
 			name:    "enum",
-			src:     `MessageV3(f_toplevel_enum = 0)`,
-			wantErr: `TypeError: value 0 (type "int") can't be assigned to type "skycfg.test_proto.ToplevelEnumV3".`,
+			src:     `pb.MessageV3(f_toplevel_enum = 0)`,
+			wantErr: fmt.Errorf(`TypeError: value 0 (type "int") can't be assigned to type "skycfg.test_proto.ToplevelEnumV3".`),
 		},
 
 		// Non-scalar type mismatch
 		{
 			name:    "string list assignment",
-			src:     `MessageV3(r_string = {'': ''})`,
-			wantErr: `TypeError: value {"": ""} (type "dict") can't be assigned to type "[]string".`,
+			src:     `pb.MessageV3(r_string = {'': ''})`,
+			wantErr: fmt.Errorf(`TypeError: value {"": ""} (type "dict") can't be assigned to type "[]string".`),
 		},
 		{
 			name:    "string list field assignment",
-			src:     `MessageV3(r_string = [123])`,
-			wantErr: `TypeError: value 123 (type "int") can't be assigned to type "string".`,
+			src:     `pb.MessageV3(r_string = [123])`,
+			wantErr: fmt.Errorf(`TypeError: value 123 (type "int") can't be assigned to type "string".`),
 		},
 		{
 			name:    "string map assignment",
-			src:     `MessageV3(map_string = [123])`,
-			wantErr: `TypeError: value [123] (type "list") can't be assigned to type "map[string]string".`,
+			src:     `pb.MessageV3(map_string = [123])`,
+			wantErr: fmt.Errorf(`TypeError: value [123] (type "list") can't be assigned to type "map[string]string".`),
 		},
 		{
 			name:    "string map key assignment",
-			src:     `MessageV3(map_string = {123: ''})`,
-			wantErr: `TypeError: value 123 (type "int") can't be assigned to type "string".`,
+			src:     `pb.MessageV3(map_string = {123: ''})`,
+			wantErr: fmt.Errorf(`TypeError: value 123 (type "int") can't be assigned to type "string".`),
 		},
 		{
 			name:    "string map value assignment",
-			src:     `MessageV3(map_string = {'': 456})`,
-			wantErr: `TypeError: value 456 (type "int") can't be assigned to type "string".`,
+			src:     `pb.MessageV3(map_string = {'': 456})`,
+			wantErr: fmt.Errorf(`TypeError: value 456 (type "int") can't be assigned to type "string".`),
 		},
 		{
 			name:    "message map value assignment",
-			src:     `MessageV3(map_submsg = {'': 456})`,
-			wantErr: `TypeError: value 456 (type "int") can't be assigned to type "skycfg.test_proto.MessageV3".`,
+			src:     `pb.MessageV3(map_submsg = {'': 456})`,
+			wantErr: fmt.Errorf(`TypeError: value 456 (type "int") can't be assigned to type "skycfg.test_proto.MessageV3".`),
 		},
 		{
 			name:    "message assignment with wrong type",
-			src:     `MessageV3(f_submsg = pb.MessageV2())`,
-			wantErr: `TypeError: value <skycfg.test_proto.MessageV2 > (type "skycfg.test_proto.MessageV2") can't be assigned to type "skycfg.test_proto.MessageV3".`,
+			src:     `pb.MessageV3(f_submsg = pb.MessageV2())`,
+			wantErr: fmt.Errorf(`TypeError: value <skycfg.test_proto.MessageV2 > (type "skycfg.test_proto.MessageV2") can't be assigned to type "skycfg.test_proto.MessageV3".`),
 		},
 
 		// Repeated and map fields can't be assigned `None`. Scalar fields can't be assigned `None`
 		// in proto3, but the error message is specialized.
 		{
 			name:    "none to scalar",
-			src:     `MessageV3(f_int32 = None)`,
-			wantErr: `TypeError: value None (type "NoneType") can't be assigned to type "int32" in proto3 mode.`,
+			src:     `pb.MessageV3(f_int32 = None)`,
+			wantErr: fmt.Errorf(`TypeError: value None (type "NoneType") can't be assigned to type "int32" in proto3 mode.`),
 		},
 		{
 			name:    "none to string list",
-			src:     `MessageV3(r_string = None)`,
-			wantErr: `TypeError: value None (type "NoneType") can't be assigned to type "[]string".`,
+			src:     `pb.MessageV3(r_string = None)`,
+			wantErr: fmt.Errorf(`TypeError: value None (type "NoneType") can't be assigned to type "[]string".`),
 		},
 		{
 			name:    "none to string map",
-			src:     `MessageV3(map_string = None)`,
-			wantErr: `TypeError: value None (type "NoneType") can't be assigned to type "map[string]string".`,
+			src:     `pb.MessageV3(map_string = None)`,
+			wantErr: fmt.Errorf(`TypeError: value None (type "NoneType") can't be assigned to type "map[string]string".`),
 		},
 		{
 			name:    "none to message is allowed",
-			src:     `MessageV3(f_submsg = None)`,
-			wantErr: "",
+			src:     `pb.MessageV3(f_submsg = None)`,
+			wantErr: nil,
+			want:    &pb.MessageV3{},
 		},
 		{
 			name:    "none to message list",
-			src:     `MessageV3(r_submsg = None)`,
-			wantErr: `TypeError: value None (type "NoneType") can't be assigned to type "[]skycfg.test_proto.MessageV3".`,
+			src:     `pb.MessageV3(r_submsg = None)`,
+			wantErr: fmt.Errorf(`TypeError: value None (type "NoneType") can't be assigned to type "[]skycfg.test_proto.MessageV3".`),
 		},
 
 		// Numeric overflow
 		{
 			name:    "int32 overflow",
-			src:     fmt.Sprintf(`MessageV3(f_int32 = %d + 1)`, math.MaxInt32),
-			wantErr: `ValueError: value 2147483648 overflows type "int32".`,
+			src:     fmt.Sprintf(`pb.MessageV3(f_int32 = %d + 1)`, math.MaxInt32),
+			wantErr: fmt.Errorf(`ValueError: value 2147483648 overflows type "int32".`),
 		},
 		{
 			name:    "int32 underflow",
-			src:     fmt.Sprintf(`MessageV3(f_int32 = %d - 1)`, math.MinInt32),
-			wantErr: `ValueError: value -2147483649 overflows type "int32".`,
+			src:     fmt.Sprintf(`pb.MessageV3(f_int32 = %d - 1)`, math.MinInt32),
+			wantErr: fmt.Errorf(`ValueError: value -2147483649 overflows type "int32".`),
 		},
 		{
 			name:    "int64 overflow",
-			src:     fmt.Sprintf(`MessageV3(f_int64 = %d + 1)`, math.MaxInt64),
-			wantErr: `ValueError: value 9223372036854775808 overflows type "int64".`,
+			src:     fmt.Sprintf(`pb.MessageV3(f_int64 = %d + 1)`, math.MaxInt64),
+			wantErr: fmt.Errorf(`ValueError: value 9223372036854775808 overflows type "int64".`),
 		},
 		{
 			name:    "int64 underflow",
-			src:     fmt.Sprintf(`MessageV3(f_int64 = %d - 1)`, math.MinInt64),
-			wantErr: `ValueError: value -9223372036854775809 overflows type "int64".`,
+			src:     fmt.Sprintf(`pb.MessageV3(f_int64 = %d - 1)`, math.MinInt64),
+			wantErr: fmt.Errorf(`ValueError: value -9223372036854775809 overflows type "int64".`),
 		},
 		{
 			name:    "uint32 overflow",
-			src:     fmt.Sprintf(`MessageV3(f_uint32 = %d + 1)`, math.MaxUint32),
-			wantErr: `ValueError: value 4294967296 overflows type "uint32".`,
+			src:     fmt.Sprintf(`pb.MessageV3(f_uint32 = %d + 1)`, math.MaxUint32),
+			wantErr: fmt.Errorf(`ValueError: value 4294967296 overflows type "uint32".`),
 		},
 		{
 			name:    "uint32 underflow",
-			src:     fmt.Sprintf(`MessageV3(f_uint32 = %d - 1)`, 0),
-			wantErr: `ValueError: value -1 overflows type "uint32".`,
+			src:     fmt.Sprintf(`pb.MessageV3(f_uint32 = %d - 1)`, 0),
+			wantErr: fmt.Errorf(`ValueError: value -1 overflows type "uint32".`),
 		},
 		{
 			name:    "uint64 overflow",
-			src:     fmt.Sprintf(`MessageV3(f_uint64 = %d + 1)`, uint64(math.MaxUint64)),
-			wantErr: `ValueError: value 18446744073709551616 overflows type "uint64".`,
+			src:     fmt.Sprintf(`pb.MessageV3(f_uint64 = %d + 1)`, uint64(math.MaxUint64)),
+			wantErr: fmt.Errorf(`ValueError: value 18446744073709551616 overflows type "uint64".`),
 		},
 		{
 			name:    "uint64 underflow",
-			src:     fmt.Sprintf(`MessageV3(f_uint64 = %d - 1)`, 0),
-			wantErr: `ValueError: value -1 overflows type "uint64".`,
+			src:     fmt.Sprintf(`pb.MessageV3(f_uint64 = %d - 1)`, 0),
+			wantErr: fmt.Errorf(`ValueError: value -1 overflows type "uint64".`),
 		},
 	}
-
-	globals := starlark.StringDict{
-		"pb": NewProtoPackage(newRegistry(), "skycfg.test_proto"),
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			_, err := starlark.Eval(&starlark.Thread{}, "", `pb.`+test.src, globals)
-			if test.wantErr != "" {
-				if err == nil {
-					t.Errorf("eval(%q): expected error", test.src)
-				} else if test.wantErr != err.Error() {
-					t.Errorf("eval(%q): expected error\nexpected: %q\ngot: %q", test.src, test.wantErr, err.Error())
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("Expected no error got: %v\n", err)
-				}
-			}
-		})
-	}
+	runSkycfgTests(t, tests, withGlobals(globals))
 }
 
 func TestProtoMessageString(t *testing.T) {
-	val, err := eval(`proto.package("skycfg.test_proto").MessageV3(
-		f_string = "some string",
-	)`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := val.String()
-	want := `<skycfg.test_proto.MessageV3 f_string:"some string">`
-	if want != got {
-		t.Fatalf("protoMessage.String(): wanted %q, got %q", want, got)
-	}
+	runSkycfgTests(t, []skycfgTest{
+		{
+			src: `proto.package("skycfg.test_proto").MessageV3(
+				f_string = "some string",
+			)`,
+			want: `<skycfg.test_proto.MessageV3 f_string:"some string">`,
+		},
+	})
 }
 
 func TestNestedMessages(t *testing.T) {
 	testPb := `proto.package("skycfg.test_proto").`
 
-	tests := []struct {
-		src     string
-		wantVal string
-	}{
+	runSkycfgTests(t, []skycfgTest{
 		{
-			src:     testPb + `MessageV2.NestedMessage()`,
-			wantVal: `<skycfg.test_proto.MessageV2.NestedMessage >`,
+			src:  testPb + `MessageV2.NestedMessage()`,
+			want: `<skycfg.test_proto.MessageV2.NestedMessage >`,
 		},
 		{
-			src:     testPb + `MessageV2.NestedMessage.DoubleNestedMessage()`,
-			wantVal: `<skycfg.test_proto.MessageV2.NestedMessage.DoubleNestedMessage >`,
+			src:  testPb + `MessageV2.NestedMessage.DoubleNestedMessage()`,
+			want: `<skycfg.test_proto.MessageV2.NestedMessage.DoubleNestedMessage >`,
 		},
 
 		{
-			src:     testPb + `MessageV3.NestedMessage()`,
-			wantVal: `<skycfg.test_proto.MessageV3.NestedMessage >`,
+			src:  testPb + `MessageV3.NestedMessage()`,
+			want: `<skycfg.test_proto.MessageV3.NestedMessage >`,
 		},
 		{
-			src:     testPb + `MessageV3.NestedMessage.DoubleNestedMessage()`,
-			wantVal: `<skycfg.test_proto.MessageV3.NestedMessage.DoubleNestedMessage >`,
+			src:  testPb + `MessageV3.NestedMessage.DoubleNestedMessage()`,
+			want: `<skycfg.test_proto.MessageV3.NestedMessage.DoubleNestedMessage >`,
 		},
-	}
-	for _, test := range tests {
-		gotVal, err := eval(test.src, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if test.wantVal != gotVal.String() {
-			t.Errorf("eval(%q): expected value %q, got %q", test.src, test.wantVal, gotVal)
-		}
-	}
+	})
 }
 
 func TestProtoComparisonEqual(t *testing.T) {
@@ -663,10 +628,8 @@ func TestProtoSetDefaultV2(t *testing.T) {
 	setString := "abc"
 	defaultString := "default_str"
 
-	tests := []struct {
-		src  string
-		want *pb.MessageV2
-	}{
+	runSkycfgTests(t, []skycfgTest{
+		// V2
 		{
 			src: `proto.set_defaults(proto.package("skycfg.test_proto").MessageV2(f_int32 = 123))`,
 			want: &pb.MessageV2{
@@ -692,22 +655,8 @@ func TestProtoSetDefaultV2(t *testing.T) {
 				FString: &defaultString,
 			},
 		},
-	}
-	for _, test := range tests {
-		val, err := eval(test.src, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		gotMsg := mustProtoMessage(t, val)
-		checkProtoEqual(t, test.want, gotMsg)
-	}
-}
 
-func TestProtoSetDefaultV3(t *testing.T) {
-	tests := []struct {
-		src  string
-		want *pb.MessageV3
-	}{
+		// V3
 		{
 			src: `proto.set_defaults(proto.package("skycfg.test_proto").MessageV3(f_int32 = 123))`,
 			want: &pb.MessageV3{
@@ -731,48 +680,35 @@ func TestProtoSetDefaultV3(t *testing.T) {
 				FSubmsg: &pb.MessageV3{},
 			},
 		},
-	}
-	for _, test := range tests {
-		val, err := eval(test.src, nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		gotMsg := mustProtoMessage(t, val)
-		checkProtoEqual(t, test.want, gotMsg)
-	}
+	})
 }
 
-func TestProtoClearV2(t *testing.T) {
-	val, err := eval(`proto.clear(proto.package("skycfg.test_proto").MessageV2(
-		f_string = "some string",
-	))`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	gotMsg := mustProtoMessage(t, val)
-	wantMsg := &pb.MessageV2{}
-	checkProtoEqual(t, wantMsg, gotMsg)
-}
-
-func TestProtoClearV3(t *testing.T) {
-	val, err := eval(`proto.clear(proto.package("skycfg.test_proto").MessageV3(
-		f_string = "some string",
-	))`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	gotMsg := mustProtoMessage(t, val)
-	wantMsg := &pb.MessageV3{
-		FInt32:   0,
-		FInt64:   0,
-		FUint32:  0,
-		FUint64:  0,
-		FFloat32: 0.0,
-		FFloat64: 0.0,
-		FString:  "",
-		FBool:    false,
-	}
-	checkProtoEqual(t, wantMsg, gotMsg)
+func TestProtoClear(t *testing.T) {
+	runSkycfgTests(t, []skycfgTest{
+		{
+			name: "proto.clear V2",
+			src: `proto.clear(proto.package("skycfg.test_proto").MessageV2(
+				f_string = "some string",
+			))`,
+			want: &pb.MessageV2{},
+		},
+		{
+			name: "proto.clear V3",
+			src: `proto.clear(proto.package("skycfg.test_proto").MessageV3(
+				f_string = "some string",
+			))`,
+			want: &pb.MessageV3{
+				FInt32:   0,
+				FInt64:   0,
+				FUint32:  0,
+				FUint64:  0,
+				FFloat32: 0.0,
+				FFloat64: 0.0,
+				FString:  "",
+				FBool:    false,
+			},
+		},
+	})
 }
 
 func TestProtoMergeV2(t *testing.T) {
@@ -1058,15 +994,18 @@ func TestProtoMergeDiffTypes(t *testing.T) {
 
 // Pre 1.0 Skycfg allowed maps to be constructed with None values for proto2 (see protoMap.SetKey)
 func TestMapNoneCompatibility(t *testing.T) {
-	val, err := evalFunc(`
+	runSkycfgTests(t, []skycfgTest{
+		{
+			name: "Set map with None clears values",
+			srcFunc: `
 def fun():
     pb = proto.package("skycfg.test_proto")
     msg = pb.MessageV2()
     m = {
-	    "a": pb.MessageV2(),
-	    "b": pb.MessageV2(),
-	    "c": pb.MessageV2(),
-	    "d": None,
+        "a": pb.MessageV2(),
+        "b": pb.MessageV2(),
+        "c": pb.MessageV2(),
+        "d": None,
     }
     msg.map_submsg = m
 
@@ -1076,21 +1015,19 @@ def fun():
     m2.update([("c", None)])
 
     return msg
-`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := mustProtoMessage(t, val).(*pb.MessageV2)
-
-	checkProtoEqual(t, &pb.MessageV2{
-		MapSubmsg: map[string]*pb.MessageV2{
-			"a": &pb.MessageV2{},
+`,
+			want: &pb.MessageV2{
+				MapSubmsg: map[string]*pb.MessageV2{
+					"a": &pb.MessageV2{},
+				},
+			},
 		},
-	}, got)
 
-	// Confirm this only works for all in proto2, only message values in proto3
-	// This is an artifact of set to None being allow for scalar values in proto2
-	val, err = evalFunc(`
+		// Confirm this only works for all in proto2, only message values in proto3
+		// This is an artifact of set to None being allow for scalar values in proto2
+		{
+			name: "Set a scalar value to None in proto2 works",
+			srcFunc: `
 def fun():
     pb = proto.package("skycfg.test_proto")
     msg = pb.MessageV2(
@@ -1099,12 +1036,14 @@ def fun():
         }
     )
     return msg
-`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	val, err = evalFunc(`
+`,
+			want: &pb.MessageV2{
+				MapString: map[string]string{},
+			},
+		},
+		{
+			name: "Set a scalar value to None in proto3 is not allowed",
+			srcFunc: `
 def fun():
     pb = proto.package("skycfg.test_proto")
     msg = pb.MessageV3(
@@ -1113,16 +1052,15 @@ def fun():
         }
     )
     return msg
-`, nil)
-	wantErr := fmt.Errorf(`TypeError: value None (type "NoneType") can't be assigned to type "string" in proto3 mode.`)
-	if !checkError(err, wantErr) {
-		t.Fatalf("eval: expected error %v, got %v", wantErr, err)
-	}
-
-	// An odd resulting behavior of both ensuring assignment does not copy
-	// and setting to None deletes is that assignment can mutate a raw starlark dict
-	// This is not ideal but this test is here to just document the behavior
-	val, err = evalFunc(`
+`,
+			wantErr: fmt.Errorf(`TypeError: value None (type "NoneType") can't be assigned to type "string" in proto3 mode.`),
+		},
+		// An odd resulting behavior of both ensuring assignment does not copy
+		// and setting to None deletes is that assignment can mutate a raw starlark dict
+		// This is not ideal but this test is here to just document the behavior
+		{
+			name: "None and no copy on assignment mutates raw starlark dict",
+			srcFunc: `
 def fun():
     pb = proto.package("skycfg.test_proto")
     a = {
@@ -1133,27 +1071,22 @@ def fun():
 	map_string = a
     )
     return a
-`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := `{"ka": "va"}`
-	if want != val.String() {
-		t.Fatalf("Result differed\nwant: %s\ngot : %s", want, val.String())
-	}
+`,
+			want: `{"ka": "va"}`,
+		},
+	})
 }
 
 func TestUnsetProto2Fields(t *testing.T) {
 	// Proto v2 distinguishes between unset and set-to-empty.
-	msg, err := eval(`proto.package("skycfg.test_proto").MessageV2(
-                f_string = None,
-        )`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := mustProtoMessage(t, msg)
-	want := &pb.MessageV2{
-		FString: nil,
-	}
-	checkProtoEqual(t, want, got)
+	runSkycfgTests(t, []skycfgTest{
+		{
+			src: `proto.package("skycfg.test_proto").MessageV2(
+				f_string = None,
+			)`,
+			want: &pb.MessageV2{
+				FString: nil,
+			},
+		},
+	})
 }

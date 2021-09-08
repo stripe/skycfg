@@ -60,50 +60,28 @@ func TestProtoPackage(t *testing.T) {
 		},
 	}
 
-	tests := []struct {
-		expr    string
-		want    string
-		wantErr error
-	}{
+	runSkycfgTests(t, []skycfgTest{
 		{
-			expr: `proto.package("skycfg.test_proto")`,
+			src:  `proto.package("skycfg.test_proto")`,
 			want: `<proto.Package "skycfg.test_proto">`,
 		},
 		{
-			expr: `dir(proto.package("skycfg.test_proto"))`,
+			src:  `dir(proto.package("skycfg.test_proto"))`,
 			want: `["MessageV2", "MessageV3", "ToplevelEnumV2", "ToplevelEnumV3"]`,
 		},
 		{
-			expr: `proto.package("skycfg.test_proto").MessageV2`,
+			src:  `proto.package("skycfg.test_proto").MessageV2`,
 			want: `<proto.MessageType "skycfg.test_proto.MessageV2">`,
 		},
 		{
-			expr: `proto.package("skycfg.test_proto").ToplevelEnumV2`,
+			src:  `proto.package("skycfg.test_proto").ToplevelEnumV2`,
 			want: `<proto.EnumType "skycfg.test_proto.ToplevelEnumV2">`,
 		},
 		{
-			expr:    `proto.package("skycfg.test_proto").NoExist`,
+			src:     `proto.package("skycfg.test_proto").NoExist`,
 			wantErr: errors.New(`Protobuf type "skycfg.test_proto.NoExist" not found`),
 		},
-	}
-	for _, test := range tests {
-		t.Run("", func(t *testing.T) {
-			val, err := starlark.Eval(&starlark.Thread{}, "", test.expr, globals)
-
-			if test.wantErr != nil {
-				if !checkError(err, test.wantErr) {
-					t.Fatalf("eval(%q): expected error %v, got %v", test.expr, test.wantErr, err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("eval(%q): %v", test.expr, err)
-			}
-			if test.want != val.String() {
-				t.Errorf("eval(%q): expected value %q, got %q", test.expr, test.want, val.String())
-			}
-		})
-	}
+	}, withGlobals(globals))
 }
 
 func TestMessageType(t *testing.T) {
@@ -111,50 +89,28 @@ func TestMessageType(t *testing.T) {
 		"pb": NewProtoPackage(newRegistry(), "skycfg.test_proto"),
 	}
 
-	tests := []struct {
-		expr    string
-		want    string
-		wantErr error
-	}{
+	runSkycfgTests(t, []skycfgTest{
 		{
-			expr: `pb.MessageV2`,
+			src:  `pb.MessageV2`,
 			want: `<proto.MessageType "skycfg.test_proto.MessageV2">`,
 		},
 		{
-			expr: `dir(pb.MessageV2)`,
+			src:  `dir(pb.MessageV2)`,
 			want: `["NestedEnum", "NestedMessage"]`,
 		},
 		{
-			expr: `pb.MessageV2.NestedMessage`,
+			src:  `pb.MessageV2.NestedMessage`,
 			want: `<proto.MessageType "skycfg.test_proto.MessageV2.NestedMessage">`,
 		},
 		{
-			expr: `pb.MessageV2.NestedEnum`,
+			src:  `pb.MessageV2.NestedEnum`,
 			want: `<proto.EnumType "skycfg.test_proto.MessageV2.NestedEnum">`,
 		},
 		{
-			expr:    `pb.MessageV2.NoExist`,
+			src:     `pb.MessageV2.NoExist`,
 			wantErr: errors.New(`Protobuf type "skycfg.test_proto.MessageV2.NoExist" not found`),
 		},
-	}
-	for _, test := range tests {
-		t.Run("", func(t *testing.T) {
-			val, err := starlark.Eval(&starlark.Thread{}, "", test.expr, globals)
-
-			if test.wantErr != nil {
-				if !checkError(err, test.wantErr) {
-					t.Fatalf("eval(%q): expected error %v, got %v", test.expr, test.wantErr, err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("eval(%q): %v", test.expr, err)
-			}
-			if test.want != val.String() {
-				t.Errorf("eval(%q): expected value %q, got %q", test.expr, test.want, val.String())
-			}
-		})
-	}
+	}, withGlobals(globals))
 }
 
 func TestEnumType(t *testing.T) {
@@ -162,50 +118,28 @@ func TestEnumType(t *testing.T) {
 		"pb": NewProtoPackage(newRegistry(), "skycfg.test_proto"),
 	}
 
-	tests := []struct {
-		expr    string
-		want    string
-		wantErr error
-	}{
+	runSkycfgTests(t, []skycfgTest{
 		{
-			expr: `pb.ToplevelEnumV2`,
+			src:  `pb.ToplevelEnumV2`,
 			want: `<proto.EnumType "skycfg.test_proto.ToplevelEnumV2">`,
 		},
 		{
-			expr: `dir(pb.ToplevelEnumV2)`,
+			src:  `dir(pb.ToplevelEnumV2)`,
 			want: `["TOPLEVEL_ENUM_V2_A", "TOPLEVEL_ENUM_V2_B"]`,
 		},
 		{
-			expr: `pb.MessageV2.NestedEnum`,
+			src:  `pb.MessageV2.NestedEnum`,
 			want: `<proto.EnumType "skycfg.test_proto.MessageV2.NestedEnum">`,
 		},
 		{
-			expr: `dir(pb.MessageV2.NestedEnum)`,
+			src:  `dir(pb.MessageV2.NestedEnum)`,
 			want: `["NESTED_ENUM_A", "NESTED_ENUM_B"]`,
 		},
 		{
-			expr:    `pb.ToplevelEnumV2.NoExist`,
+			src:     `pb.ToplevelEnumV2.NoExist`,
 			wantErr: errors.New(`proto.EnumType has no .NoExist field or method`),
 		},
-	}
-	for _, test := range tests {
-		t.Run("", func(t *testing.T) {
-			val, err := starlark.Eval(&starlark.Thread{}, "", test.expr, globals)
-
-			if test.wantErr != nil {
-				if !checkError(err, test.wantErr) {
-					t.Fatalf("eval(%q): expected error %v, got %v", test.expr, test.wantErr, err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("eval(%q): %v", test.expr, err)
-			}
-			if test.want != val.String() {
-				t.Errorf("eval(%q): expected value %q, got %q", test.expr, test.want, val.String())
-			}
-		})
-	}
+	}, withGlobals(globals))
 }
 
 func TestListType(t *testing.T) {
@@ -224,27 +158,21 @@ func TestListType(t *testing.T) {
 		}),
 	}
 
-	tests := []struct {
-		name    string
-		expr    string
-		exprFun string
-		want    string
-		wantErr error
-	}{
+	runSkycfgTests(t, []skycfgTest{
 		{
 			name: "new list",
-			expr: `list()`,
+			src:  `list()`,
 			want: `[]`,
 		},
 		{
 			name: "list AttrNames",
-			expr: `dir(list())`,
+			src:  `dir(list())`,
 			want: `["append", "clear", "extend", "index", "insert", "pop", "remove"]`,
 		},
 		// List methods
 		{
 			name: "list.Append",
-			exprFun: `
+			srcFunc: `
 def fun():
     l = list()
     l.append("some string")
@@ -254,7 +182,7 @@ def fun():
 		},
 		{
 			name: "list.Extend",
-			exprFun: `
+			srcFunc: `
 def fun():
     l = list()
     l.extend(["a", "b"])
@@ -264,7 +192,7 @@ def fun():
 		},
 		{
 			name: "list.Clear",
-			exprFun: `
+			srcFunc: `
 def fun():
     l = list()
     l.extend(["a", "b"])
@@ -275,7 +203,7 @@ def fun():
 		},
 		{
 			name: "list.SetIndex",
-			exprFun: `
+			srcFunc: `
 def fun():
     l = list()
     l.extend(["a", "b"])
@@ -286,7 +214,7 @@ def fun():
 		},
 		{
 			name: "list binary add operation",
-			exprFun: `
+			srcFunc: `
 def fun():
     l = list()
     l2 = list()
@@ -301,17 +229,17 @@ def fun():
 		// List typechecking
 		{
 			name:    "list append typchecks",
-			expr:    `list().append(1)`,
+			src:     `list().append(1)`,
 			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
 		},
 		{
 			name:    "list extend typchecks",
-			expr:    `list().extend([1,2])`,
+			src:     `list().extend([1,2])`,
 			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
 		},
 		{
 			name: "list set index typchecks",
-			exprFun: `
+			srcFunc: `
 def fun():
     l = list()
     l.extend(["a", "b"])
@@ -320,31 +248,7 @@ def fun():
 `,
 			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
 		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			var val starlark.Value
-			var err error
-			if test.expr != "" {
-				val, err = starlark.Eval(&starlark.Thread{}, "", test.expr, globals)
-			} else {
-				val, err = evalFunc(test.exprFun, globals)
-			}
-
-			if test.wantErr != nil {
-				if !checkError(err, test.wantErr) {
-					t.Fatalf("eval(%q): expected error %v, got %v", test.expr, test.wantErr, err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("eval(%q): %v", test.expr, err)
-			}
-			if test.want != val.String() {
-				t.Errorf("eval(%q): expected value %q, got %q", test.expr, test.want, val.String())
-			}
-		})
-	}
+	}, withGlobals(globals))
 }
 
 func TestMapType(t *testing.T) {
@@ -363,27 +267,21 @@ func TestMapType(t *testing.T) {
 		}),
 	}
 
-	tests := []struct {
-		name    string
-		expr    string
-		exprFun string
-		want    string
-		wantErr error
-	}{
+	runSkycfgTests(t, []skycfgTest{
 		{
 			name: "new map",
-			expr: `map()`,
+			src:  `map()`,
 			want: `{}`,
 		},
 		{
 			name: "map AttrNames",
-			expr: `dir(map())`,
+			src:  `dir(map())`,
 			want: `["clear", "get", "items", "keys", "pop", "popitem", "setdefault", "update", "values"]`,
 		},
 		// Map methods
 		{
 			name: "map.SetDefault",
-			exprFun: `
+			srcFunc: `
 def fun():
     m = map()
     m["a"] = "A"
@@ -395,7 +293,7 @@ def fun():
 		},
 		{
 			name: "map.SetKey",
-			exprFun: `
+			srcFunc: `
 def fun():
     m = map()
     m["a"] = "some string"
@@ -405,7 +303,7 @@ def fun():
 		},
 		{
 			name: "map.Update",
-			exprFun: `
+			srcFunc: `
 def fun():
     m = map()
     m.update([("a", "a_string"), ("b", "b_string")])
@@ -415,7 +313,7 @@ def fun():
 		},
 		{
 			name: "map.Clear",
-			exprFun: `
+			srcFunc: `
 def fun():
     m = map()
     m["a"] = "some string"
@@ -428,7 +326,7 @@ def fun():
 		// Map typechecking
 		{
 			name: "map.SetKey typechecks",
-			exprFun: `
+			srcFunc: `
 def fun():
     m = map()
     m["a"] = 1
@@ -438,48 +336,26 @@ def fun():
 		},
 		{
 			name:    "map.Update typechecks",
-			expr:    `map().update([("a", 1)])`,
+			src:     `map().update([("a", 1)])`,
 			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
 		},
 		{
 			name:    "map.SetDefault typechecks",
-			expr:    `map().setdefault("a", 1)`,
+			src:     `map().setdefault("a", 1)`,
 			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
 		},
 		{
 			name:    "map.SetDefault typechecks key",
-			expr:    `map().setdefault(1, "a")`,
+			src:     `map().setdefault(1, "a")`,
 			wantErr: errors.New(`TypeError: value 1 (type "int") can't be assigned to type "string".`),
 		},
-	}
-	for _, test := range tests {
-		t.Run("", func(t *testing.T) {
-			var val starlark.Value
-			var err error
-			if test.expr != "" {
-				val, err = starlark.Eval(&starlark.Thread{}, "", test.expr, globals)
-			} else {
-				val, err = evalFunc(test.exprFun, globals)
-			}
-
-			if test.wantErr != nil {
-				if !checkError(err, test.wantErr) {
-					t.Fatalf("eval(%q): expected error %v, got %v", test.expr, test.wantErr, err)
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("eval(%q): %v", test.expr, err)
-			}
-			if test.want != val.String() {
-				t.Errorf("eval(%q): expected value %q, got %q", test.expr, test.want, val.String())
-			}
-		})
-	}
+	}, withGlobals(globals))
 }
 
 func TestRepeatedProtoFieldMutation(t *testing.T) {
-	val, err := evalFunc(`
+	runSkycfgTests(t, []skycfgTest{
+		{
+			srcFunc: `
 def fun():
     pkg = proto.package("skycfg.test_proto")
     msg = pkg.MessageV3()
@@ -487,28 +363,20 @@ def fun():
     msg.r_submsg[0].f_string = "foo"
     msg.r_submsg.extend([pkg.MessageV3()])
     msg.r_submsg[1].f_string = "bar"
-    return msg`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := removeRandomSpace(val.String())
-	want := `<skycfg.test_proto.MessageV3 r_submsg:{f_string:"foo"} r_submsg:{f_string:"bar"}>`
-	if want != got {
-		t.Fatalf("skyProtoMessage.String(): wanted %q, got %q", want, got)
-	}
+    return msg`,
+			want:              `<skycfg.test_proto.MessageV3 r_submsg:{f_string:"foo"} r_submsg:{f_string:"bar"}>`,
+			removeRandomSpace: true,
+		},
+	})
 }
 
 // Skycfg has had inconsistent copy on assignment behavior
 // Test that Skycfg does not copy lists/maps on assignment, matching Starlark/Python's behavior
 func TestNoCopyOnAssignment(t *testing.T) {
-	tests := []struct {
-		name string
-		fun  string
-		want string
-	}{
+	runSkycfgTests(t, []skycfgTest{
 		{
 			name: "list does not copy on assignment, *protoRepeated",
-			fun: `
+			srcFunc: `
 def fun():
     pkg = proto.package("skycfg.test_proto")
     msg1 = pkg.MessageV3()
@@ -523,7 +391,7 @@ def fun():
 		},
 		{
 			name: "list does not copy on assignment, *stalark.List",
-			fun: `
+			srcFunc: `
 def fun():
     pkg = proto.package("skycfg.test_proto")
     a = ["a","b"]
@@ -537,7 +405,7 @@ def fun():
 		},
 		{
 			name: "map does not copy on assignment, *protoMap",
-			fun: `
+			srcFunc: `
 def fun():
     pkg = proto.package("skycfg.test_proto")
     msg1 = pkg.MessageV3()
@@ -555,7 +423,7 @@ def fun():
 		},
 		{
 			name: "map does not copy on assignment, *stalark.Dict",
-			fun: `
+			srcFunc: `
 def fun():
     pkg = proto.package("skycfg.test_proto")
     msg1 = pkg.MessageV3()
@@ -572,7 +440,7 @@ def fun():
 		},
 		{
 			name: "message does not copy on assignment",
-			fun: `
+			srcFunc: `
 def fun():
     pkg = proto.package("skycfg.test_proto")
     msg1 = pkg.MessageV3()
@@ -585,165 +453,101 @@ def fun():
 `,
 			want: `["a", "a", "a"]`,
 		},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			val, err := evalFunc(test.fun, nil)
-			if err != nil {
-				t.Fatal(err)
-			}
-			got := val.String()
-			if test.want != got {
-				t.Fatalf("Output differed\nwanted: %s\ngot   : %s", test.want, got)
-			}
-		})
-	}
+	})
 }
 
 func TestProtoEnumEqual(t *testing.T) {
-	val, err := eval(`proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A == proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := val.(starlark.Bool)
-	if !bool(got) {
-		t.Error("Expected equal enums")
-	}
-
-	val, err = eval(`proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A == proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got = val.(starlark.Bool)
-	if bool(got) {
-		t.Error("Expected unequal enums")
-	}
-
-	val, err = eval(`proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A != proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got = val.(starlark.Bool)
-	if bool(got) {
-		t.Error("Expected equal enums")
-	}
-
-	val, err = eval(`proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A != proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got = val.(starlark.Bool)
-	if !bool(got) {
-		t.Error("Expected unequal enums")
-	}
+	runSkycfgTests(t, []skycfgTest{
+		{
+			src:  `proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A == proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A`,
+			want: true,
+		},
+		{
+			src:  `proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A == proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B`,
+			want: false,
+		},
+		{
+			src:  `proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A != proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A`,
+			want: false,
+		},
+		{
+			src:  `proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_A != proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B`,
+			want: true,
+		},
+	})
 }
 
-func TestProtoToText(t *testing.T) {
-	val, err := eval(`proto.encode_text(proto.package("skycfg.test_proto").MessageV3(
-		f_string = "some string",
-	))`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := string(val.(starlark.String))
-	want := "f_string:\"some string\""
-	if want != got {
-		t.Fatalf("encode_text: wanted %q, got %q", want, got)
-	}
+func TestProtoText(t *testing.T) {
+	runSkycfgTests(t, []skycfgTest{
+		{
+			name: "proto.encode_text",
+			src: `
+proto.encode_text(proto.package("skycfg.test_proto").MessageV3(
+    f_string = "some string",
+))`,
+			want:     `"f_string:\"some string\""`,
+			wantType: "string",
+		},
+		{
+			name: "proto.encode_text compact",
+			src: `
+proto.encode_text(proto.package("skycfg.test_proto").MessageV3(
+    f_string = "some string",
+), compact=True)`,
+			want:     `"f_string:\"some string\""`,
+			wantType: "string",
+		},
+		{
+			name: "proto.encode_text full",
+			src: `
+proto.encode_text(proto.package("skycfg.test_proto").MessageV3(
+    f_string = "some string",
+), compact=False)`,
+			want:              `"f_string: \"some string\"\n"`,
+			wantType:          "string",
+			removeRandomSpace: true,
+		},
+		{
+			name: "proto.decode_text",
+			src:  `proto.decode_text(proto.package("skycfg.test_proto").MessageV3, "f_int32: 1010").f_int32`,
+			want: "1010",
+		},
+	})
 }
 
-func TestProtoToTextCompact(t *testing.T) {
-	val, err := eval(`proto.encode_text(proto.package("skycfg.test_proto").MessageV3(
-		f_string = "some string",
-	), compact=True)`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := string(val.(starlark.String))
-	want := "f_string:\"some string\""
-	if want != got {
-		t.Fatalf("encode_text_compact: wanted %q, got %q", want, got)
-	}
-}
-
-func TestProtoToTextFull(t *testing.T) {
-	val, err := eval(`proto.encode_text(proto.package("skycfg.test_proto").MessageV3(
-		f_string = "some string",
-	), compact=False)`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := removeRandomSpace(string(val.(starlark.String)))
-	want := "f_string: \"some string\"\n"
-	if want != got {
-		t.Fatalf("encode_text_full: wanted %q, got %q", want, got)
-	}
-}
-
-func TestProtoFromText(t *testing.T) {
-	val, err := eval(`proto.decode_text(proto.package("skycfg.test_proto").MessageV3, "f_int32: 1010").f_int32`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := val.String()
-	want := "1010"
-	if want != got {
-		t.Fatalf("decode_text: wanted %q, got %q", want, got)
-	}
-}
-
-func TestProtoToJson(t *testing.T) {
-	val, err := eval(`proto.encode_json(proto.package("skycfg.test_proto").MessageV3(
-		f_string = "some string",
-	))`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := string(val.(starlark.String))
-	want := `{"f_string":"some string"}`
-	if want != got {
-		t.Fatalf("encode_json: wanted %q, got %q", want, got)
-	}
-}
-
-func TestProtoToJsonCompact(t *testing.T) {
-	val, err := eval(`proto.encode_json(proto.package("skycfg.test_proto").MessageV3(
-		f_string = "some string",
-	), compact=True)`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := string(val.(starlark.String))
-	want := `{"f_string":"some string"}`
-	if want != got {
-		t.Fatalf("encode_json_compact: wanted %q, got %q", want, got)
-	}
-}
-
-func TestProtoToJsonFull(t *testing.T) {
-	val, err := eval(`proto.encode_json(proto.package("skycfg.test_proto").MessageV3(
-		f_string = "some string",
-	), compact=False)`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := removeRandomSpace(string(val.(starlark.String)))
-	want := "{\n \"f_string\": \"some string\"\n}"
-	if want != got {
-		t.Fatalf("encode_json_full: wanted %q, got %q", want, got)
-	}
-}
-
-func TestProtoFromJson(t *testing.T) {
-	val, err := eval(`proto.decode_json(proto.package("skycfg.test_proto").MessageV3, "{\"f_int32\": 1010}").f_int32`, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := val.String()
-	want := "1010"
-	if want != got {
-		t.Fatalf("decode_json: wanted %q, got %q", want, got)
-	}
+func TestProtoJson(t *testing.T) {
+	runSkycfgTests(t, []skycfgTest{
+		{
+			name: "proto.encode_json",
+			src: `proto.encode_json(proto.package("skycfg.test_proto").MessageV3(
+				f_string = "some string",
+			))`,
+			want:     `"{\"f_string\":\"some string\"}"`,
+			wantType: "string",
+		},
+		{
+			name: "proto.encode_json compact",
+			src: `proto.encode_json(proto.package("skycfg.test_proto").MessageV3(
+				f_string = "some string",
+			), compact=True)`,
+			want:     `"{\"f_string\":\"some string\"}"`,
+			wantType: "string",
+		},
+		{
+			name: "proto.encode_json full",
+			src: `proto.encode_json(proto.package("skycfg.test_proto").MessageV3(
+				f_string = "some string",
+			), compact=False)`,
+			want:              `"{\n \"f_string\": \"some string\"\n}"`,
+			wantType:          "string",
+			removeRandomSpace: true,
+		},
+		{
+			name: "proto.decode_json",
+			src:  `proto.decode_json(proto.package("skycfg.test_proto").MessageV3, "{\"f_int32\": 1010}").f_int32`,
+			want: "1010",
+		},
+	})
 }
 
 func TestProtoToAnyV2(t *testing.T) {
@@ -799,6 +603,87 @@ func TestProtoToAnyV3(t *testing.T) {
 	}
 }
 
+type skycfgTest struct {
+	name     string
+	src      string
+	srcFunc  string
+	wantErr  error
+	want     interface{}
+	wantType string
+
+	// Options
+	globals           starlark.StringDict
+	removeRandomSpace bool
+}
+
+// Mutates all tests
+type globalTestOption func(*skycfgTest)
+
+func withGlobals(globals starlark.StringDict) globalTestOption {
+	return func(test *skycfgTest) {
+		test.globals = globals
+	}
+}
+
+func runSkycfgTests(t *testing.T, tests []skycfgTest, opts ...globalTestOption) {
+	t.Helper()
+	for _, test := range tests {
+		for _, opt := range opts {
+			opt(&test)
+		}
+
+		name := test.name
+		if name == "" {
+			name = test.src
+		}
+		t.Run(name, func(t *testing.T) {
+			var val starlark.Value
+			var err error
+			if test.src != "" {
+				val, err = eval(test.src, test.globals)
+			} else if test.srcFunc != "" {
+				val, err = evalFunc(test.srcFunc, test.globals)
+			} else {
+				t.Fatal("Test has no src or srcFunc")
+			}
+
+			checkError(t, err, test.wantErr)
+
+			// Only check values if evaluation is not expected to error
+			if test.wantErr != nil {
+				return
+			}
+
+			switch want := test.want.(type) {
+			case proto.Message:
+				got := mustProtoMessage(t, val)
+				checkProtoEqual(t, want, got)
+			case string:
+				got := val.String()
+				if test.removeRandomSpace {
+					got = removeRandomSpace(got)
+				}
+				if want != got {
+					t.Fatalf("wanted: %s\ngot   : %s", want, got)
+				}
+			case bool:
+				got := val.(starlark.Bool)
+				if bool(got) != want {
+					t.Fatalf("wanted: %t\ngot   : %t", want, got)
+				}
+			default:
+				t.Fatalf("runSkycfgTests does not support comparing %T yet", want)
+			}
+
+			if test.wantType != "" {
+				if val.Type() != test.wantType {
+					t.Fatalf("Expected type\nwanted: %t\ngot   : %t", test.wantType, val.Type())
+				}
+			}
+		})
+	}
+}
+
 func eval(src string, globals starlark.StringDict) (starlark.Value, error) {
 	if globals == nil {
 		globals = starlark.StringDict{
@@ -840,11 +725,16 @@ func mustProtoMessage(t *testing.T, v starlark.Value) proto.Message {
 	return nil
 }
 
-func checkError(got, want error) bool {
-	if got == nil {
-		return false
+func checkError(t *testing.T, got, want error) {
+	t.Helper()
+
+	if want == nil && got != nil {
+		t.Fatalf("Expected no error, got: %v\n", got)
+	} else if want != nil && got == nil {
+		t.Fatalf("Expected error got nil\nwanted: %q", want.Error())
+	} else if want != nil && got.Error() != want.Error() {
+		t.Fatalf("Expected error\nwanted: %q\ngot   : %q", want.Error(), got.Error())
 	}
-	return got.Error() == want.Error()
 }
 
 // Generate a diff of two structs, which may contain protobuf messages.
