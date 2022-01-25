@@ -382,8 +382,8 @@ func WithEntryPoint(name string) ExecOption {
 	})
 }
 
-// Main executes main() from the top-level Skycfg config module, which is
-// expected to return either None or a list of Protobuf messages.
+// Main executes main() or a custom entry point function from the top-level Skycfg config
+// module, which is expected to return either None or a list of Protobuf messages.
 func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message, error) {
 	parsedOpts := &execOptions{
 		vars:     &starlark.Dict{},
@@ -394,11 +394,11 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 	}
 	mainVal, ok := c.locals[parsedOpts.funcName]
 	if !ok {
-		return nil, fmt.Errorf("no `main' function found in %q", c.filename)
+		return nil, fmt.Errorf("no %q function found in %q", parsedOpts.funcName, c.filename)
 	}
 	main, ok := mainVal.(starlark.Callable)
 	if !ok {
-		return nil, fmt.Errorf("`main' must be a function (got a %s)", mainVal.Type())
+		return nil, fmt.Errorf("%q must be a function (got a %s)", parsedOpts.funcName, mainVal.Type())
 	}
 
 	thread := &starlark.Thread{
@@ -421,14 +421,14 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 		if _, isNone := mainVal.(starlark.NoneType); isNone {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("`main' didn't return a list (got a %s)", mainVal.Type())
+		return nil, fmt.Errorf("%q didn't return a list (got a %s)", parsedOpts.funcName, mainVal.Type())
 	}
 	var msgs []proto.Message
 	for ii := 0; ii < mainList.Len(); ii++ {
 		maybeMsg := mainList.Index(ii)
 		msg, ok := AsProtoMessage(maybeMsg)
 		if !ok {
-			return nil, fmt.Errorf("`main' returned something that's not a protobuf (a %s)", maybeMsg.Type())
+			return nil, fmt.Errorf("%q returned something that's not a protobuf (a %s)", parsedOpts.funcName, maybeMsg.Type())
 		}
 		msgs = append(msgs, msg)
 	}
