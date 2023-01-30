@@ -426,11 +426,25 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 	var msgs []proto.Message
 	for ii := 0; ii < mainList.Len(); ii++ {
 		maybeMsg := mainList.Index(ii)
-		msg, ok := AsProtoMessage(maybeMsg)
-		if !ok {
-			return nil, fmt.Errorf("%q returned something that's not a protobuf (a %s)", parsedOpts.funcName, maybeMsg.Type())
+		// Only flatten but not flatten deep
+		maybeMsgList, ok := maybeMsg.(*starlark.List)
+		if ok {
+			for iii := 0; iii < maybeMsgList.Len(); iii++ {
+				maybeNestedMsg := maybeMsgList.Index(iii)
+				msg, ok := AsProtoMessage(maybeNestedMsg)
+				if !ok {
+					return nil, fmt.Errorf("%q returned something that's not a protobuf (a %s)", parsedOpts.funcName, maybeNestedMsg.Type())
+				}
+				msgs = append(msgs, msg)
+			}
+		} else {
+			msg, ok := AsProtoMessage(maybeMsg)
+			if !ok {
+				return nil, fmt.Errorf("%q returned something that's not a protobuf (a %s)", parsedOpts.funcName, maybeMsg.Type())
+			}
+			msgs = append(msgs, msg)
 		}
-		msgs = append(msgs, msg)
+
 	}
 	return msgs, nil
 }

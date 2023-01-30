@@ -177,6 +177,27 @@ def not_main(ctx):
 
 	return [msg]
 `,
+	"test13.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# nested list
+def main(ctx):
+	msg = test_proto.MessageV2()
+	msg.f_int64 = 12345
+	msg.f_string = "12345"
+
+	msg2 = test_proto.MessageV2()
+	msg2.f_int64 = 123456
+	msg2.f_string = "123456"
+
+	msg3 = test_proto.MessageV2()
+	msg3.f_int64 = 1234567
+	msg3.f_string = "1234567"
+
+	innerlist = [msg, msg2]
+	outerlist = [msg3, innerlist]
+	return [outerlist]
+`,
 }
 
 // testLoader is a simple loader that loads files from the testFiles map.
@@ -345,6 +366,24 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			caseName:   "value err when attempting to autobox a too large int into UInt32Value",
 			fileToLoad: "test11.sky",
 			expExecErr: true,
+		},
+		endToEndTestCase{
+			caseName:   "value err when attempting to autobox a too large int into UInt32Value",
+			fileToLoad: "test13.sky",
+			expProtos: []proto.Message{
+				&pb.MessageV2{
+					FInt64:  proto.Int64(12345),
+					FString: proto.String("12345"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(123456),
+					FString: proto.String("123456"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(1234567),
+					FString: proto.String("1234567"),
+				},
+			},
 		},
 	}
 
