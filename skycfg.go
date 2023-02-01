@@ -426,7 +426,8 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 	var msgs []proto.Message
 	for ii := 0; ii < mainList.Len(); ii++ {
 		maybeMsg := mainList.Index(ii)
-		// Only flatten but not flatten deep
+		// Only flatten but not flatten deep. This will flatten out, in order, lists within main list and append the
+		// message into msgs
 		maybeMsgList, ok := maybeMsg.(*starlark.List)
 		if ok {
 			for iii := 0; iii < maybeMsgList.Len(); iii++ {
