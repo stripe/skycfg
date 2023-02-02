@@ -195,8 +195,7 @@ def main(ctx):
 	msg3.f_string = "1234567"
 
 	innerlist = [msg, msg2]
-	outerlist = [msg3, innerlist]
-	return [outerlist]
+	return [msg3, innerlist]
 `,
 }
 
@@ -348,6 +347,24 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			},
 		},
 		endToEndTestCase{
+			caseName:   "flatten nested list",
+			fileToLoad: "test13.sky",
+			expProtos: []proto.Message{
+				&pb.MessageV2{
+					FInt64:  proto.Int64(1234567),
+					FString: proto.String("1234567"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(12345),
+					FString: proto.String("12345"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(123456),
+					FString: proto.String("123456"),
+				},
+			},
+		},
+		endToEndTestCase{
 			caseName:   "value err when attempting to autobox a too large integer into Int32Value",
 			fileToLoad: "test8.sky",
 			expExecErr: true,
@@ -366,24 +383,6 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			caseName:   "value err when attempting to autobox a too large int into UInt32Value",
 			fileToLoad: "test11.sky",
 			expExecErr: true,
-		},
-		endToEndTestCase{
-			caseName:   "value err when attempting to autobox a too large int into UInt32Value",
-			fileToLoad: "test13.sky",
-			expProtos: []proto.Message{
-				&pb.MessageV2{
-					FInt64:  proto.Int64(12345),
-					FString: proto.String("12345"),
-				},
-				&pb.MessageV2{
-					FInt64:  proto.Int64(123456),
-					FString: proto.String("123456"),
-				},
-				&pb.MessageV2{
-					FInt64:  proto.Int64(1234567),
-					FString: proto.String("1234567"),
-				},
-			},
 		},
 	}
 
