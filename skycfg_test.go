@@ -389,7 +389,12 @@ func TestSkycfgEndToEnd(t *testing.T) {
 	}
 
 	fnExecSkycfg := ExecSkycfg(func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.Message, error) {
-		return config.Main(context.Background(), skycfg.WithVars(testCase.vars), skycfg.WithFlattenLists())
+		if testCase.flattenLists {
+			return config.Main(context.Background(), skycfg.WithVars(testCase.vars), skycfg.WithFlattenLists())
+		} else {
+			return config.Main(context.Background(), skycfg.WithVars(testCase.vars))
+		}
+
 	})
 	runTestCases(t, testCases, fnExecSkycfg)
 }
