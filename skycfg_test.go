@@ -214,12 +214,13 @@ func (loader *testLoader) ReadFile(ctx context.Context, path string) ([]byte, er
 }
 
 type endToEndTestCase struct {
-	caseName   string
-	fileToLoad string
-	vars       starlark.StringDict
-	expLoadErr bool
-	expExecErr bool
-	expProtos  []proto.Message
+	caseName     string
+	fileToLoad   string
+	vars         starlark.StringDict
+	expLoadErr   bool
+	expExecErr   bool
+	expProtos    []proto.Message
+	flattenLists bool
 }
 
 type ExecSkycfg func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.Message, error)
@@ -363,6 +364,7 @@ func TestSkycfgEndToEnd(t *testing.T) {
 					FString: proto.String("123456"),
 				},
 			},
+			flattenLists: true,
 		},
 		endToEndTestCase{
 			caseName:   "value err when attempting to autobox a too large integer into Int32Value",
@@ -387,7 +389,7 @@ func TestSkycfgEndToEnd(t *testing.T) {
 	}
 
 	fnExecSkycfg := ExecSkycfg(func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.Message, error) {
-		return config.Main(context.Background(), skycfg.WithVars(testCase.vars))
+		return config.Main(context.Background(), skycfg.WithVars(testCase.vars), skycfg.WithFlattenLists())
 	})
 	runTestCases(t, testCases, fnExecSkycfg)
 }
