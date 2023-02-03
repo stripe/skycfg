@@ -177,6 +177,26 @@ def not_main(ctx):
 
 	return [msg]
 `,
+	"test13.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# nested list
+def main(ctx):
+	msg = test_proto.MessageV2()
+	msg.f_int64 = 12345
+	msg.f_string = "12345"
+
+	msg2 = test_proto.MessageV2()
+	msg2.f_int64 = 123456
+	msg2.f_string = "123456"
+
+	msg3 = test_proto.MessageV2()
+	msg3.f_int64 = 1234567
+	msg3.f_string = "1234567"
+
+	innerlist = [msg, msg2]
+	return [msg3, innerlist]
+`,
 }
 
 // testLoader is a simple loader that loads files from the testFiles map.
@@ -194,12 +214,13 @@ func (loader *testLoader) ReadFile(ctx context.Context, path string) ([]byte, er
 }
 
 type endToEndTestCase struct {
-	caseName   string
-	fileToLoad string
-	vars       starlark.StringDict
-	expLoadErr bool
-	expExecErr bool
-	expProtos  []proto.Message
+	caseName    string
+	fileToLoad  string
+	vars        starlark.StringDict
+	expLoadErr  bool
+	expExecErr  bool
+	expProtos   []proto.Message
+	execOptions []skycfg.ExecOption
 }
 
 type ExecSkycfg func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.Message, error)
@@ -327,6 +348,25 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			},
 		},
 		endToEndTestCase{
+			caseName:   "flatten nested list",
+			fileToLoad: "test13.sky",
+			expProtos: []proto.Message{
+				&pb.MessageV2{
+					FInt64:  proto.Int64(1234567),
+					FString: proto.String("1234567"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(12345),
+					FString: proto.String("12345"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(123456),
+					FString: proto.String("123456"),
+				},
+			},
+			execOptions: []skycfg.ExecOption{skycfg.WithFlattenLists()},
+		},
+		endToEndTestCase{
 			caseName:   "value err when attempting to autobox a too large integer into Int32Value",
 			fileToLoad: "test8.sky",
 			expExecErr: true,
@@ -349,7 +389,8 @@ func TestSkycfgEndToEnd(t *testing.T) {
 	}
 
 	fnExecSkycfg := ExecSkycfg(func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.Message, error) {
-		return config.Main(context.Background(), skycfg.WithVars(testCase.vars))
+		execOptions := append(testCase.execOptions, skycfg.WithVars(testCase.vars))
+		return config.Main(context.Background(), execOptions...)
 	})
 	runTestCases(t, testCases, fnExecSkycfg)
 }

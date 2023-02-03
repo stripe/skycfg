@@ -358,8 +358,9 @@ type ExecOption interface {
 }
 
 type execOptions struct {
-	vars     *starlark.Dict
-	funcName string
+	vars         *starlark.Dict
+	funcName     string
+	flattenLists bool
 }
 
 type fnExecOption func(*execOptions)
@@ -379,6 +380,13 @@ func WithVars(vars starlark.StringDict) ExecOption {
 func WithEntryPoint(name string) ExecOption {
 	return fnExecOption(func(opts *execOptions) {
 		opts.funcName = name
+	})
+}
+
+// WithFlattenLists flatten lists one layer deep ([1, [2,3]] -> [1, 2, 3])
+func WithFlattenLists() ExecOption {
+	return fnExecOption(func(opts *execOptions) {
+		opts.flattenLists = true
 	})
 }
 
@@ -426,11 +434,24 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 	var msgs []proto.Message
 	for ii := 0; ii < mainList.Len(); ii++ {
 		maybeMsg := mainList.Index(ii)
-		msg, ok := AsProtoMessage(maybeMsg)
-		if !ok {
-			return nil, fmt.Errorf("%q returned something that's not a protobuf (a %s)", parsedOpts.funcName, maybeMsg.Type())
+		// Only flatten but not flatten deep. This will flatten out, in order, lists within main list and append the
+		// message into msgs
+		if maybeMsgList, ok := maybeMsg.(*starlark.List); parsedOpts.flattenLists && ok {
+			for iii := 0; iii < maybeMsgList.Len(); iii++ {
+				maybeNestedMsg := maybeMsgList.Index(iii)
+				msg, ok := AsProtoMessage(maybeNestedMsg)
+				if !ok {
+					return nil, fmt.Errorf("%q returned something that's not a protobuf (a %s) within a nested list", parsedOpts.funcName, maybeNestedMsg.Type())
+				}
+				msgs = append(msgs, msg)
+			}
+		} else {
+			msg, ok := AsProtoMessage(maybeMsg)
+			if !ok {
+				return nil, fmt.Errorf("%q returned something that's not a protobuf (a %s)", parsedOpts.funcName, maybeMsg.Type())
+			}
+			msgs = append(msgs, msg)
 		}
-		msgs = append(msgs, msg)
 	}
 	return msgs, nil
 }
