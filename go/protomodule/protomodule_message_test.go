@@ -26,7 +26,6 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
@@ -326,15 +325,9 @@ func TestMessageV3(t *testing.T) {
 			&wrapperspb.StringValue{Value: "s2"},
 			&wrapperspb.StringValue{Value: "s3"},
 		}),
-		F_Any: &anypb.Any{
-			TypeUrl: "type.googleapis.com/skycfg.test_proto.MessageV3",
-			Value: mustMarshalAny(t, &pb.MessageV3{
-				F_Any: &anypb.Any{
-					TypeUrl: "type.googleapis.com/skycfg.test_proto.MessageV3",
-					Value:   mustMarshalAny(t, &pb.MessageV3{FString: "string in f_Any"}),
-				},
-			}),
-		},
+		F_Any: mustMarshalAny(t, &pb.MessageV3{
+			F_Any: mustMarshalAny(t, &pb.MessageV3{FString: "string in f_Any"}),
+		}),
 	}
 	checkProtoEqual(t, wantMsg, gotMsg)
 
