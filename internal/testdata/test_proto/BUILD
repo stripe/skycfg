@@ -11,7 +11,10 @@ proto_library(
     ],
     import_prefix = "github.com/stripe/skycfg",  # keep
     visibility = ["//:__subpackages__"],
-    deps = ["@com_google_protobuf//:wrappers_proto"],
+    deps = [
+        "@com_google_protobuf//:wrappers_proto",
+        "@com_google_protobuf//:any_proto",
+    ],
 )
 
 go_proto_library(
@@ -21,5 +24,6 @@ go_proto_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "@io_bazel_rules_go//proto/wkt:wrappers_go_proto",  # keep
+        "@io_bazel_rules_go//proto/wkt:any_go_proto",  # keep
     ],
 )

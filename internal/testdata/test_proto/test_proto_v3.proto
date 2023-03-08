@@ -20,6 +20,7 @@ option go_package = "github.com/stripe/skycfg/internal/testdata/test_proto";
 package skycfg.test_proto;
 
 import "google/protobuf/wrappers.proto";
+import "google/protobuf/any.proto";
 
 message MessageV3 {
   int32  f_int32   = 1;
@@ -74,7 +75,9 @@ message MessageV3 {
 
   repeated google.protobuf.StringValue r_StringValue = 28;
 
-  // NEXT: 29
+  google.protobuf.Any f_Any = 29;
+
+  // NEXT: 30
 }
 
 enum ToplevelEnumV3 {

@@ -24,6 +24,7 @@ import (
 
 	"go.starlark.net/starlark"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -121,6 +122,12 @@ func scalarValueFromStarlark(fieldDesc protoreflect.FieldDescriptor, val starlar
 		if msg, ok := val.(*protoMessage); ok {
 			if msg.Type() == typeName(fieldDesc) {
 				return protoreflect.ValueOf(msg.toProtoMessage().ProtoReflect()), nil
+			} else if fieldDesc.Message().FullName() == "google.protobuf.Any" {
+				any, err := anypb.New(msg.toProtoMessage())
+				if err != nil {
+					return protoreflect.Value{}, err
+				}
+				return protoreflect.ValueOf(any.ProtoReflect()), nil
 			}
 		}
 	case protoreflect.EnumKind:
