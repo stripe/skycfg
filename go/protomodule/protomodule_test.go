@@ -725,6 +725,17 @@ func mustProtoMessage(t *testing.T, v starlark.Value) proto.Message {
 	return nil
 }
 
+func mustMarshalAny(t *testing.T, v proto.Message) []byte {
+	t.Helper()
+	any, err := anypb.New(v)
+	if err != nil {
+		t.Fatalf("Expected *protoMessage value, got %T", v)
+	}
+	return any.GetValue()
+	t.Fatalf("Expected *protoMessage value, got %T", v)
+	return nil
+}
+
 func checkError(t *testing.T, got, want error) {
 	t.Helper()
 

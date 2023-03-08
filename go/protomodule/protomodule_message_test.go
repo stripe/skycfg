@@ -26,6 +26,7 @@ import (
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
@@ -66,6 +67,7 @@ func TestMessageAttrNames(t *testing.T) {
 		"f_Uint32Value",
 		"f_Uint64Value",
 		"r_StringValue",
+		"f_Any",
 	}
 	sort.Strings(want)
 	if !reflect.DeepEqual(want, got) {
@@ -270,6 +272,11 @@ func TestMessageV3(t *testing.T) {
 		f_Uint32Value = 4294967295,
 		f_Uint64Value = 8294967295,
 		r_StringValue = ["s1","s2","s3"],
+		f_Any = proto.package("skycfg.test_proto").MessageV3(
+			f_Any = proto.package("skycfg.test_proto").MessageV3(
+				f_string = "string in f_Any",
+			)
+		),
 	)`, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -319,6 +326,15 @@ func TestMessageV3(t *testing.T) {
 			&wrapperspb.StringValue{Value: "s2"},
 			&wrapperspb.StringValue{Value: "s3"},
 		}),
+		F_Any: &anypb.Any{
+			TypeUrl: "type.googleapis.com/skycfg.test_proto.MessageV3",
+			Value: mustMarshalAny(t, &pb.MessageV3{
+				F_Any: &anypb.Any{
+					TypeUrl: "type.googleapis.com/skycfg.test_proto.MessageV3",
+					Value:   mustMarshalAny(t, &pb.MessageV3{FString: "string in f_Any"}),
+				},
+			}),
+		},
 	}
 	checkProtoEqual(t, wantMsg, gotMsg)
 
