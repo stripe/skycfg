@@ -98,7 +98,7 @@ var _ starlark.HasSetField = (*protoMessage)(nil)
 var _ starlark.Comparable = (*protoMessage)(nil)
 
 func (msg *protoMessage) String() string {
-	return fmt.Sprintf("<%s %s>", msg.Type(), (prototext.MarshalOptions{Multiline: false}).Format(msg.toProtoMessage()))
+	return fmt.Sprintf("<%s %s>", msg.Type(), (prototext.MarshalOptions{Multiline: false, Indent: ""}).Format(msg.toProtoMessage()))
 }
 func (msg *protoMessage) Type() string         { return string(msg.msgDesc.FullName()) }
 func (msg *protoMessage) Truth() starlark.Bool { return starlark.True }
