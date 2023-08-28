@@ -26,13 +26,6 @@ def go_dependencies():
         version = "v1.0.0",
     )
     go_repository(
-        name = "com_github_kylelemons_godebug",
-        importpath = "github.com/kylelemons/godebug",
-        replace = "github.com/jmillikin-stripe/godebug",
-        sum = "h1:JgsVrDAUy59N248f3l4RGZ0hij5u1HTit8iJr1mFSBY=",
-        version = "v0.0.0-20180620173319-8279e1966bc1",
-    )
-    go_repository(
         name = "in_gopkg_check_v1",
         importpath = "gopkg.in/check.v1",
         sum = "h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=",

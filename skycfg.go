@@ -21,6 +21,7 @@ package skycfg
 import (
 	"context"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -40,6 +41,12 @@ import (
 	"github.com/stripe/skycfg/go/protomodule"
 	"github.com/stripe/skycfg/go/urlmodule"
 	"github.com/stripe/skycfg/go/yamlmodule"
+)
+
+// Starlark thread-local storage keys.
+const (
+	contextKey   = "context"   // has type context.Context
+	logOutputKey = "logoutput" // has type io.Writer
 )
 
 // A FileReader controls how load() calls resolve and read other modules.
@@ -112,12 +119,46 @@ type Config struct {
 	tests    []*Test
 }
 
+type commonOptions struct {
+	logOutput io.Writer
+}
+
+// A CommonOption is an option that can be applied to Load, Config.Main, and Test.Run.
+type CommonOption interface {
+	LoadOption
+	ExecOption
+	TestOption
+}
+
+type fnCommonOption func(options *commonOptions)
+
+func (fn fnCommonOption) applyLoad(opts *loadOptions) {
+	fn(&opts.commonOptions)
+}
+
+func (fn fnCommonOption) applyExec(opts *execOptions) {
+	fn(&opts.commonOptions)
+}
+
+func (fn fnCommonOption) applyTest(opts *testOptions) {
+	fn(&opts.commonOptions)
+}
+
+// WithLogOutput changes the destination of print() function calls in Starlark code.
+// If nil, os.Stderr will be used.
+func WithLogOutput(w io.Writer) CommonOption {
+	return fnCommonOption(func(opts *commonOptions) {
+		opts.logOutput = w
+	})
+}
+
 // A LoadOption adjusts details of how Skycfg configs are loaded.
 type LoadOption interface {
 	applyLoad(*loadOptions)
 }
 
 type loadOptions struct {
+	commonOptions
 	globals       starlark.StringDict
 	fileReader    FileReader
 	protoRegistry unstableProtoRegistryV2
@@ -185,13 +226,13 @@ func WithProtoRegistry(r unstableProtoRegistryV2) LoadOption {
 // registry).
 //
 // Currently provides these modules (see REAMDE for more detailed description):
-//  * fail   - interrupts execution and prints a stacktrace.
-//  * hash   - supports md5, sha1 and sha245 functions.
-//  * json   - marshals plain values (dicts, lists, etc) to JSON.
-//  * proto  - package for constructing Protobuf messages.
-//  * struct - experimental Starlark struct support.
-//  * yaml   - same as "json" package but for YAML.
-//  * url    - utility package for encoding URL query string.
+//   - fail   - interrupts execution and prints a stacktrace.
+//   - hash   - supports md5, sha1 and sha245 functions.
+//   - json   - marshals plain values (dicts, lists, etc) to JSON.
+//   - proto  - package for constructing Protobuf messages.
+//   - struct - experimental Starlark struct support.
+//   - yaml   - same as "json" package but for YAML.
+//   - url    - utility package for encoding URL query string.
 func UnstablePredeclaredModules(r unstableProtoRegistryV2) starlark.StringDict {
 	return starlark.StringDict{
 		"fail":   assertmodule.Fail,
@@ -287,8 +328,7 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 	cache := make(map[string]*cacheEntry)
 	tests := []*Test{}
 
-	var load func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error)
-	load = func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error) {
+	load := func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error) {
 		var fromPath string
 		if thread.CallStackDepth() > 0 {
 			fromPath = thread.CallFrame(0).Pos.Filename()
@@ -327,10 +367,12 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 		}
 		return globals, err
 	}
-	locals, err := load(&starlark.Thread{
+	thread := &starlark.Thread{
 		Print: skyPrint,
 		Load:  load,
-	}, filename)
+	}
+	thread.SetLocal(logOutputKey, opts.logOutput)
+	locals, err := load(thread, filename)
 	return locals, tests, err
 }
 
@@ -358,6 +400,7 @@ type ExecOption interface {
 }
 
 type execOptions struct {
+	commonOptions
 	vars         *starlark.Dict
 	funcName     string
 	flattenLists bool
@@ -412,7 +455,8 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 	thread := &starlark.Thread{
 		Print: skyPrint,
 	}
-	thread.SetLocal("context", ctx)
+	thread.SetLocal(contextKey, ctx)
+	thread.SetLocal(logOutputKey, parsedOpts.logOutput)
 	mainCtx := &starlarkstruct.Module{
 		Name: "skycfg_ctx",
 		Members: starlark.StringDict(map[string]starlark.Value{
@@ -480,6 +524,7 @@ type TestOption interface {
 }
 
 type testOptions struct {
+	commonOptions
 	vars *starlark.Dict
 }
 
@@ -509,7 +554,8 @@ func (t *Test) Run(ctx context.Context, opts ...TestOption) (*TestResult, error)
 	thread := &starlark.Thread{
 		Print: skyPrint,
 	}
-	thread.SetLocal("context", ctx)
+	thread.SetLocal(contextKey, ctx)
+	thread.SetLocal(logOutputKey, parsedOpts.logOutput)
 
 	assertModule := assertmodule.AssertModule()
 	testCtx := &starlarkstruct.Module{
@@ -551,5 +597,9 @@ func (c *Config) Tests() []*Test {
 }
 
 func skyPrint(t *starlark.Thread, msg string) {
-	fmt.Fprintf(os.Stderr, "[%v] %s\n", t.CallFrame(1).Pos, msg)
+	var out io.Writer = os.Stderr
+	if w := t.Local(logOutputKey); w != nil {
+		out = w.(io.Writer)
+	}
+	fmt.Fprintf(out, "[%v] %s\n", t.CallFrame(1).Pos, msg)
 }
