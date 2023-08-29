@@ -197,6 +197,16 @@ def main(ctx):
 	innerlist = [msg, msg2]
 	return [msg3, innerlist]
 `,
+	"print/on_load.sky": `
+print("hello world")
+`,
+	"print/main_and_test.sky": `
+def test_main(t):
+	print("hello world in test")
+
+def main(ctx):
+	print("hello world in main")
+`,
 }
 
 // testLoader is a simple loader that loads files from the testFiles map.
@@ -393,6 +403,64 @@ func TestSkycfgEndToEnd(t *testing.T) {
 		return config.Main(context.Background(), execOptions...)
 	})
 	runTestCases(t, testCases, fnExecSkycfg)
+}
+
+func TestSkycfgLogOutput_Load(t *testing.T) {
+	ctx := context.Background()
+	loader := new(testLoader)
+	var sb strings.Builder
+	_, err := skycfg.Load(ctx, "print/on_load.sky",
+		skycfg.WithFileReader(loader),
+		skycfg.WithLogOutput(&sb),
+	)
+	if err != nil {
+		t.Error(err)
+	}
+	out := sb.String()
+	expected := "[print/on_load.sky:2:6] hello world\n"
+	if out != expected {
+		t.Errorf("incorrect output: found %q, expected %q", out, expected)
+	}
+}
+
+func TestSkycfgLogOutput(t *testing.T) {
+	ctx := context.Background()
+	loader := new(testLoader)
+	cfg, err := skycfg.Load(ctx, "print/main_and_test.sky", skycfg.WithFileReader(loader))
+	if err != nil {
+		t.Error("while loading:", err)
+	}
+
+	test := cfg.Tests()[0]
+
+	t.Run("Exec", func(t *testing.T) {
+		var sb strings.Builder
+		_, err = cfg.Main(ctx, skycfg.WithLogOutput(&sb))
+		if err != nil {
+			t.Error("while running:", err)
+		}
+		out := sb.String()
+		expected := "[print/main_and_test.sky:6:7] hello world in main\n"
+		if out != expected {
+			t.Errorf("incorrect output: found %q, expected %q", out, expected)
+		}
+	})
+
+	t.Run("Test", func(t *testing.T) {
+		var sb strings.Builder
+		result, err := test.Run(ctx, skycfg.WithLogOutput(&sb))
+		if err != nil {
+			t.Error("while testing:", err)
+		}
+		if result.Failure != nil {
+			t.Error("while testing:", result.Failure)
+		}
+		out := sb.String()
+		expected := "[print/main_and_test.sky:3:7] hello world in test\n"
+		if out != expected {
+			t.Errorf("incorrect output: found %q, expected %q", out, expected)
+		}
+	})
 }
 
 func TestSkycfgWithEntryPoint(t *testing.T) {
