@@ -603,3 +603,72 @@ func skyPrint(t *starlark.Thread, msg string) {
 	}
 	fmt.Fprintf(out, "[%v] %s\n", t.CallFrame(1).Pos, msg)
 }
+
+// Main executes main() or a custom entry point function from the top-level Skycfg config
+// module, which is expected to return either None or a list of strings. If the rendered
+// entry point returns nested lists, then they are flattened. This is expected to be used
+// for Skycfg files which do not return protobufs (e.g. stringified YAML).
+func (c *Config) MainNonProtobuf(ctx context.Context, opts ...ExecOption) ([]string, error) {
+	parsedOpts := &execOptions{
+		vars:     &starlark.Dict{},
+		funcName: "main",
+	}
+	for _, opt := range opts {
+		opt.applyExec(parsedOpts)
+	}
+	mainVal, ok := c.locals[parsedOpts.funcName]
+	if !ok {
+		return nil, fmt.Errorf("no %q function found in %q", parsedOpts.funcName, c.filename)
+	}
+	main, ok := mainVal.(starlark.Callable)
+	if !ok {
+		return nil, fmt.Errorf("%q must be a function (got a %s)", parsedOpts.funcName, mainVal.Type())
+	}
+
+	thread := &starlark.Thread{
+		Print: skyPrint,
+	}
+	thread.SetLocal(contextKey, ctx)
+	thread.SetLocal(logOutputKey, parsedOpts.logOutput)
+	mainCtx := &starlarkstruct.Module{
+		Name: "skycfg_ctx",
+		Members: starlark.StringDict(map[string]starlark.Value{
+			"vars": parsedOpts.vars,
+		}),
+	}
+	args := starlark.Tuple([]starlark.Value{mainCtx})
+	mainVal, err := starlark.Call(thread, main, args, nil)
+	if err != nil {
+		return nil, err
+	}
+	mainList, ok := mainVal.(*starlark.List)
+	if !ok {
+		if _, isNone := mainVal.(starlark.NoneType); isNone {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("%q didn't return a list (got a %s)", parsedOpts.funcName, mainVal.Type())
+	}
+	var msgs []string
+	for ii := 0; ii < mainList.Len(); ii++ {
+		so := mainList.Index(ii)
+		if ss, ok := so.(starlark.String); ok {
+			msgs = append(msgs, ss.GoString())
+		} else {
+			// Only flatten but not flatten deep. This will flatten out, in order, lists within main list and append the
+			// message into msgs
+			if maybeMsgList, ok := so.(*starlark.List); parsedOpts.flattenLists && ok {
+				for iii := 0; iii < maybeMsgList.Len(); iii++ {
+					maybeNestedMsg := maybeMsgList.Index(iii)
+					msg, ok := maybeNestedMsg.(starlark.String)
+					if !ok {
+						return msgs, fmt.Errorf("%q returned something that's not of type string (got %s) within a nested list", parsedOpts.funcName, maybeNestedMsg.Type())
+					}
+					msgs = append(msgs, msg.GoString())
+				}
+			} else {
+				return msgs, fmt.Errorf("%q returned an object inside list not of type String (got %s)", parsedOpts.funcName, so.Type())
+			}
+		}
+	}
+	return msgs, nil
+}
