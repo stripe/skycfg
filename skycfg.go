@@ -621,10 +621,11 @@ func skyPrint(t *starlark.Thread, msg string) {
 	fmt.Fprintf(out, "[%v] %s\n", t.CallFrame(1).Pos, msg)
 }
 
-// Main executes main() or a custom entry point function from the top-level Skycfg config
-// module, which is expected to return either None or a list of strings. If the rendered
+// MainNonProtobuf executes main() or a custom entry point function from the top-level Skycfg config
+// module, which is expected to return either None or a list of strings, and NOT protobuf. If the rendered
 // entry point returns nested lists, then they are flattened. This is expected to be used
-// for Skycfg files which do not return protobufs (e.g. stringified YAML).
+// for Skycfg files which do not return protobufs (e.g. stringified YAML) which is then passed downstream
+// to other systems which process the string output.
 func (c *Config) MainNonProtobuf(ctx context.Context, opts ...ExecOption) ([]string, error) {
 	parsedOpts := &execOptions{
 		vars:     &starlark.Dict{},
