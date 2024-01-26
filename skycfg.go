@@ -654,16 +654,11 @@ func (c *Config) MainNonProtobuf(ctx context.Context, opts ...ExecOption) ([]str
 		if ss, ok := so.(starlark.String); ok {
 			msgs = append(msgs, ss.GoString())
 		} else {
-			// Only flatten but not flatten deep. This will flatten out, in order, lists within main list and append the
-			// message into msgs
+			// Flatten lists recursively
 			if maybeMsgList, ok := so.(*starlark.List); parsedOpts.flattenLists && ok {
-				for iii := 0; iii < maybeMsgList.Len(); iii++ {
-					maybeNestedMsg := maybeMsgList.Index(iii)
-					msg, ok := maybeNestedMsg.(starlark.String)
-					if !ok {
-						return msgs, fmt.Errorf("%q returned something that's not of type string (got %s) within a nested list", parsedOpts.funcName, maybeNestedMsg.Type())
-					}
-					msgs = append(msgs, msg.GoString())
+				msgs, err := flattenList(maybeMsgList)
+				if err != nil {
+					return msgs, fmt.Errorf("%q returned something that's not of type string or list within a nested list %w", parsedOpts.funcName, err)
 				}
 			} else {
 				return msgs, fmt.Errorf("%q returned an object inside list not of type String (got %s)", parsedOpts.funcName, so.Type())
@@ -671,4 +666,22 @@ func (c *Config) MainNonProtobuf(ctx context.Context, opts ...ExecOption) ([]str
 		}
 	}
 	return msgs, nil
+}
+
+func flattenList(list *starlark.List) ([]string, error) {
+	var flattened []string
+	for i := 0; i < list.Len(); i++ {
+		v := list.Index(i)
+		if l, ok := v.(*starlark.List); ok {
+			for vv, err := flattenList(l); err != nil; {
+				copy(flattened[len(flattened):], vv)
+			}
+		}
+		if msg, ok := v.(starlark.String); ok {
+			flattened = append(flattened, msg.GoString())
+		} else {
+			return flattened, fmt.Errorf("list contains object not of type string (got %s)", v.Type())
+		}
+	}
+	return flattened, nil
 }
