@@ -478,17 +478,13 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 	var msgs []proto.Message
 	for ii := 0; ii < mainList.Len(); ii++ {
 		maybeMsg := mainList.Index(ii)
-		// Only flatten but not flatten deep. This will flatten out, in order, lists within main list and append the
-		// message into msgs
+		// Flatten lists recursively. [[1, 2], 3] => [1, 2, 3]
 		if maybeMsgList, ok := maybeMsg.(*starlark.List); parsedOpts.flattenLists && ok {
-			for iii := 0; iii < maybeMsgList.Len(); iii++ {
-				maybeNestedMsg := maybeMsgList.Index(iii)
-				msg, ok := AsProtoMessage(maybeNestedMsg)
-				if !ok {
-					return nil, fmt.Errorf("%q returned something that's not a protobuf (a %s) within a nested list", parsedOpts.funcName, maybeNestedMsg.Type())
-				}
-				msgs = append(msgs, msg)
+			flattened, err := flattenProtoList(maybeMsgList)
+			if err != nil {
+				return nil, fmt.Errorf("%q returned something that's not a protobuf within a nested list %w", parsedOpts.funcName, err)
 			}
+			msgs = append(msgs, flattened...)
 		} else {
 			msg, ok := AsProtoMessage(maybeMsg)
 			if !ok {
@@ -498,6 +494,24 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 		}
 	}
 	return msgs, nil
+}
+
+func flattenProtoList(list *starlark.List) ([]proto.Message, error) {
+	var flattened []proto.Message
+	for i := 0; i < list.Len(); i++ {
+		v := list.Index(i)
+		if l, ok := v.(*starlark.List); ok {
+			for vv, err := flattenProtoList(l); err != nil; {
+				copy(flattened[len(flattened):], vv)
+			}
+		}
+		if msg, ok := AsProtoMessage(v); ok {
+			flattened = append(flattened, msg)
+		} else {
+			return flattened, fmt.Errorf("list contains object which is not a protobuf (got %s)", v.Type())
+		}
+	}
+	return flattened, nil
 }
 
 // A TestResult is the result of a test run
@@ -654,12 +668,13 @@ func (c *Config) MainNonProtobuf(ctx context.Context, opts ...ExecOption) ([]str
 		if ss, ok := so.(starlark.String); ok {
 			msgs = append(msgs, ss.GoString())
 		} else {
-			// Flatten lists recursively
+			// Flatten lists recursively. [[1, 2], 3] => [1, 2, 3]
 			if maybeMsgList, ok := so.(*starlark.List); parsedOpts.flattenLists && ok {
-				msgs, err := flattenList(maybeMsgList)
+				flattened, err := flattenStringList(maybeMsgList)
 				if err != nil {
 					return msgs, fmt.Errorf("%q returned something that's not of type string or list within a nested list %w", parsedOpts.funcName, err)
 				}
+				msgs = append(msgs, flattened...)
 			} else {
 				return msgs, fmt.Errorf("%q returned an object inside list not of type String (got %s)", parsedOpts.funcName, so.Type())
 			}
@@ -668,12 +683,12 @@ func (c *Config) MainNonProtobuf(ctx context.Context, opts ...ExecOption) ([]str
 	return msgs, nil
 }
 
-func flattenList(list *starlark.List) ([]string, error) {
+func flattenStringList(list *starlark.List) ([]string, error) {
 	var flattened []string
 	for i := 0; i < list.Len(); i++ {
 		v := list.Index(i)
 		if l, ok := v.(*starlark.List); ok {
-			for vv, err := flattenList(l); err != nil; {
+			for vv, err := flattenStringList(l); err != nil; {
 				copy(flattened[len(flattened):], vv)
 			}
 		}
