@@ -478,17 +478,13 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 	var msgs []proto.Message
 	for ii := 0; ii < mainList.Len(); ii++ {
 		maybeMsg := mainList.Index(ii)
-		// Only flatten but not flatten deep. This will flatten out, in order, lists within main list and append the
-		// message into msgs
+		// Flatten lists recursively. [[1, 2], 3] => [1, 2, 3]
 		if maybeMsgList, ok := maybeMsg.(*starlark.List); parsedOpts.flattenLists && ok {
-			for iii := 0; iii < maybeMsgList.Len(); iii++ {
-				maybeNestedMsg := maybeMsgList.Index(iii)
-				msg, ok := AsProtoMessage(maybeNestedMsg)
-				if !ok {
-					return nil, fmt.Errorf("%q returned something that's not a protobuf (a %s) within a nested list", parsedOpts.funcName, maybeNestedMsg.Type())
-				}
-				msgs = append(msgs, msg)
+			flattened, err := FlattenProtoList(maybeMsgList)
+			if err != nil {
+				return nil, fmt.Errorf("%q returned something that's not a protobuf within a nested list %w", parsedOpts.funcName, err)
 			}
+			msgs = append(msgs, flattened...)
 		} else {
 			msg, ok := AsProtoMessage(maybeMsg)
 			if !ok {
@@ -498,6 +494,27 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 		}
 	}
 	return msgs, nil
+}
+
+func FlattenProtoList(list *starlark.List) ([]proto.Message, error) {
+	var flattened []proto.Message
+	for i := 0; i < list.Len(); i++ {
+		v := list.Index(i)
+		if l, ok := v.(*starlark.List); ok {
+			recursiveFlattened, err := FlattenProtoList(l)
+			if err != nil {
+				return flattened, err
+			}
+			flattened = append(flattened, recursiveFlattened...)
+			continue
+		}
+		if msg, ok := AsProtoMessage(v); ok {
+			flattened = append(flattened, msg)
+		} else {
+			return flattened, fmt.Errorf("list contains object which is not a protobuf (got %s)", v.Type())
+		}
+	}
+	return flattened, nil
 }
 
 // A TestResult is the result of a test run
@@ -602,4 +619,90 @@ func skyPrint(t *starlark.Thread, msg string) {
 		out = w.(io.Writer)
 	}
 	fmt.Fprintf(out, "[%v] %s\n", t.CallFrame(1).Pos, msg)
+}
+
+// MainNonProtobuf executes main() or a custom entry point function from the top-level Skycfg config
+// module, which is expected to return either None or a list of strings, and NOT protobuf. If the rendered
+// entry point returns nested lists, then they are flattened. This is expected to be used
+// for Skycfg files which do not return protobufs (e.g. stringified YAML) which is then passed downstream
+// to other systems which process the string output.
+func (c *Config) MainNonProtobuf(ctx context.Context, opts ...ExecOption) ([]string, error) {
+	parsedOpts := &execOptions{
+		vars:     &starlark.Dict{},
+		funcName: "main",
+	}
+	for _, opt := range opts {
+		opt.applyExec(parsedOpts)
+	}
+	mainVal, ok := c.locals[parsedOpts.funcName]
+	if !ok {
+		return nil, fmt.Errorf("no %q function found in %q", parsedOpts.funcName, c.filename)
+	}
+	main, ok := mainVal.(starlark.Callable)
+	if !ok {
+		return nil, fmt.Errorf("%q must be a function (got a %s)", parsedOpts.funcName, mainVal.Type())
+	}
+
+	thread := &starlark.Thread{
+		Print: skyPrint,
+	}
+	thread.SetLocal(contextKey, ctx)
+	thread.SetLocal(logOutputKey, parsedOpts.logOutput)
+	mainCtx := &starlarkstruct.Module{
+		Name: "skycfg_ctx",
+		Members: starlark.StringDict(map[string]starlark.Value{
+			"vars": parsedOpts.vars,
+		}),
+	}
+	args := starlark.Tuple([]starlark.Value{mainCtx})
+	mainVal, err := starlark.Call(thread, main, args, nil)
+	if err != nil {
+		return nil, err
+	}
+	mainList, ok := mainVal.(*starlark.List)
+	if !ok {
+		if _, isNone := mainVal.(starlark.NoneType); isNone {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("%q didn't return a list (got a %s)", parsedOpts.funcName, mainVal.Type())
+	}
+	var msgs []string
+	for ii := 0; ii < mainList.Len(); ii++ {
+		so := mainList.Index(ii)
+		if ss, ok := so.(starlark.String); ok {
+			msgs = append(msgs, ss.GoString())
+		} else {
+			// Flatten lists recursively. [[1, 2], 3] => [1, 2, 3]
+			if maybeMsgList, ok := so.(*starlark.List); parsedOpts.flattenLists && ok {
+				flattened, err := FlattenStringList(maybeMsgList)
+				if err != nil {
+					return msgs, fmt.Errorf("%q returned something that's not of type string or list within a nested list %w", parsedOpts.funcName, err)
+				}
+				msgs = append(msgs, flattened...)
+			} else {
+				return msgs, fmt.Errorf("%q returned an object inside list not of type String (got %s)", parsedOpts.funcName, so.Type())
+			}
+		}
+	}
+	return msgs, nil
+}
+
+func FlattenStringList(list *starlark.List) ([]string, error) {
+	var flattened []string
+	for i := 0; i < list.Len(); i++ {
+		v := list.Index(i)
+		if l, ok := v.(*starlark.List); ok {
+			recursiveFlattened, err := FlattenStringList(l)
+			if err != nil {
+				return flattened, err
+			}
+			flattened = append(flattened, recursiveFlattened...)
+			continue
+		} else if msg, ok := v.(starlark.String); ok {
+			flattened = append(flattened, msg.GoString())
+		} else {
+			return flattened, fmt.Errorf("list contains object not of type string (got %s)", v.Type())
+		}
+	}
+	return flattened, nil
 }

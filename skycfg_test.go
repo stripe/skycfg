@@ -19,6 +19,7 @@ package skycfg_test
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -183,19 +184,134 @@ test_proto = proto.package("skycfg.test_proto")
 # nested list
 def main(ctx):
 	msg = test_proto.MessageV2()
-	msg.f_int64 = 12345
-	msg.f_string = "12345"
+	msg.f_int64 = 11111
+	msg.f_string = "11111"
 
 	msg2 = test_proto.MessageV2()
-	msg2.f_int64 = 123456
-	msg2.f_string = "123456"
+	msg2.f_int64 = 22222
+	msg2.f_string = "22222"
 
 	msg3 = test_proto.MessageV2()
-	msg3.f_int64 = 1234567
-	msg3.f_string = "1234567"
+	msg3.f_int64 = 33333
+	msg3.f_string = "33333"
 
-	innerlist = [msg, msg2]
-	return [msg3, innerlist]
+	msgs23 = [msg2, msg3]
+	return [msg, msgs23]
+`,
+	"test14.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# nested list
+def main(ctx):
+	msg = test_proto.MessageV2()
+	msg.f_int64 = 11111
+	msg.f_string = "11111"
+
+	msg2 = test_proto.MessageV2()
+	msg2.f_int64 = 22222
+	msg2.f_string = "22222"
+
+	msg3 = test_proto.MessageV2()
+	msg3.f_int64 = 33333
+	msg3.f_string = "33333"
+
+	msg4 = test_proto.MessageV2()
+	msg4.f_int64 = 44444
+	msg4.f_string = "44444"
+
+	msgs12 = [msg, msg2]
+	msgs34 = [msg3, msg4]
+	return [msgs12, msgs34]
+`,
+	"test15.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# nested list
+def main(ctx):
+	msg = test_proto.MessageV2()
+	msg.f_int64 = 11111
+	msg.f_string = "11111"
+
+	msg2 = test_proto.MessageV2()
+	msg2.f_int64 = 22222
+	msg2.f_string = "22222"
+
+	msg3 = test_proto.MessageV2()
+	msg3.f_int64 = 33333
+	msg3.f_string = "33333"
+
+	msg4 = test_proto.MessageV2()
+	msg4.f_int64 = 44444
+	msg4.f_string = "44444"
+
+	return [[msg, [msg2, msg3]], msg4]
+`,
+	"test16.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# nested list
+def main(ctx):
+	msg = test_proto.MessageV2()
+	msg.f_int64 = 11111
+	msg.f_string = "11111"
+
+	msg2 = test_proto.MessageV2()
+	msg2.f_int64 = 22222
+	msg2.f_string = "22222"
+
+	msg3 = test_proto.MessageV2()
+	msg3.f_int64 = 33333
+	msg3.f_string = "33333"
+
+	msg4 = test_proto.MessageV2()
+	msg4.f_int64 = 44444
+	msg4.f_string = "44444"
+
+	return [[msg, [msg2, [msg3]]], msg4]
+`,
+	"test13_string.sky": `
+# nested list
+def main(ctx):
+	msg = "11111"
+	msg2 = "22222"
+	msg3 = "33333"
+
+	msgs23 = [msg2, msg3]
+	return [msg, msgs23]
+`,
+	"test14_string.sky": `
+# nested list
+def main(ctx):
+	msg = "11111"
+	msg2 = "22222"
+	msg3 = "33333"
+	msg4 = "44444"
+
+	msgs12 = [msg, msg2]
+	msgs34 = [msg3, msg4]
+	return [msgs12, msgs34]
+`,
+	"test15_string.sky": `
+# nested list
+def main(ctx):
+	msg = "11111"
+	msg2 = "22222"
+	msg3 = "33333"
+	msg4 = "44444"
+
+	return [[msg, [msg2, msg3]], msg4]
+`,
+	"test16_string.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+# nested list
+def main(ctx):
+	msg = "11111"
+	msg2 = "22222"
+	msg3 = "33333"
+	msg4 = "44444"
+
+	return [[msg, [msg2, [msg3]]], msg4]
 `,
 	"print/on_load.sky": `
 print("hello world")
@@ -362,16 +478,85 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			fileToLoad: "test13.sky",
 			expProtos: []proto.Message{
 				&pb.MessageV2{
-					FInt64:  proto.Int64(1234567),
-					FString: proto.String("1234567"),
+					FInt64:  proto.Int64(11111),
+					FString: proto.String("11111"),
 				},
 				&pb.MessageV2{
-					FInt64:  proto.Int64(12345),
-					FString: proto.String("12345"),
+					FInt64:  proto.Int64(22222),
+					FString: proto.String("22222"),
 				},
 				&pb.MessageV2{
-					FInt64:  proto.Int64(123456),
-					FString: proto.String("123456"),
+					FInt64:  proto.Int64(33333),
+					FString: proto.String("33333"),
+				},
+			},
+			execOptions: []skycfg.ExecOption{skycfg.WithFlattenLists()},
+		},
+		endToEndTestCase{
+			caseName:   "flatten nested list 2",
+			fileToLoad: "test14.sky",
+			expProtos: []proto.Message{
+				&pb.MessageV2{
+					FInt64:  proto.Int64(11111),
+					FString: proto.String("11111"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(22222),
+					FString: proto.String("22222"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(33333),
+					FString: proto.String("33333"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(44444),
+					FString: proto.String("44444"),
+				},
+			},
+			execOptions: []skycfg.ExecOption{skycfg.WithFlattenLists()},
+		},
+		endToEndTestCase{
+			caseName:   "flatten triple nested list",
+			fileToLoad: "test15.sky",
+			expProtos: []proto.Message{
+				&pb.MessageV2{
+					FInt64:  proto.Int64(11111),
+					FString: proto.String("11111"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(22222),
+					FString: proto.String("22222"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(33333),
+					FString: proto.String("33333"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(44444),
+					FString: proto.String("44444"),
+				},
+			},
+			execOptions: []skycfg.ExecOption{skycfg.WithFlattenLists()},
+		},
+		endToEndTestCase{
+			caseName:   "flatten triple nested list 2",
+			fileToLoad: "test16.sky",
+			expProtos: []proto.Message{
+				&pb.MessageV2{
+					FInt64:  proto.Int64(11111),
+					FString: proto.String("11111"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(22222),
+					FString: proto.String("22222"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(33333),
+					FString: proto.String("33333"),
+				},
+				&pb.MessageV2{
+					FInt64:  proto.Int64(44444),
+					FString: proto.String("44444"),
 				},
 			},
 			execOptions: []skycfg.ExecOption{skycfg.WithFlattenLists()},
@@ -403,6 +588,137 @@ func TestSkycfgEndToEnd(t *testing.T) {
 		return config.Main(context.Background(), execOptions...)
 	})
 	runTestCases(t, testCases, fnExecSkycfg)
+}
+
+type endToEndTestCaseNonProtobuf struct {
+	caseName    string
+	fileToLoad  string
+	vars        starlark.StringDict
+	expLoadErr  bool
+	expExecErr  bool
+	expStrings  []string
+	execOptions []skycfg.ExecOption
+}
+type ExecSkycfgNonProtobuf func(config *skycfg.Config, testCase endToEndTestCaseNonProtobuf) ([]string, error)
+
+func runTestCasesNonProtobuf(t *testing.T, testCases []endToEndTestCaseNonProtobuf, execSkycfg ExecSkycfgNonProtobuf) {
+	loader := &testLoader{}
+	ctx := context.Background()
+
+	for _, testCase := range testCases {
+		config, err := skycfg.Load(ctx, testCase.fileToLoad, skycfg.WithFileReader(loader))
+		if testCase.expLoadErr {
+			if err == nil {
+				t.Error(
+					"Bad err result from LoadConfig for case", testCase.caseName,
+					"\nExpected non-nil",
+					"\nGot", err,
+				)
+			}
+
+			continue
+		} else {
+			if err != nil {
+				t.Error(
+					"Bad err result from LoadConfig for case", testCase.caseName,
+					"\nExpected nil",
+					"\nGot", err,
+				)
+
+				continue
+			}
+		}
+
+		strings, err := execSkycfg(config, testCase)
+
+		if testCase.expExecErr {
+			if err == nil {
+				t.Error(
+					"Bad err result from ExecMain for case", testCase.caseName,
+					"\nExpected non-nil",
+					"\nGot", err,
+				)
+			}
+
+			continue
+		} else {
+			if err != nil {
+				t.Error(
+					"Bad err result from ExecMain for case", testCase.caseName,
+					"\nExpected nil",
+					"\nGot", err,
+				)
+
+				continue
+			}
+		}
+
+		if len(strings) != len(testCase.expStrings) {
+			t.Fatalf("Expected %d strings, got %d", len(testCase.expStrings), len(strings))
+		}
+
+		for i := range testCase.expStrings {
+			expected := testCase.expStrings[i]
+			got := strings[i]
+			if expected != got {
+				t.Errorf("Test %q: strings differed\nExpected: %s\nGot     : %s", testCase.caseName, expected, got)
+			}
+		}
+	}
+}
+
+func TestSkycfgNonProtobufEndToEnd(t *testing.T) {
+	testCases := []endToEndTestCaseNonProtobuf{
+		endToEndTestCaseNonProtobuf{
+			caseName:   "flatten nested list",
+			fileToLoad: "test13_string.sky",
+			expStrings: []string{
+				"11111",
+				"22222",
+				"33333",
+			},
+			execOptions: []skycfg.ExecOption{skycfg.WithFlattenLists()},
+		},
+		endToEndTestCaseNonProtobuf{
+			caseName:   "flatten nested list 2",
+			fileToLoad: "test14_string.sky",
+			expStrings: []string{
+				"11111",
+				"22222",
+				"33333",
+				"44444",
+			},
+			execOptions: []skycfg.ExecOption{skycfg.WithFlattenLists()},
+		},
+		endToEndTestCaseNonProtobuf{
+			caseName:   "flatten triple nested list",
+			fileToLoad: "test15_string.sky",
+			expStrings: []string{
+				"11111",
+				"22222",
+				"33333",
+				"44444",
+			},
+			execOptions: []skycfg.ExecOption{skycfg.WithFlattenLists()},
+		},
+		endToEndTestCaseNonProtobuf{
+			caseName:   "flatten triple nested list 2",
+			fileToLoad: "test16_string.sky",
+			expStrings: []string{
+				"11111",
+				"22222",
+				"33333",
+				"44444",
+			},
+			execOptions: []skycfg.ExecOption{skycfg.WithFlattenLists()},
+		},
+	}
+
+	fnExecSkycfg := ExecSkycfgNonProtobuf(func(config *skycfg.Config, testCase endToEndTestCaseNonProtobuf) ([]string, error) {
+		execOptions := append(testCase.execOptions, skycfg.WithVars(testCase.vars))
+		return config.MainNonProtobuf(context.Background(), execOptions...)
+	})
+	runTestCasesNonProtobuf(t, testCases, fnExecSkycfg)
 }
 
 func TestSkycfgLogOutput_Load(t *testing.T) {
@@ -574,6 +890,208 @@ func TestSkycfgTesting(t *testing.T) {
 					result.Failure.Error(),
 				)
 				continue
+			}
+		}
+	}
+}
+
+type flattenStringTestCase struct {
+	inputList      *starlark.List
+	expectedOutput []string
+}
+
+func TestFlattenStringList(t *testing.T) {
+	tests := []flattenStringTestCase{
+		{
+			inputList: starlark.NewList(
+				[]starlark.Value{
+					starlark.String("a"),
+					starlark.String("b"),
+				},
+			),
+			expectedOutput: []string{"a", "b"},
+		},
+		{
+			inputList: starlark.NewList(
+				[]starlark.Value{
+					starlark.String("a"),
+					starlark.NewList(
+						[]starlark.Value{
+							starlark.String("b"),
+						},
+					),
+				},
+			),
+			expectedOutput: []string{"a", "b"},
+		},
+		{
+			inputList: starlark.NewList(
+				[]starlark.Value{
+					starlark.String("a"),
+					starlark.NewList(
+						[]starlark.Value{
+							starlark.String("b"),
+							starlark.NewList(
+								[]starlark.Value{
+									starlark.String("c"),
+								},
+							),
+						},
+					),
+				},
+			),
+			expectedOutput: []string{"a", "b", "c"},
+		},
+		{
+			inputList: starlark.NewList(
+				[]starlark.Value{
+					starlark.NewList(
+						[]starlark.Value{
+							starlark.String("a"),
+							starlark.String("b"),
+						},
+					),
+					starlark.NewList(
+						[]starlark.Value{
+							starlark.String("c"),
+							starlark.String("d"),
+						},
+					),
+				},
+			),
+			expectedOutput: []string{"a", "b", "c", "d"},
+		},
+	}
+	for _, test := range tests {
+		out, err := skycfg.FlattenStringList(test.inputList)
+		if err != nil {
+			t.Errorf("flattenStringList error: %s", err)
+		}
+		if !reflect.DeepEqual(out, test.expectedOutput) {
+			t.Errorf("flattenStringList assertion failure: expected %v was %v", test.expectedOutput, out)
+		}
+
+	}
+}
+
+type flattenProtoTestCase struct {
+	inputList      *starlark.List
+	expectedOutput []proto.Message
+}
+
+func TestFlattenProtoList(t *testing.T) {
+	protoVal := func(v string) proto.Message {
+		return &pb.MessageV2{
+			FString: proto.String(v),
+		}
+	}
+	starlarkVal := func(v string) starlark.Value {
+		val, err := skycfg.NewProtoMessage(
+			protoVal(v),
+		)
+		if err != nil {
+			t.Errorf("NewProtoMessage error: %s", err)
+		}
+		return val
+	}
+
+	tests := []flattenProtoTestCase{
+		{
+			inputList: starlark.NewList(
+				[]starlark.Value{
+					starlarkVal("a"),
+				},
+			),
+			expectedOutput: []proto.Message{
+				protoVal("a"),
+			},
+		},
+		{
+			inputList: starlark.NewList(
+				[]starlark.Value{
+					starlarkVal("a"),
+					starlarkVal("b"),
+				},
+			),
+			expectedOutput: []proto.Message{
+				protoVal("a"),
+				protoVal("b"),
+			},
+		},
+		{
+			inputList: starlark.NewList(
+				[]starlark.Value{
+					starlarkVal("a"),
+					starlark.NewList(
+						[]starlark.Value{
+							starlarkVal("b"),
+						},
+					),
+				},
+			),
+			expectedOutput: []proto.Message{
+				protoVal("a"),
+				protoVal("b"),
+			},
+		},
+		{
+			inputList: starlark.NewList(
+				[]starlark.Value{
+					starlarkVal("a"),
+					starlark.NewList(
+						[]starlark.Value{
+							starlarkVal("b"),
+							starlark.NewList(
+								[]starlark.Value{
+									starlarkVal("c"),
+								},
+							),
+						},
+					),
+				},
+			),
+			expectedOutput: []proto.Message{
+				protoVal("a"),
+				protoVal("b"),
+				protoVal("c"),
+			},
+		},
+		{
+			inputList: starlark.NewList(
+				[]starlark.Value{
+					starlark.NewList(
+						[]starlark.Value{
+							starlarkVal("a"),
+							starlarkVal("b"),
+						},
+					),
+					starlark.NewList(
+						[]starlark.Value{
+							starlarkVal("c"),
+							starlarkVal("d"),
+						},
+					),
+				},
+			),
+			expectedOutput: []proto.Message{
+				protoVal("a"),
+				protoVal("b"),
+				protoVal("c"),
+				protoVal("d"),
+			},
+		},
+	}
+	for _, test := range tests {
+		out, err := skycfg.FlattenProtoList(test.inputList)
+		if err != nil {
+			t.Errorf("flattenProtoList error: %s", err)
+		}
+		if len(out) != len(test.expectedOutput) {
+			t.Errorf("flattenProtoList assertion failure: expected %v was %v", test.expectedOutput, out)
+		}
+		for i, _ := range out {
+			if fmt.Sprintf("%v", out[i]) != fmt.Sprintf("%v", test.expectedOutput[i]) {
+				t.Errorf("flattenProtoList assertion failure at place %d: expected %q was %q", i, test.expectedOutput[i], out[i])
 			}
 		}
 	}
