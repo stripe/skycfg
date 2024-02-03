@@ -40,15 +40,20 @@ func NewMessage(msg proto.Message) (*protoMessage, error) {
 	// Copy any existing set fields
 	var rangeErr error
 	msgReflect.Range(func(fd protoreflect.FieldDescriptor, v protoreflect.Value) bool {
-		// TODO: Range only iterates over populated fields so isFieldSet may be redundant
-		if isFieldSet(v, fd) {
+		// Protobuf field presense is complex: https://github.com/protocolbuffers/protobuf/blob/d67f921f90e3aa03f65c3e1e507ca7017c8327a6/docs/field_presence.md
+		// There are two different manifestations of presence for protobufs: no
+		// presence, where the generated message API stores field values (only),
+		// and explicit presence, where the API also stores whether or not a
+		// field has been set.
+		// For fields with explicit presence, we trust `Range`: if it iterates over them, we keep the field.
+		// For fields with no presence, we manually double-check whether the field is equal to the default value. If so, we omit it.
+		if fd.HasPresence() || isFieldSet(v, fd) {
 			starlarkValue, err := valueToStarlark(v, fd)
 			if err != nil {
 				rangeErr = err
 				return false
 			}
 			fields[string(fd.Name())] = starlarkValue
-
 		}
 		return true
 	})

@@ -547,6 +547,21 @@ func TestProtoJson(t *testing.T) {
 			src:  `proto.decode_json(proto.package("skycfg.test_proto").MessageV3, "{\"f_int32\": 1010}").f_int32`,
 			want: "1010",
 		},
+		{
+			// This is a bit of a weird test. Protobuf's have complex behavior around whether a field is present.
+			// Reference: https://github.com/protocolbuffers/protobuf/blob/main/docs/field_presence.md
+			// This is particularly relevant for JSON encoding and decoding.
+			// This test specifically checks two things:
+			//   1. skycfg does not track presence for default scalar values (i.e., the empty field may be "not present" after a serialization round-trip)
+			//   2. skycfg _does_ track presence for `oneof` fields
+			// Without this behavior, working with "json-like" protos, e.g., google.protobuf.Value, becomes challenging.
+			name: "proto.decode_json oneof field presence",
+			src: `proto.encode_json(proto.decode_json(
+				proto.package("skycfg.test_proto").MessageV3,
+				"{\"f_string\":\"\",\"f_oneof_a\":\"\"}",
+			))`,
+			want: `"{\"f_oneof_a\":\"\"}"`,
+		},
 	})
 }
 
