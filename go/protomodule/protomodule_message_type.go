@@ -130,9 +130,10 @@ func (t *protoMessageType) CallInternal(
 	fields := t.descriptor.Fields()
 	for ii := 0; ii < fields.Len(); ii++ {
 		fieldName := string(fields.Get(ii).Name())
+		attrName := fieldNameToAttrName(fieldName)
 		v := new(starlark.Value)
-		parsedKwargs[fieldName] = v
-		parserPairs = append(parserPairs, fieldName+"?", v)
+		parsedKwargs[attrName] = v
+		parserPairs = append(parserPairs, attrName+"?", v)
 	}
 
 	if err := starlark.UnpackArgs(t.Name(), nil, kwargs, parserPairs...); err != nil {
@@ -144,10 +145,12 @@ func (t *protoMessageType) CallInternal(
 	if err != nil {
 		return nil, err
 	}
-	for fieldName, starlarkValue := range parsedKwargs {
+	for attrName, starlarkValue := range parsedKwargs {
 		if *starlarkValue == nil {
 			continue
 		}
+
+		fieldName := attrNameToFieldName(attrName)
 
 		if err := out.SetField(fieldName, *starlarkValue); err != nil {
 			return nil, err

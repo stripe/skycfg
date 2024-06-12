@@ -77,7 +77,14 @@ message MessageV3 {
 
   google.protobuf.Any f_Any = 29;
 
-  // NEXT: 30
+  // Starlark reserved keywords
+  // Reference: https://github.com/bazelbuild/starlark/blob/c8d88c388698b0ee49bc74737f56236af64da1b5/spec.md#lexical-elements
+  bool pass = 30;
+  bool return = 31;
+  bool assert = 32;
+  bool safe_ = 33;
+
+  // NEXT: 34
 }
 
 enum ToplevelEnumV3 {
