@@ -119,12 +119,14 @@ func (t *TestContext) AttrNames() []string {
 // CallInternal is the implementation for assert(...)
 func (t *TestContext) CallInternal(thread *starlark.Thread, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 	var val bool
-	if err := starlark.UnpackPositionalArgs("assert", args, kwargs, 1, &val); err != nil {
+	var msg starlark.String
+	if err := starlark.UnpackArgs("assert", args, kwargs, "val", &val, "msg?", &msg); err != nil {
 		return nil, err
 	}
 
 	if !val {
 		err := assertionError{
+			msg:       string(msg),
 			callStack: thread.CallStack(),
 		}
 		t.Failures = append(t.Failures, err)
