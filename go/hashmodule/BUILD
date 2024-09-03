@@ -6,6 +6,7 @@ go_library(
     importpath = "github.com/stripe/skycfg/go/hashmodule",
     visibility = ["//visibility:public"],
     deps = [
+        "@com_github_spaolacci_murmur3//:go_default_library",
         "@net_starlark_go//starlark",
         "@net_starlark_go//starlarkstruct",
     ],

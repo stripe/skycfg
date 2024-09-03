@@ -51,6 +51,11 @@ func TestHashes(t *testing.T) {
 			hashFunc:  "sha256",
 			expOutput: "a9c78816353b119a0ba2a1281675b147fd47abee11a8d41d5abb739dce8273b7",
 		},
+		hashTestCase{
+			input:     "test murmur3 string",
+			hashFunc:  "murmur3",
+			expOutput: "91dd87efc613eb2c",
+		},
 	}
 
 	for _, testCase := range testCases {
