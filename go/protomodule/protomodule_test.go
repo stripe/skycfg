@@ -370,6 +370,25 @@ def fun():
 	})
 }
 
+func Test_MapEntryIterationOrder(t *testing.T) {
+	// When the host provides a Go map value, there's no natural well-defined iteration order.
+	// Go is intentionally non-deterministic.
+	// skycfg is intentionally constructing a deterministically ordered starlark map.
+	// This test will become flaky if we ever stop imposing deterministic ordering.
+	msg, err := NewMessage(&pb.MessageV3{
+		MapString: map[string]string{"foo": "1", "bar": "2"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	runSkycfgTests(t, []skycfgTest{
+		{
+			src:  `";".join(my_msg.map_string.keys())`,
+			want: `"bar;foo"`,
+		},
+	}, withGlobals(starlark.StringDict{"my_msg": msg}))
+}
+
 // Skycfg has had inconsistent copy on assignment behavior
 // Test that Skycfg does not copy lists/maps on assignment, matching Starlark/Python's behavior
 func TestNoCopyOnAssignment(t *testing.T) {

@@ -21,8 +21,10 @@ package protomodule
 import (
 	"fmt"
 	"math"
+	"sort"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/anypb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -147,44 +149,15 @@ func scalarValueFromStarlark(fieldDesc protoreflect.FieldDescriptor, val starlar
 func valueToStarlark(val protoreflect.Value, fieldDesc protoreflect.FieldDescriptor) (starlark.Value, error) {
 	if fieldDesc.IsList() {
 		if listVal, ok := val.Interface().(protoreflect.List); ok {
-			out := newProtoRepeated(fieldDesc)
-			for i := 0; i < listVal.Len(); i++ {
-				starlarkValue, err := scalarValueToStarlark(listVal.Get(i), fieldDesc)
-				if err != nil {
-					return starlark.None, err
-				}
-				out.Append(starlarkValue)
-			}
-			return out, nil
+			return listValueToStarlark(listVal, fieldDesc)
 		} else if val.Interface() == nil {
 			return newProtoRepeated(fieldDesc), nil
 		}
 		return starlark.None, fmt.Errorf("TypeError: cannot convert %T into list", val.Interface())
-	} else if fieldDesc.IsMap() {
+	}
+	if fieldDesc.IsMap() {
 		if mapVal, ok := val.Interface().(protoreflect.Map); ok {
-			out := newProtoMap(fieldDesc.MapKey(), fieldDesc.MapValue())
-			var rangeErr error
-			mapVal.Range(func(k protoreflect.MapKey, v protoreflect.Value) bool {
-				starlarkKey, err := scalarValueToStarlark(protoreflect.Value(k), fieldDesc.MapKey())
-				if err != nil {
-					rangeErr = err
-					return false
-				}
-
-				starlarkValue, err := scalarValueToStarlark(v, fieldDesc.MapValue())
-				if err != nil {
-					rangeErr = err
-					return false
-				}
-
-				out.SetKey(starlarkKey, starlarkValue)
-				return true
-			})
-			if rangeErr != nil {
-				return starlark.None, rangeErr
-			}
-
-			return out, nil
+			return mapValueToStarlark(mapVal, fieldDesc.MapKey(), fieldDesc.MapValue())
 		} else if val.Interface() == nil {
 			return newProtoMap(fieldDesc.MapKey(), fieldDesc.MapValue()), nil
 		}
@@ -192,6 +165,73 @@ func valueToStarlark(val protoreflect.Value, fieldDesc protoreflect.FieldDescrip
 	}
 
 	return scalarValueToStarlark(val, fieldDesc)
+}
+
+// listValueToStarlark wraps a protobuf list as a starlark.Value.
+func listValueToStarlark(listVal protoreflect.List, fieldDesc protoreflect.FieldDescriptor) (starlark.Value, error) {
+	out := newProtoRepeated(fieldDesc)
+	for i := 0; i < listVal.Len(); i++ {
+		starlarkValue, err := scalarValueToStarlark(listVal.Get(i), fieldDesc)
+		if err != nil {
+			return starlark.None, err
+		}
+		out.Append(starlarkValue)
+	}
+	return out, nil
+}
+
+// mapValueToStarlark wraps a protobuf map as a starlark.Value.
+func mapValueToStarlark(mapVal protoreflect.Map, keyType, valueType protoreflect.FieldDescriptor) (starlark.Value, error) {
+	// protoreflect.Map.Range iterates through entries in an
+	// unspecified, nondeterministic order. This is good for efficiency
+	// but bad for deterministic execution. We're going to try and
+	// ensure that the resulting starlark.Value (which is a *protoMap
+	// backed by a *starlark.Dict) is constructed in a deterministic
+	// order so that skycfg code can iterate through it in a
+	// deterministic order. starlark.Dict uses a linked hashtable
+	// implementation that iterates through items in insertion order.
+	type kv struct {
+		key   starlark.Value
+		value starlark.Value
+	}
+	var kvs []kv
+	var rangeErr error
+	mapVal.Range(func(k protoreflect.MapKey, v protoreflect.Value) bool {
+		starlarkKey, err := scalarValueToStarlark(protoreflect.Value(k), keyType)
+		if err != nil {
+			rangeErr = err
+			return false
+		}
+
+		starlarkValue, err := scalarValueToStarlark(v, valueType)
+		if err != nil {
+			rangeErr = err
+			return false
+		}
+
+		kvs = append(kvs, kv{key: starlarkKey, value: starlarkValue})
+		return true
+	})
+	if rangeErr != nil {
+		return starlark.None, rangeErr
+	}
+
+	// Attempt to sort the map by key to ensure that the result is "as
+	// deterministic as possible".  Not all starlark values are
+	// comparable. If that is the case, the ordering will be arbitrary.
+	// I believe that *protoMap only supports scalar keys, in which case
+	// the error condition should never be hit.
+	sort.Slice(kvs, func(i, j int) bool {
+		less, _ := starlark.Compare(syntax.LT, kvs[i].key, kvs[j].key)
+		return less
+	})
+	out := newProtoMap(keyType, valueType)
+	for _, item := range kvs {
+		if err := out.SetKey(item.key, item.value); err != nil {
+			return starlark.None, err
+		}
+	}
+	return out, nil
 }
 
 func scalarValueToStarlark(val protoreflect.Value, fieldDesc protoreflect.FieldDescriptor) (starlark.Value, error) {
