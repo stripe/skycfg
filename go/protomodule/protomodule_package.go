@@ -25,7 +25,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
-func starlarkPackageFn(registry *protoregistry.Types) starlark.Callable {
+func starlarkPackageFn(registry *protoregistry.Types, filesRegistry *protoregistry.Files) starlark.Callable {
 	return starlark.NewBuiltin("proto.package", func(
 		t *starlark.Thread,
 		fn *starlark.Builtin,
@@ -40,7 +40,7 @@ func starlarkPackageFn(registry *protoregistry.Types) starlark.Callable {
 		if !packageName.IsValid() {
 			return nil, fmt.Errorf("invalid Protobuf package name %q", packageName)
 		}
-		return NewProtoPackage(registry, packageName), nil
+		return NewProtoPackage(registry, filesRegistry, packageName), nil
 	})
 }
 
@@ -52,6 +52,7 @@ type protoPackage struct {
 
 func NewProtoPackage(
 	registry *protoregistry.Types,
+	filesRegistry *protoregistry.Files,
 	packageName protoreflect.FullName,
 ) *protoPackage {
 	attrs := make(starlark.StringDict)
@@ -75,11 +76,37 @@ func NewProtoPackage(
 		return true
 	})
 
+	// TODO:: Iterate over the Services
+	filesRegistry.RangeFilesByPackage(packageName, func(fd protoreflect.FileDescriptor) bool {
+		for i := 0; i < fd.Services().Len(); i++ {
+			sd := fd.Services().Get(i)
+			// attrs[] = nil
+			for j := 0; j < sd.Methods().Len(); j++ {
+				svc := sd.Methods().Get(j)
+				attrs[fmt.Sprintf("%s.%s", sd.Name(), svc.Name())] = newService(svc)
+			}
+		}
+
+		return true
+	})
+
 	return &protoPackage{
 		name:     packageName,
 		registry: registry,
 		attrs:    attrs,
 	}
+}
+
+//	Type Callable interface {
+//		Value
+//		Name() string
+//		CallInternal(thread *Thread, args Tuple, kwargs []Tuple) (Value, error)
+//	}
+func newService(svc protoreflect.MethodDescriptor) starlark.Callable {
+	return protoService{}
+}
+
+type protoService struct {
 }
 
 func (pkg *protoPackage) String() string       { return fmt.Sprintf("<proto.Package %q>", pkg.name) }
