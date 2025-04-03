@@ -22,6 +22,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -87,7 +88,7 @@ func (r *localFileReader) Resolve(ctx context.Context, name, fromPath string) (s
 }
 
 func (r *localFileReader) ReadFile(ctx context.Context, path string) ([]byte, error) {
-	return os.ReadFile(path)
+	return ioutil.ReadFile(path)
 }
 
 // NewProtoMessage returns a Starlark value representing the given Protobuf
