@@ -22,24 +22,24 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/stripe/skycfg/go/assertmodule"
-	"github.com/stripe/skycfg/go/hashmodule"
-	"github.com/stripe/skycfg/go/protomodule"
-	"github.com/stripe/skycfg/go/urlmodule"
-	"github.com/stripe/skycfg/go/yamlmodule"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkjson"
 	"go.starlark.net/starlarkstruct"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+
+	"github.com/stripe/skycfg/go/assertmodule"
+	"github.com/stripe/skycfg/go/hashmodule"
+	"github.com/stripe/skycfg/go/protomodule"
+	"github.com/stripe/skycfg/go/urlmodule"
+	"github.com/stripe/skycfg/go/yamlmodule"
 )
 
 // Starlark thread-local storage keys.
@@ -87,7 +87,7 @@ func (r *localFileReader) Resolve(ctx context.Context, name, fromPath string) (s
 }
 
 func (r *localFileReader) ReadFile(ctx context.Context, path string) ([]byte, error) {
-	return ioutil.ReadFile(path)
+	return os.ReadFile(path)
 }
 
 // NewProtoMessage returns a Starlark value representing the given Protobuf
