@@ -29,18 +29,17 @@ import (
 	"strings"
 	"time"
 
+	"github.com/stripe/skycfg/go/assertmodule"
+	"github.com/stripe/skycfg/go/hashmodule"
+	"github.com/stripe/skycfg/go/protomodule"
+	"github.com/stripe/skycfg/go/urlmodule"
+	"github.com/stripe/skycfg/go/yamlmodule"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkjson"
 	"go.starlark.net/starlarkstruct"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
-
-	"github.com/stripe/skycfg/go/assertmodule"
-	"github.com/stripe/skycfg/go/hashmodule"
-	"github.com/stripe/skycfg/go/protomodule"
-	"github.com/stripe/skycfg/go/urlmodule"
-	"github.com/stripe/skycfg/go/yamlmodule"
 )
 
 // Starlark thread-local storage keys.
@@ -404,6 +403,7 @@ type execOptions struct {
 	vars         *starlark.Dict
 	funcName     string
 	flattenLists bool
+	extraArgs    []starlark.Value
 }
 
 type fnExecOption func(*execOptions)
@@ -430,6 +430,13 @@ func WithEntryPoint(name string) ExecOption {
 func WithFlattenLists() ExecOption {
 	return fnExecOption(func(opts *execOptions) {
 		opts.flattenLists = true
+	})
+}
+
+// WithPositionalArgs adds positional arguments in addition to ctx.
+func WithPositionalArgs(args ...starlark.Value) ExecOption {
+	return fnExecOption(func(opts *execOptions) {
+		opts.extraArgs = args
 	})
 }
 
@@ -463,8 +470,9 @@ func (c *Config) Main(ctx context.Context, opts ...ExecOption) ([]proto.Message,
 			"vars": parsedOpts.vars,
 		}),
 	}
-	args := starlark.Tuple([]starlark.Value{mainCtx})
-	mainVal, err := starlark.Call(thread, main, args, nil)
+	args := []starlark.Value{mainCtx}
+	args = append(args, parsedOpts.extraArgs...)
+	mainVal, err := starlark.Call(thread, main, starlark.Tuple(args), nil)
 	if err != nil {
 		return nil, err
 	}

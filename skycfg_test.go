@@ -117,7 +117,7 @@ def main(ctx):
 	"test7.sky": `
 test_proto = proto.package("skycfg.test_proto")
 
-# autoboxing of primitives into wrappers works 
+# autoboxing of primitives into wrappers works
 def main(ctx):
 	msg = test_proto.MessageV3()
 	msg.f_BoolValue = True
@@ -322,6 +322,14 @@ def test_main(t):
 
 def main(ctx):
 	print("hello world in main")
+`,
+	"test_17.sky": `
+test_proto = proto.package("skycfg.test_proto")
+
+def main(ctx, f_int64):
+	msg = test_proto.MessageV2()
+	msg.f_int64 = f_int64
+	return [msg]
 `,
 }
 
@@ -795,6 +803,25 @@ func TestSkycfgWithEntryPoint(t *testing.T) {
 
 	fnExecSkycfg := ExecSkycfg(func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.Message, error) {
 		return config.Main(context.Background(), skycfg.WithVars(testCase.vars), skycfg.WithEntryPoint("not_main"))
+	})
+	runTestCases(t, testCases, fnExecSkycfg)
+}
+
+func TestSkycfgWithPositionalArgs(t *testing.T) {
+	testCases := []endToEndTestCase{
+		endToEndTestCase{
+			caseName:   "all good",
+			fileToLoad: "test_17.sky",
+			expProtos: []proto.Message{
+				&pb.MessageV2{
+					FInt64: proto.Int64(42),
+				},
+			},
+		},
+	}
+
+	fnExecSkycfg := ExecSkycfg(func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.Message, error) {
+		return config.Main(context.Background(), skycfg.WithVars(testCase.vars), skycfg.WithPositionalArgs(starlark.MakeInt(42)))
 	})
 	runTestCases(t, testCases, fnExecSkycfg)
 }
