@@ -43,6 +43,15 @@ http_archive(
     ],
 )
 
+http_archive(
+    name = "bazel_skylib",
+    sha256 = "58f558d04a936cade1d4744d12661317e51f6a21e3dd7c50b96dc14f3fa3b87d",
+    strip_prefix = "bazel-skylib-df3c9e2735f02a7fe8cd80db4db00fec8e13d25f",
+    urls = [
+        "https://github.com/bazelbuild/bazel-skylib/archive/df3c9e2735f02a7fe8cd80db4db00fec8e13d25f.tar.gz",
+    ],
+)
+
 load(
     "@rules_proto//proto:repositories.bzl",
     "rules_proto_dependencies",
