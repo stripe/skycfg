@@ -1,6 +1,6 @@
 # Skycfg in WebAssembly
 
-![A short demo of Skycfg running in a browser interactive via WebAssembly](demo.gif)
+![A short demo of Skycfg running in a browser interactively via WebAssembly](demo.gif)
 
 Please run the following to build the appropriate WASM file (adapted from [Go Wiki: WebAssembly](https://go.dev/wiki/WebAssembly#javascript-goosjs-port)).
 ```sh
