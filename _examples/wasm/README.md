@@ -2,7 +2,7 @@
 
 ![A short demo of Skycfg running in a browser interactive via WebAssembly](demo.gif)
 
-Please run the following to build the appropriate WASM file.
+Please run the following to build the appropriate WASM file (adapted from [Go Wiki: WebAssembly](https://go.dev/wiki/WebAssembly#javascript-goosjs-port)).
 ```sh
 GOOS=js GOARCH=wasm go build -o skycfg.wasm
 cp "$(go env GOROOT)/lib/wasm/wasm_exec.js" .
