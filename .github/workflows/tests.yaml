@@ -36,7 +36,7 @@ jobs:
         env:
           GO_VERSION: ${{ matrix.go.version }}
       - name: "bazel test //..."
-        uses: "docker://l.gcr.io/google/bazel:4.2.1"
+        uses: "docker://gcr.io/bazel-public/bazel:4.2.1"
         with:
           entrypoint: "/github/workspace/entrypoint.sh"
           args:
