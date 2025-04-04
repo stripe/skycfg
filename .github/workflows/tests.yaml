@@ -4,11 +4,13 @@ on: ["push", "pull_request"]
 jobs:
   tests:
     name: "Go ${{ matrix.go.series }}"
-    runs-on: "${{ matrix.os }}"
+    runs-on: "ubuntu-24.04"
+    container:
+      image: "docker://gcr.io/bazel-public/bazel:7.4.1"
+      options: --user root
 
     strategy:
       matrix:
-        os: ["ubuntu-24.04"]
         go:
           - series: "1.22"
             version: "1.22.12"
@@ -23,32 +25,23 @@ jobs:
           path: "src"
       - uses: "actions/cache@v4"
         with:
-          path: "cache"
+          path: cache
           key: "os=${{ matrix.os }};go=${{ matrix.go.version }};v=1"
       - name: "Prepare workspace"
         run: |
-          echo '#!/bin/bash' > entrypoint.sh
-          echo 'cd "${GITHUB_WORKSPACE}"/src' >> entrypoint.sh
-          echo 'exec bazel "$@"' >> entrypoint.sh
-          chmod +x entrypoint.sh
-
           echo "GO_VERSION = '${GO_VERSION}'" > src/build/go_version.bzl
         env:
           GO_VERSION: ${{ matrix.go.version }}
       - name: "bazel test //..."
-        uses: "docker://gcr.io/bazel-public/bazel:7.4.1"
-        with:
-          entrypoint: "/github/workspace/entrypoint.sh"
-          args:
-            test
-              --announce_rc
-              --curses=no
-              --color=yes
-              --verbose_failures
-              --test_output=errors
-              --test_verbose_timeout_warnings
-              --incompatible_strict_action_env
-              --repository_cache=/github/workspace/cache/repository_cache
-              --disk_cache=/github/workspace/cache/disk_cache
-              --
-              //...
+        working-directory: src
+        run: |
+          exec bazel test \
+            --announce_rc \
+            --curses=no \
+            --color=yes \
+            --verbose_failures \
+            --test_output=errors \
+            --test_verbose_timeout_warnings \
+            --repository_cache="$GITHUB_WORKSPACE/cache/repository_cache" \
+            --disk_cache="$GITHUB_WORKSPACE/cache/disk_cache" \
+            //...
