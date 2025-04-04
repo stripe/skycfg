@@ -19,7 +19,6 @@ def go_dependencies():
         sum = "h1:q763qf9huN11kDQavWsoZXJNW3xEE4JJyHa5Q25/sd8=",
         version = "v0.0.0-20180213035817-a1ea475d72b1",
     )
-
     go_repository(
         name = "com_github_golang_protobuf",
         importpath = "github.com/golang/protobuf",

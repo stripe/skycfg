@@ -3,6 +3,13 @@ workspace(name = "com_github_stripe_skycfg")
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
+    name = "bazel_skylib",
+    sha256 = "e3fea03ff75a9821e84199466799ba560dbaebb299c655b5307f4df1e5970696",
+    strip_prefix = "bazel-skylib-1.7.1",
+    urls = ["https://github.com/bazelbuild/bazel-skylib/archive/refs/tags/1.7.1.tar.gz"],
+)
+
+http_archive(
     name = "io_bazel_rules_go",
     sha256 = "80a98277ad1311dacd837f9b16db62887702e9f1d1c4c9f796d0121a46c8e184",
     urls = [
