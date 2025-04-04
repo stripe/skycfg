@@ -1,6 +1,6 @@
 module github.com/stripe/skycfg/_examples/wasm
 
-go 1.16
+go 1.24
 
 require (
 	github.com/golang/protobuf v1.5.0

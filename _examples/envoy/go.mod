@@ -1,6 +1,6 @@
 module github.com/stripe/skycfg/_examples/envoy
 
-go 1.15
+go 1.24
 
 require (
 	github.com/cncf/udpa/go v0.0.0-20200909154343-1f710aca26a9 // indirect
