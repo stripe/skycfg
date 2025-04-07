@@ -133,14 +133,14 @@ func TestEnumType(t *testing.T) {
 		},
 		{
 			src:  `dir(pb.ToplevelEnumV2.TOPLEVEL_ENUM_V2_B)`,
-			want: `["name", "number"]`,
+			want: `["name", "value"]`,
 		},
 		{
 			src:  `pb.ToplevelEnumV2.TOPLEVEL_ENUM_V2_B.name`,
 			want: `"TOPLEVEL_ENUM_V2_B"`,
 		},
 		{
-			src:  `pb.ToplevelEnumV2.TOPLEVEL_ENUM_V2_B.number`,
+			src:  `pb.ToplevelEnumV2.TOPLEVEL_ENUM_V2_B.value`,
 			want: `1`,
 		},
 		{
@@ -165,14 +165,14 @@ func TestEnumType(t *testing.T) {
 		},
 		{
 			src:  `dir(pb.MessageV2.NestedEnum.NESTED_ENUM_B)`,
-			want: `["name", "number"]`,
+			want: `["name", "value"]`,
 		},
 		{
 			src:  `pb.MessageV2.NestedEnum.NESTED_ENUM_B.name`,
 			want: `"NESTED_ENUM_B"`,
 		},
 		{
-			src:  `pb.MessageV2.NestedEnum.NESTED_ENUM_B.number`,
+			src:  `pb.MessageV2.NestedEnum.NESTED_ENUM_B.value`,
 			want: `1`,
 		},
 		{

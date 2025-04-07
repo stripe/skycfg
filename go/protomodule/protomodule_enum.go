@@ -109,7 +109,7 @@ func (v *protoEnumValue) Attr(attrName string) (starlark.Value, error) {
 	switch attrName {
 	case "name":
 		return starlark.String(v.value.Name()), nil
-	case "number":
+	case "value":
 		return starlark.MakeInt64(int64(v.value.Number())), nil
 	default:
 		return nil, fmt.Errorf("unknown attribute %s on %s", attrName, v.String())
@@ -117,7 +117,7 @@ func (v *protoEnumValue) Attr(attrName string) (starlark.Value, error) {
 }
 
 func (v *protoEnumValue) AttrNames() []string {
-	return []string{"name", "number"}
+	return []string{"name", "value"}
 }
 
 func (v *protoEnumValue) enumNumber() protoreflect.EnumNumber {
