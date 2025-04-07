@@ -92,6 +92,7 @@ type protoEnumValue struct {
 }
 
 var _ starlark.Comparable = (*protoEnumValue)(nil)
+var _ starlark.HasAttrs = (*protoEnumValue)(nil)
 var _ starlark.Value = (*protoEnumValue)(nil)
 
 func (v *protoEnumValue) String() string {
@@ -102,6 +103,21 @@ func (v *protoEnumValue) Freeze()              {}
 func (v *protoEnumValue) Truth() starlark.Bool { return starlark.True }
 func (v *protoEnumValue) Hash() (uint32, error) {
 	return starlark.MakeInt64(int64(v.value.Number())).Hash()
+}
+
+func (v *protoEnumValue) Attr(attrName string) (starlark.Value, error) {
+	switch attrName {
+	case "name":
+		return starlark.String(v.value.Name()), nil
+	case "value":
+		return starlark.MakeInt64(int64(v.value.Number())), nil
+	default:
+		return nil, fmt.Errorf("unknown attribute %s on %s", attrName, v.String())
+	}
+}
+
+func (v *protoEnumValue) AttrNames() []string {
+	return []string{"name", "value"}
 }
 
 func (v *protoEnumValue) enumNumber() protoreflect.EnumNumber {

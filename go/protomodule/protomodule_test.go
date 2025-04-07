@@ -128,6 +128,26 @@ func TestEnumType(t *testing.T) {
 			want: `["TOPLEVEL_ENUM_V2_A", "TOPLEVEL_ENUM_V2_B"]`,
 		},
 		{
+			src:  `pb.ToplevelEnumV2.TOPLEVEL_ENUM_V2_B`,
+			want: `<skycfg.test_proto.ToplevelEnumV2 TOPLEVEL_ENUM_V2_B=1>`,
+		},
+		{
+			src:  `dir(pb.ToplevelEnumV2.TOPLEVEL_ENUM_V2_B)`,
+			want: `["name", "value"]`,
+		},
+		{
+			src:  `pb.ToplevelEnumV2.TOPLEVEL_ENUM_V2_B.name`,
+			want: `"TOPLEVEL_ENUM_V2_B"`,
+		},
+		{
+			src:  `pb.ToplevelEnumV2.TOPLEVEL_ENUM_V2_B.value`,
+			want: `1`,
+		},
+		{
+			src:     `pb.ToplevelEnumV2.TOPLEVEL_ENUM_V2_B.invalid`,
+			wantErr: errors.New(`unknown attribute invalid on <skycfg.test_proto.ToplevelEnumV2 TOPLEVEL_ENUM_V2_B=1>`),
+		},
+		{
 			src:  `pb.MessageV2.NestedEnum`,
 			want: `<proto.EnumType "skycfg.test_proto.MessageV2.NestedEnum">`,
 		},
@@ -138,6 +158,26 @@ func TestEnumType(t *testing.T) {
 		{
 			src:     `pb.ToplevelEnumV2.NoExist`,
 			wantErr: errors.New(`proto.EnumType has no .NoExist field or method`),
+		},
+		{
+			src:  `pb.MessageV2.NestedEnum.NESTED_ENUM_B`,
+			want: `<skycfg.test_proto.MessageV2.NestedEnum NESTED_ENUM_B=1>`,
+		},
+		{
+			src:  `dir(pb.MessageV2.NestedEnum.NESTED_ENUM_B)`,
+			want: `["name", "value"]`,
+		},
+		{
+			src:  `pb.MessageV2.NestedEnum.NESTED_ENUM_B.name`,
+			want: `"NESTED_ENUM_B"`,
+		},
+		{
+			src:  `pb.MessageV2.NestedEnum.NESTED_ENUM_B.value`,
+			want: `1`,
+		},
+		{
+			src:     `pb.MessageV2.NestedEnum.NESTED_ENUM_B.invalid`,
+			wantErr: errors.New(`unknown attribute invalid on <skycfg.test_proto.MessageV2.NestedEnum NESTED_ENUM_B=1>`),
 		},
 	}, withGlobals(globals))
 }
