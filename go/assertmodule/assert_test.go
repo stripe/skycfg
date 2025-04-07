@@ -55,6 +55,7 @@ type assertBinaryTestCase struct {
 type assertUnaryTestCase struct {
 	assertTestCaseImpl
 	val string
+	msg string
 }
 
 func TestUnaryAsserts(t *testing.T) {
@@ -68,11 +69,28 @@ func TestUnaryAsserts(t *testing.T) {
 		},
 		assertUnaryTestCase{
 			assertTestCaseImpl: assertTestCaseImpl{
+				expFailure: false,
+				expError:   false,
+			},
+			val: `1 == 1`,
+			msg: "unary assertion error message",
+		},
+		assertUnaryTestCase{
+			assertTestCaseImpl: assertTestCaseImpl{
 				expFailure:    true,
 				expFailureMsg: "assertion failed",
 				expError:      false,
 			},
 			val: `2 == 1`,
+		},
+		assertUnaryTestCase{
+			assertTestCaseImpl: assertTestCaseImpl{
+				expFailure:    true,
+				expFailureMsg: "assertion failed: unary assertion error message",
+				expError:      false,
+			},
+			val: `2 == 1`,
+			msg: "unary assertion error message",
 		},
 	}
 
@@ -81,6 +99,14 @@ func TestUnaryAsserts(t *testing.T) {
 			`t.assert(%s)`,
 			testCase.val,
 		)
+
+		if testCase.msg != "" {
+			cmd = fmt.Sprintf(
+				`t.assert(%s, %q)`,
+				testCase.val,
+				testCase.msg,
+			)
+		}
 
 		evalAndReportResults(t, cmd, testCase)
 	}
