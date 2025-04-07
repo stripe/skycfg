@@ -102,7 +102,7 @@ func TestUnaryAsserts(t *testing.T) {
 
 		if testCase.msg != "" {
 			cmd = fmt.Sprintf(
-				`t.assert(%s, "%s")`,
+				`t.assert(%s, %q)`,
 				testCase.val,
 				testCase.msg,
 			)
