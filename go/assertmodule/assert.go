@@ -141,7 +141,8 @@ func (t *TestContext) AssertBinaryImpl(op syntax.Token) func(thread *starlark.Th
 	return func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
 		var val1 starlark.Value
 		var val2 starlark.Value
-		if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 2, &val1, &val2); err != nil {
+		var msg starlark.String
+		if err := starlark.UnpackArgs(fn.Name(), args, kwargs, "val1", &val1, "val2", &val2, "msg?", &msg); err != nil {
 			return nil, err
 		}
 
@@ -155,6 +156,7 @@ func (t *TestContext) AssertBinaryImpl(op syntax.Token) func(thread *starlark.Th
 				op:        &op,
 				val1:      val1,
 				val2:      val2,
+				msg:       string(msg),
 				callStack: thread.CallStack(),
 			}
 			t.Failures = append(t.Failures, err)
