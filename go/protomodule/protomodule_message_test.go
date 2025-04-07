@@ -38,6 +38,7 @@ func TestMessageAttrNames(t *testing.T) {
 	}
 	got := val.(starlark.HasAttrs).AttrNames()
 	want := []string{
+		"assert_",
 		"f_int32",
 		"f_int64",
 		"f_uint32",
@@ -67,6 +68,9 @@ func TestMessageAttrNames(t *testing.T) {
 		"f_Uint64Value",
 		"r_StringValue",
 		"f_Any",
+		"pass_",
+		"return_",
+		"safe_",
 	}
 	sort.Strings(want)
 	if !reflect.DeepEqual(want, got) {
@@ -276,6 +280,12 @@ func TestMessageV3(t *testing.T) {
 				f_string = "string in f_Any",
 			)
 		),
+
+		# Reserved keywords suffixed with single underscore
+		pass_ = True,
+		return_ = True,
+		assert_ = True,
+		safe_ = True,
 	)`, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -328,6 +338,10 @@ func TestMessageV3(t *testing.T) {
 		F_Any: mustMarshalAny(t, &pb.MessageV3{
 			F_Any: mustMarshalAny(t, &pb.MessageV3{FString: "string in f_Any"}),
 		}),
+		Pass: true,
+		Return: true,
+		Assert: true,
+		Safe_: true,
 	}
 	checkProtoEqual(t, wantMsg, gotMsg)
 

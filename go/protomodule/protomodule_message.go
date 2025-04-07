@@ -167,6 +167,8 @@ func (msg *protoMessage) MarshalJSON() ([]byte, error) {
 }
 
 func (msg *protoMessage) Attr(name string) (starlark.Value, error) {
+	name = attrNameToFieldName(name)
+
 	// If a value has already been set on msg, return it
 	if val, ok := msg.fields[name]; ok {
 		return val, nil
@@ -200,7 +202,11 @@ func (msg *protoMessage) Attr(name string) (starlark.Value, error) {
 }
 
 func (msg *protoMessage) AttrNames() []string {
-	return fieldNames(msg.msgDesc)
+	names := fieldNames(msg.msgDesc)
+	for i, field := range names {
+		names[i] = fieldNameToAttrName(field)
+	}
+	return names
 }
 
 func fieldNames(msgDesc protoreflect.MessageDescriptor) []string {
@@ -215,6 +221,8 @@ func fieldNames(msgDesc protoreflect.MessageDescriptor) []string {
 }
 
 func (msg *protoMessage) SetField(name string, val starlark.Value) error {
+	name = attrNameToFieldName(name)
+
 	fieldDesc := getFieldDescriptor(msg.msgDesc, name)
 	if fieldDesc == nil {
 		return fmt.Errorf("AttributeError: `%s' value has no field %q", msg.Type(), name)

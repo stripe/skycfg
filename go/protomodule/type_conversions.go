@@ -30,6 +30,46 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+// reservedAttrNames is a static map of Starlark reserved keywords that cannot be used as attribute names.
+// Reference: https://github.com/bazelbuild/starlark/blob/c8d88c388698b0ee49bc74737f56236af64da1b5/spec.md#lexical-elements
+var reservedAttrNames = map[string]bool{
+	// Language keywords
+	"and":      true,
+	"break":    true,
+	"continue": true,
+	"def":      true,
+	"elif":     true,
+	"else":     true,
+	"for":      true,
+	"if":       true,
+	"in":       true,
+	"lambda":   true,
+	"load":     true,
+	"not":      true,
+	"or":       true,
+	"pass":     true,
+	"return":   true,
+	// Identifiers reserved for future use
+	"as":       true,
+	"assert":   true,
+	"async":    true,
+	"await":    true,
+	"class":    true,
+	"del":      true,
+	"except":   true,
+	"finally":  true,
+	"from":     true,
+	"global":   true,
+	"import":   true,
+	"is":       true,
+	"nonlocal": true,
+	"raise":    true,
+	"try":      true,
+	"while":    true,
+	"with":     true,
+	"yield":    true,
+}
+
 func valueFromStarlark(msg protoreflect.Message, fieldDesc protoreflect.FieldDescriptor, val starlark.Value) (protoreflect.Value, error) {
 	if fieldDesc.IsList() {
 		if list, ok := val.(*protoRepeated); ok {
@@ -392,4 +432,24 @@ func typeName(fieldDesc protoreflect.FieldDescriptor) string {
 	default:
 		return k.String()
 	}
+}
+
+func fieldNameToAttrName(name string) string {
+	if _, ok := reservedAttrNames[name]; !ok {
+		return name
+	}
+
+	return name + "_"
+}
+
+func attrNameToFieldName(name string) string {
+	if len(name) > 1 && name[len(name)-1] == '_' {
+		field := name[:len(name)-1]
+
+		if _, ok := reservedAttrNames[field]; ok {
+			return field
+		}
+	}
+
+	return name
 }
