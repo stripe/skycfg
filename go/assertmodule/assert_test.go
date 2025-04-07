@@ -50,6 +50,7 @@ type assertBinaryTestCase struct {
 	op      syntax.Token
 	val1Str string
 	val2Str string
+	msg     string
 }
 
 type assertUnaryTestCase struct {
@@ -126,10 +127,31 @@ func TestBinaryAsserts(t *testing.T) {
 		assertBinaryTestCase{
 			op:      syntax.EQL,
 			val1Str: `"hello"`,
+			val2Str: `"hello"`,
+			msg:     "binary assertion error message",
+			assertTestCaseImpl: assertTestCaseImpl{
+				expFailure: false,
+				expError:   false,
+			},
+		},
+		assertBinaryTestCase{
+			op:      syntax.EQL,
+			val1Str: `"hello"`,
 			val2Str: `"nothello"`,
 			assertTestCaseImpl: assertTestCaseImpl{
 				expFailure:    true,
 				expFailureMsg: `"hello" (type: string) == "nothello" (type: string)`,
+				expError:      false,
+			},
+		},
+		assertBinaryTestCase{
+			op:      syntax.EQL,
+			val1Str: `"hello"`,
+			val2Str: `"nothello"`,
+			msg:     "binary assertion error message",
+			assertTestCaseImpl: assertTestCaseImpl{
+				expFailure:    true,
+				expFailureMsg: `binary assertion error message`,
 				expError:      false,
 			},
 		},
@@ -277,6 +299,17 @@ func TestBinaryAsserts(t *testing.T) {
 			testCase.val1Str,
 			testCase.val2Str,
 		)
+
+		if testCase.msg != "" {
+			cmd = fmt.Sprintf(
+				`t.assert.%s(%s, %s, %q)`,
+				tokenToString[testCase.op],
+				testCase.val1Str,
+				testCase.val2Str,
+				testCase.msg,
+			)
+		}
+
 		evalAndReportResults(t, cmd, testCase)
 	}
 }
