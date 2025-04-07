@@ -103,7 +103,7 @@ func TestUnaryAsserts(t *testing.T) {
 
 		if testCase.msg != "" {
 			cmd = fmt.Sprintf(
-				`t.assert(%s, "%s")`,
+				`t.assert(%s, %q)`,
 				testCase.val,
 				testCase.msg,
 			)
@@ -302,7 +302,7 @@ func TestBinaryAsserts(t *testing.T) {
 
 		if testCase.msg != "" {
 			cmd = fmt.Sprintf(
-				`t.assert.%s(%s, %s, "%s")`,
+				`t.assert.%s(%s, %s, %q)`,
 				tokenToString[testCase.op],
 				testCase.val1Str,
 				testCase.val2Str,
