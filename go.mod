@@ -1,6 +1,6 @@
 module github.com/stripe/skycfg
 
-go 1.24
+go 1.22
 
 require (
 	github.com/spaolacci/murmur3 v1.1.0
@@ -8,3 +8,5 @@ require (
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v2 v2.2.1
 )
+
+require golang.org/x/sys v0.0.0-20200803210538-64077c9b5642 // indirect

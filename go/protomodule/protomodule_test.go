@@ -29,9 +29,8 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 	"google.golang.org/protobuf/types/known/anypb"
-	any "google.golang.org/protobuf/types/known/anypb"
 
-	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
+	pb "github.com/stripe/skycfg/internal/test_proto"
 )
 
 func init() {
@@ -658,7 +657,7 @@ func TestProtoToAnyV3(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	myAny := mustProtoMessage(t, val).(*any.Any)
+	myAny := mustProtoMessage(t, val).(*anypb.Any)
 
 	want := "type.googleapis.com/skycfg.test_proto.MessageV3"
 	if want != myAny.GetTypeUrl() {
@@ -751,7 +750,7 @@ func runSkycfgTests(t *testing.T, tests []skycfgTest, opts ...globalTestOption) 
 
 			if test.wantType != "" {
 				if val.Type() != test.wantType {
-					t.Fatalf("Expected type\nwanted: %t\ngot   : %t", test.wantType, val.Type())
+					t.Fatalf("Expected type\nwanted: %s\ngot   : %s", test.wantType, val.Type())
 				}
 			}
 		})

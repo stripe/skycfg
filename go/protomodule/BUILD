@@ -33,19 +33,21 @@ go_library(
 go_test(
     name = "protomodule_test",
     srcs = [
-        "protomodule_test.go",
         "protomodule_message_test.go",
+        "protomodule_test.go",
     ],
     embed = [":protomodule"],
     deps = [
-        "//:skycfg",
-        "//internal/testdata/test_proto:test_proto_go_proto",
+        "//internal/test_proto:test_proto_go_proto",
         "@net_starlark_go//resolve",
         "@net_starlark_go//starlark",
         "@net_starlark_go//starlarkstruct",
         "@net_starlark_go//syntax",
+        "@org_golang_google_protobuf//encoding/prototext",
+        "@org_golang_google_protobuf//proto",
+        "@org_golang_google_protobuf//reflect/protoreflect",
         "@org_golang_google_protobuf//reflect/protoregistry",
-        "@org_golang_google_protobuf//types/descriptorpb",
         "@org_golang_google_protobuf//types/known/anypb",
+        "@org_golang_google_protobuf//types/known/wrapperspb",
     ],
 )

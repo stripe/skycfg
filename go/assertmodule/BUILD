@@ -18,9 +18,7 @@ go_library(
 go_test(
     name = "assertmodule_test",
     size = "small",
-    srcs = [
-        "assert_test.go",
-    ],
+    srcs = ["assert_test.go"],
     embed = [":assertmodule"],
     deps = [
         "@net_starlark_go//starlark",

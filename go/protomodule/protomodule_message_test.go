@@ -28,7 +28,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
-	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
+	pb "github.com/stripe/skycfg/internal/test_proto"
 )
 
 func TestMessageAttrNames(t *testing.T) {

@@ -12,6 +12,7 @@ jobs:
     strategy:
       matrix:
         go:
+          # Keep minimum version up to date with go.mod
           - series: "1.22"
             version: "1.22.12"
           - series: "1.23"
