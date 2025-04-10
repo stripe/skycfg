@@ -25,10 +25,10 @@ import (
 
 	"go.starlark.net/starlark"
 	"google.golang.org/protobuf/proto"
-	wrappers "google.golang.org/protobuf/types/known/wrapperspb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/stripe/skycfg"
-	pb "github.com/stripe/skycfg/internal/testdata/test_proto"
+	pb "github.com/stripe/skycfg/internal/test_proto"
 )
 
 var testFiles = map[string]string{
@@ -465,18 +465,18 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			expExecErr: false,
 			expProtos: []proto.Message{
 				&pb.MessageV3{
-					F_BoolValue:   &wrappers.BoolValue{Value: true},
-					F_StringValue: &wrappers.StringValue{Value: "something"},
-					F_DoubleValue: &wrappers.DoubleValue{Value: 3110.4120},
-					F_Int32Value:  &wrappers.Int32Value{Value: 110},
-					F_Int64Value:  &wrappers.Int64Value{Value: 2148483647},
-					F_BytesValue:  &wrappers.BytesValue{Value: []byte("foo/bar/baz")},
-					F_Uint32Value: &wrappers.UInt32Value{Value: 4294967295},
-					F_Uint64Value: &wrappers.UInt64Value{Value: 8294967295},
-					R_StringValue: []*wrappers.StringValue{
-						&wrappers.StringValue{Value: "s1"},
-						&wrappers.StringValue{Value: "s2"},
-						&wrappers.StringValue{Value: "s3"},
+					F_BoolValue:   &wrapperspb.BoolValue{Value: true},
+					F_StringValue: &wrapperspb.StringValue{Value: "something"},
+					F_DoubleValue: &wrapperspb.DoubleValue{Value: 3110.4120},
+					F_Int32Value:  &wrapperspb.Int32Value{Value: 110},
+					F_Int64Value:  &wrapperspb.Int64Value{Value: 2148483647},
+					F_BytesValue:  &wrapperspb.BytesValue{Value: []byte("foo/bar/baz")},
+					F_Uint32Value: &wrapperspb.UInt32Value{Value: 4294967295},
+					F_Uint64Value: &wrapperspb.UInt64Value{Value: 8294967295},
+					R_StringValue: []*wrapperspb.StringValue{
+						&wrapperspb.StringValue{Value: "s1"},
+						&wrapperspb.StringValue{Value: "s2"},
+						&wrapperspb.StringValue{Value: "s3"},
 					},
 				},
 			},
@@ -863,7 +863,7 @@ func TestSkycfgTesting(t *testing.T) {
 
 	tests := config.Tests()
 	if len(tests) != len(cases) {
-		t.Error("Expected %d tests but found %d", len(cases), len(tests))
+		t.Errorf("Expected %d tests but found %d", len(cases), len(tests))
 	}
 
 	for _, test := range tests {

@@ -167,6 +167,21 @@ $ ./test-skycfg
 
 We welcome contributions from the community. For small simple changes, go ahead and [open a pull request](https://github.com/stripe/skycfg/compare). Larger changes should start out in the issue tracker, so we can make sure they fit into the roadmap. Changes to the Starlark language itself (such as new primitive types or syntax) should be applied to https://github.com/google/starlark-go.
 
+Bazel is the officially supported build system for skycfg. To regenerate BUILD files, run:
+
+```bash
+$ bazel run //:gazelle
+$ bazel run //:gazelle -- update-repos # if there are go.mod/go.sum changes
+```
+
+However, the `go` toolchain is unofficially supported as well. To get started:
+
+```bash
+$ go install google.golang.org/protobuf/cmd/protoc-gen-go
+$ go generate ./...
+$ go test ./...
+```
+
 ## Stability
 
 Skycfg depends on internal details of the go-protobuf generated code, and as such may need to be updated to work with future versions of go-protobuf. We will release Skycfg v1.0 after all dependencies on go-protobuf implementation details have been fixed, which will be after the "api-v2" branch lands in a stable release of go-protobuf.
