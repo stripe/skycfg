@@ -171,7 +171,7 @@ Bazel is the officially supported build system for skycfg. To regenerate BUILD f
 
 ```bash
 $ bazel run //:gazelle
-$ bazel run //:gazelle -- update-repos # if there are go.mod/go.sum changes
+$ bazel run //:gazelle-update-repos # if there are go.mod changes
 ```
 
 However, the `go` toolchain is unofficially supported as well. To get started:

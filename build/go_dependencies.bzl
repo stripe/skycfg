@@ -32,18 +32,6 @@ def go_dependencies():
         version = "v0.5.5",
     )
     go_repository(
-        name = "com_github_kisielk_errcheck",
-        importpath = "github.com/kisielk/errcheck",
-        sum = "h1:reN85Pxc5larApoH1keMBiu2GWtPqXQ1nc9gx+jOU+E=",
-        version = "v1.2.0",
-    )
-    go_repository(
-        name = "com_github_kisielk_gotool",
-        importpath = "github.com/kisielk/gotool",
-        sum = "h1:AV2c/EiW3KqPNT9ZKl07ehoAGi4C5/01Cfbblndcapg=",
-        version = "v1.0.0",
-    )
-    go_repository(
         name = "com_github_spaolacci_murmur3",
         importpath = "github.com/spaolacci/murmur3",
         sum = "h1:7c1g84S4BPRrfL5Xrdp6fOJ206sU9y293DDHaoy0bLI=",
@@ -78,13 +66,6 @@ def go_dependencies():
         importpath = "golang.org/x/sys",
         sum = "h1:B6caxRw+hozq68X2MY7jEpZh/cr4/aHLv9xU8Kkadrw=",
         version = "v0.0.0-20200803210538-64077c9b5642",
-    )
-
-    go_repository(
-        name = "org_golang_x_tools",
-        importpath = "golang.org/x/tools",
-        sum = "h1:NIou6eNFigscvKJmsbyez16S2cIS6idossORlFtSt2E=",
-        version = "v0.0.0-20181030221726-6c7e314b6563",
     )
     go_repository(
         name = "org_golang_x_xerrors",

@@ -41,3 +41,13 @@ go_test(
 )
 
 gazelle(name = "gazelle")
+
+gazelle(
+    name = "gazelle-update-repos",
+    args = [
+        "-from_file=go.mod",
+        "-to_macro=build/go_dependencies.bzl%go_dependencies",
+        "-prune",
+    ],
+    command = "update-repos",
+)
