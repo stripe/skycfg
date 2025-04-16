@@ -27,6 +27,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"go.starlark.net/starlark"
@@ -162,6 +163,7 @@ type loadOptions struct {
 	globals       starlark.StringDict
 	fileReader    FileReader
 	protoRegistry unstableProtoRegistryV2
+	loadCache     *loadCache
 }
 
 type fnLoadOption func(*loadOptions)
@@ -186,6 +188,33 @@ func WithFileReader(r FileReader) LoadOption {
 	}
 	return fnLoadOption(func(opts *loadOptions) {
 		opts.fileReader = r
+	})
+}
+
+// A LoadCache is an object that can be shared between several different calls to [Load],
+// in order to avoid loading the same skycfg file multiple times. See [WithLoadCache].
+//
+// Sharing a LoadCache is only meaningful if compatible [FileReader]s are used.
+//
+// The zero LoadCache is empty and ready to use. A LoadCache must not be copied after first use.
+// The same LoadCache is safe for use with concurrent [Load] calls.
+type LoadCache struct {
+	cache loadCache
+}
+
+type loadCache struct {
+	sync.Map // filename (string) -> *cacheEntry
+}
+
+// WithLoadCache applies a given [LoadCache] for this call to [Load].
+// If a skycfg file has been loaded before on a call to [Load] with the same
+// [LoadCache], the cached value will be used instead of reloading the file.
+func WithLoadCache(cache *LoadCache) LoadOption {
+	if cache == nil {
+		panic("WithLoadCache: nil LoadCache")
+	}
+	return fnLoadOption(func(opts *loadOptions) {
+		opts.loadCache = &cache.cache
 	})
 }
 
@@ -318,43 +347,20 @@ func Load(ctx context.Context, filename string, opts ...LoadOption) (*Config, er
 	}, nil
 }
 
+type cacheEntry struct {
+	globals starlark.StringDict
+	err     error
+}
+
 func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark.StringDict, []*Test, error) {
 	reader := opts.fileReader
 
-	type cacheEntry struct {
-		globals starlark.StringDict
-		err     error
+	cache := opts.loadCache
+	if cache == nil {
+		cache = &loadCache{}
 	}
-	cache := make(map[string]*cacheEntry)
-	tests := []*Test{}
-
-	load := func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error) {
-		var fromPath string
-		if thread.CallStackDepth() > 0 {
-			fromPath = thread.CallFrame(0).Pos.Filename()
-		}
-		modulePath, err := reader.Resolve(ctx, moduleName, fromPath)
-		if err != nil {
-			return nil, err
-		}
-
-		e, ok := cache[modulePath]
-		if e != nil {
-			return e.globals, e.err
-		}
-		if ok {
-			return nil, fmt.Errorf("cycle in load graph")
-		}
-		moduleSource, err := reader.ReadFile(ctx, modulePath)
-		if err != nil {
-			cache[modulePath] = &cacheEntry{nil, err}
-			return nil, err
-		}
-
-		cache[modulePath] = nil
-		globals, err := starlark.ExecFile(thread, modulePath, moduleSource, opts.globals)
-		cache[modulePath] = &cacheEntry{globals, err}
-
+	var tests []*Test
+	addTests := func(globals starlark.StringDict) {
 		for name, val := range globals {
 			if !strings.HasPrefix(name, "test_") {
 				continue
@@ -365,6 +371,54 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 				})
 			}
 		}
+	}
+
+	loadCalled := make(map[string]struct{}) // used for cycle detection
+	load := func(thread *starlark.Thread, moduleName string) (starlark.StringDict, error) {
+		var fromPath string
+		if thread.CallStackDepth() > 0 {
+			fromPath = thread.CallFrame(0).Pos.Filename()
+		}
+		modulePath, err := reader.Resolve(ctx, moduleName, fromPath)
+		if err != nil {
+			return nil, err
+		}
+
+		if ei, ok := cache.Load(modulePath); ok {
+			e := ei.(*cacheEntry)
+			// Add tests as long as this file hasn't been seen in the top-level load,
+			// even if the module is cached.
+			if _, ok := loadCalled[modulePath]; !ok {
+				addTests(e.globals)
+				loadCalled[modulePath] = struct{}{}
+			}
+			return e.globals, e.err
+		}
+		if _, ok := loadCalled[modulePath]; ok {
+			return nil, fmt.Errorf("cycle in load graph")
+		}
+		loadCalled[modulePath] = struct{}{}
+
+		moduleSource, err := reader.ReadFile(ctx, modulePath)
+		if err != nil {
+			// Make sure to use the existing value in the cache if it already exists.
+			// This can happen if there are two ExecFile calls happening concurrently.
+			// This ensures consistency in case the other load succeeded.
+			ei, _ := cache.LoadOrStore(modulePath, &cacheEntry{nil, err})
+			e := ei.(*cacheEntry)
+			addTests(e.globals)
+			return e.globals, err
+		}
+
+		globals, err := starlark.ExecFile(thread, modulePath, moduleSource, opts.globals)
+		if ei, loaded := cache.LoadOrStore(modulePath, &cacheEntry{globals, err}); loaded {
+			// Make sure to use the existing value in the cache if it already exists.
+			// This can happen if there are two ExecFile calls happening concurrently.
+			// This ensures a single copy of the file is used, achieving maximal memory savings.
+			e := ei.(*cacheEntry)
+			globals, err = e.globals, e.err
+		}
+		addTests(globals)
 		return globals, err
 	}
 	thread := &starlark.Thread{

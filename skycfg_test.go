@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 
@@ -34,6 +35,7 @@ import (
 var testFiles = map[string]string{
 	"test1.sky": `
 load("test2.sky", "helper2")
+load("test3.sky", "helper3")
 
 test_proto = proto.package("skycfg.test_proto")
 
@@ -55,6 +57,7 @@ def main(ctx):
 	msg.f_int64 = helper1()
 	msg.f_string = json.encode(helper2(ctx))
 	msg.r_string.append(ctx.vars["var_key"])
+	helper3(ctx)
 
 	return [msg]
 `,
@@ -94,6 +97,9 @@ def helper3(ctx):
 		"key1": "value1",
 		"key2": url.encode_query({"key3": "value3"}),
 	}
+
+def test_helper3(t):
+	pass
 `,
 	"test4.sky": `
 # Bad load
@@ -331,10 +337,23 @@ def main(ctx, f_int64):
 	msg.f_int64 = f_int64
 	return [msg]
 `,
+	"cycle_1.sky": `
+load("cycle_2.sky", "hello")
+
+def main(ctx):
+	return hello
+`,
+	"cycle_2.sky": `
+load("cycle_1.sky", "main")
+
+hello = main(None)
+`,
 }
 
 // testLoader is a simple loader that loads files from the testFiles map.
-type testLoader struct{}
+type testLoader struct {
+	HiddenFiles map[string]bool // pretend files in this map don't exist
+}
 
 func (loader *testLoader) Resolve(ctx context.Context, name, fromPath string) (string, error) {
 	return name, nil
@@ -342,7 +361,9 @@ func (loader *testLoader) Resolve(ctx context.Context, name, fromPath string) (s
 
 func (loader *testLoader) ReadFile(ctx context.Context, path string) ([]byte, error) {
 	if source, ok := testFiles[path]; ok {
-		return []byte(source), nil
+		if !loader.HiddenFiles[path] {
+			return []byte(source), nil
+		}
 	}
 	return nil, fmt.Errorf("File %s not found", path)
 }
@@ -361,10 +382,11 @@ type ExecSkycfg func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.
 
 func runTestCases(t *testing.T, testCases []endToEndTestCase, execSkycfg ExecSkycfg) {
 	loader := &testLoader{}
+	var cache skycfg.LoadCache
 	ctx := context.Background()
 
 	for _, testCase := range testCases {
-		config, err := skycfg.Load(ctx, testCase.fileToLoad, skycfg.WithFileReader(loader))
+		config, err := skycfg.Load(ctx, testCase.fileToLoad, skycfg.WithFileReader(loader), skycfg.WithLoadCache(&cache))
 		if testCase.expLoadErr {
 			if err == nil {
 				t.Error(
@@ -588,6 +610,16 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			caseName:   "value err when attempting to autobox a too large int into UInt32Value",
 			fileToLoad: "test11.sky",
 			expExecErr: true,
+		},
+		endToEndTestCase{
+			caseName:   "load cycle 1",
+			fileToLoad: "cycle_1.sky",
+			expLoadErr: true,
+		},
+		endToEndTestCase{
+			caseName:   "load cycle 2",
+			fileToLoad: "cycle_2.sky",
+			expLoadErr: true,
 		},
 	}
 
@@ -826,6 +858,81 @@ func TestSkycfgWithPositionalArgs(t *testing.T) {
 	runTestCases(t, testCases, fnExecSkycfg)
 }
 
+func getTestNames(cfg *skycfg.Config) []string {
+	var names []string
+	for _, test := range cfg.Tests() {
+		names = append(names, test.Name())
+	}
+	sort.Slice(names, func(i, j int) bool { return names[i] < names[j] })
+	return names
+}
+
+func TestSkycfgCache(t *testing.T) {
+	// Parameterize the test to run with and without cache,
+	// in order to assert common behavior.
+	for _, usingCache := range [...]bool{false, true} {
+		name := "not using cache"
+		if usingCache {
+			name = "using cache"
+		}
+
+		t.Run(name, func(t *testing.T) {
+			var cache skycfg.LoadCache
+			loader := &testLoader{}
+			ctx := context.Background()
+
+			loadOpts := []skycfg.LoadOption{skycfg.WithFileReader(loader)}
+			if usingCache {
+				loadOpts = append(loadOpts, skycfg.WithLoadCache(&cache))
+			}
+
+			cfg, err := skycfg.Load(ctx, "test3.sky", loadOpts...)
+			if err != nil {
+				t.Fatal("Unexpected error loading test3.sky", err)
+			}
+
+			if usingCache {
+				keys := cache.KeysForTestOnly()
+				expected := "[test3.sky]"
+				if fmt.Sprint(keys) != expected {
+					t.Errorf("Expected cache to contain %v, got %v", expected, keys)
+				}
+			}
+
+			testNames := getTestNames(cfg)
+			expectedTests := "[test_helper3]"
+			if fmt.Sprint(testNames) != expectedTests {
+				t.Errorf("Expected to find tests %v, got %v", expectedTests, testNames)
+			}
+
+			if usingCache {
+				// Now that test3 has been loaded and cached, we should never try to load it again.
+				loader.HiddenFiles = map[string]bool{"test3.sky": true}
+			}
+
+			cfg, err = skycfg.Load(ctx, "test1.sky", skycfg.WithFileReader(loader), skycfg.WithLoadCache(&cache))
+			if err != nil {
+				t.Fatal("Unexpected error loading test1.sky", err)
+			}
+
+			if usingCache {
+				keys := cache.KeysForTestOnly()
+				expected := "[test1.sky test2.sky test3.sky]"
+				if fmt.Sprint(keys) != expected {
+					t.Errorf("Expected cache to contain %v, got %v", expected, keys)
+				}
+			}
+
+			// Even though we may not have loaded test3.sky again, its tests should still be included.
+			testNames = getTestNames(cfg)
+			expectedTests = "[test_helper1 test_helper2 test_helper2_errors test_helper2_fails test_helper3 test_main]"
+			if fmt.Sprint(testNames) != expectedTests {
+				t.Errorf("Expected to find tests %v, got %v", expectedTests, testNames)
+			}
+		})
+	}
+}
+
 // testTestCase is a test case for the testing functionality built into skycfg
 type testTestCase struct {
 	errors     bool
@@ -855,6 +962,9 @@ func TestSkycfgTesting(t *testing.T) {
 		},
 		"test_helper2_errors": testTestCase{
 			errors: true,
+		},
+		"test_helper3": testTestCase{
+			passes: true,
 		},
 		"test_main": testTestCase{
 			passes: true,

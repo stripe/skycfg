@@ -30,9 +30,12 @@ go_library(
 go_test(
     name = "skycfg_test",
     size = "small",
-    srcs = ["skycfg_test.go"],
+    srcs = [
+        "export_test.go",
+        "skycfg_test.go",
+    ],
+    embed = [":skycfg"],
     deps = [
-        ":skycfg",
         "//internal/test_proto:test_proto_go_proto",
         "@net_starlark_go//starlark",
         "@org_golang_google_protobuf//proto",
