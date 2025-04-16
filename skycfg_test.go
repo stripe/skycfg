@@ -910,7 +910,7 @@ func TestSkycfgCache(t *testing.T) {
 				loader.HiddenFiles = map[string]bool{"test3.sky": true}
 			}
 
-			cfg, err = skycfg.Load(ctx, "test1.sky", skycfg.WithFileReader(loader), skycfg.WithLoadCache(&cache))
+			cfg, err = skycfg.Load(ctx, "test1.sky", loadOpts...)
 			if err != nil {
 				t.Fatal("Unexpected error loading test1.sky", err)
 			}
