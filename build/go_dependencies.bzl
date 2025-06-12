@@ -52,8 +52,8 @@ def go_dependencies():
     go_repository(
         name = "net_starlark_go",
         importpath = "go.starlark.net",
-        sum = "h1:yHUzJ1WfcdR1oOafytJ6K1/ntYwnEIXICNVzHb+FzbA=",
-        version = "v0.0.0-20201204201740-42d4f566359b",
+        sum = "h1:7QkXlIVjYdSsKKSGnM0jQdw/2w9W5qcFDGTc00zKqgI=",
+        version = "v0.0.0-20230925163745-10651d5192ab",
     )
     go_repository(
         name = "org_golang_google_protobuf",
@@ -68,8 +68,14 @@ def go_dependencies():
         version = "v0.1.0",
     )
     go_repository(
+        name = "org_golang_x_term",
+        importpath = "golang.org/x/term",
+        sum = "h1:CBpWXWQpIRjzmkkA+M7q9Fqnwd2mZr3AFqexg8YTfoM=",
+        version = "v0.0.0-20220526004731-065cf7ba2467",
+    )
+    go_repository(
         name = "org_golang_x_xerrors",
         importpath = "golang.org/x/xerrors",
-        sum = "h1:E7g+9GITq07hpfrRu66IVDexMakfv52eLZ2CXBWiKr4=",
-        version = "v0.0.0-20191204190536-9bdfabe68543",
+        sum = "h1:go1bK/D/BFZV2I8cIQd1NKEZ+0owSTG1fDTci4IqFcE=",
+        version = "v0.0.0-20200804184101-5ec99f83aff1",
     )

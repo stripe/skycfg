@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"go.starlark.net/starlark"
+	"go.starlark.net/syntax"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
@@ -348,6 +349,19 @@ load("cycle_1.sky", "main")
 
 hello = main(None)
 `,
+	"file_using_top_level_for.sky": `
+for a in range(2):
+	print(a)
+
+def main(ctx):
+	return []
+`,
+	"file_using_set.sky": `
+print(len(set([1, 1, 2])))
+
+def main(ctx):
+	return []
+`,
 }
 
 // testLoader is a simple loader that loads files from the testFiles map.
@@ -375,6 +389,7 @@ type endToEndTestCase struct {
 	expLoadErr  bool
 	expExecErr  bool
 	expProtos   []proto.Message
+	loadOptions []skycfg.LoadOption
 	execOptions []skycfg.ExecOption
 }
 
@@ -386,7 +401,16 @@ func runTestCases(t *testing.T, testCases []endToEndTestCase, execSkycfg ExecSky
 	ctx := context.Background()
 
 	for _, testCase := range testCases {
-		config, err := skycfg.Load(ctx, testCase.fileToLoad, skycfg.WithFileReader(loader), skycfg.WithLoadCache(&cache))
+		loadOpts := []skycfg.LoadOption{skycfg.WithFileReader(loader)}
+
+		if testCase.loadOptions != nil {
+			loadOpts = append(loadOpts, testCase.loadOptions...)
+		} else {
+			// Only exercise load cache if the test case didn't provide special loadOptions.
+			loadOpts = append(loadOpts, skycfg.WithLoadCache(&cache))
+		}
+
+		config, err := skycfg.Load(ctx, testCase.fileToLoad, loadOpts...)
 		if testCase.expLoadErr {
 			if err == nil {
 				t.Error(
@@ -620,6 +644,26 @@ func TestSkycfgEndToEnd(t *testing.T) {
 			caseName:   "load cycle 2",
 			fileToLoad: "cycle_2.sky",
 			expLoadErr: true,
+		},
+		endToEndTestCase{
+			caseName:   "top-level for not working by default",
+			fileToLoad: "file_using_top_level_for.sky",
+			expLoadErr: true,
+		},
+		endToEndTestCase{
+			caseName:    "top-level for working",
+			fileToLoad:  "file_using_top_level_for.sky",
+			loadOptions: []skycfg.LoadOption{skycfg.WithFileOptions(&syntax.FileOptions{TopLevelControl: true})},
+		},
+		endToEndTestCase{
+			caseName:   "set not working",
+			fileToLoad: "file_using_set.sky",
+			expLoadErr: true,
+		},
+		endToEndTestCase{
+			caseName:    "set working",
+			fileToLoad:  "file_using_set.sky",
+			loadOptions: []skycfg.LoadOption{skycfg.WithFileOptions(&syntax.FileOptions{Set: true})},
 		},
 	}
 
