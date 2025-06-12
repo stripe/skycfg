@@ -30,9 +30,10 @@ import (
 	"sync"
 	"time"
 
+	starlarkjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkjson"
 	"go.starlark.net/starlarkstruct"
+	"go.starlark.net/syntax"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
@@ -161,6 +162,7 @@ type LoadOption interface {
 type loadOptions struct {
 	commonOptions
 	globals       starlark.StringDict
+	fileOptions   *syntax.FileOptions
 	fileReader    FileReader
 	protoRegistry unstableProtoRegistryV2
 	loadCache     *loadCache
@@ -177,6 +179,17 @@ func WithGlobals(globals starlark.StringDict) LoadOption {
 		for key, value := range globals {
 			opts.globals[key] = value
 		}
+	})
+}
+
+// WithFileOptions changes the Starlark syntax options used when executing the Skycfg file.
+// By default, we use [syntax.LegacyFileOptions].
+func WithFileOptions(fileOpts *syntax.FileOptions) LoadOption {
+	if fileOpts == nil {
+		panic("WithFileOptions: nil fileOpts")
+	}
+	return fnLoadOption(func(opts *loadOptions) {
+		opts.fileOptions = fileOpts
 	})
 }
 
@@ -249,7 +262,7 @@ func WithProtoRegistry(r unstableProtoRegistryV2) LoadOption {
 }
 
 // UnstablePredeclaredModules returns a Starlark string dictionary with
-// predeclared Skycfg modules which can be used in starlark.ExecFile.
+// predeclared Skycfg modules which can be used in [starlark.ExecFileOptions].
 //
 // Takes in unstableProtoRegistry as param (if nil will use standard proto
 // registry).
@@ -355,6 +368,11 @@ type cacheEntry struct {
 func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark.StringDict, []*Test, error) {
 	reader := opts.fileReader
 
+	starlarkFileOptions := opts.fileOptions
+	if starlarkFileOptions == nil {
+		starlarkFileOptions = syntax.LegacyFileOptions()
+	}
+
 	cache := opts.loadCache
 	if cache == nil {
 		cache = &loadCache{}
@@ -402,7 +420,7 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 		moduleSource, err := reader.ReadFile(ctx, modulePath)
 		if err != nil {
 			// Make sure to use the existing value in the cache if it already exists.
-			// This can happen if there are two ExecFile calls happening concurrently.
+			// This can happen if there are two ExecFileOptions calls happening concurrently.
 			// This ensures consistency in case the other load succeeded.
 			ei, _ := cache.LoadOrStore(modulePath, &cacheEntry{nil, err})
 			e := ei.(*cacheEntry)
@@ -410,10 +428,10 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 			return e.globals, err
 		}
 
-		globals, err := starlark.ExecFile(thread, modulePath, moduleSource, opts.globals)
+		globals, err := starlark.ExecFileOptions(starlarkFileOptions, thread, modulePath, moduleSource, opts.globals)
 		if ei, loaded := cache.LoadOrStore(modulePath, &cacheEntry{globals, err}); loaded {
 			// Make sure to use the existing value in the cache if it already exists.
-			// This can happen if there are two ExecFile calls happening concurrently.
+			// This can happen if there are two ExecFileOptions calls happening concurrently.
 			// This ensures a single copy of the file is used, achieving maximal memory savings.
 			e := ei.(*cacheEntry)
 			globals, err = e.globals, e.err

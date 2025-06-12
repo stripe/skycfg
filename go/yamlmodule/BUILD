@@ -10,8 +10,8 @@ go_library(
     visibility = ["//visibility:public"],
     deps = [
         "@in_gopkg_yaml_v2//:yaml_v2",
+        "@net_starlark_go//lib/json",
         "@net_starlark_go//starlark",
-        "@net_starlark_go//starlarkjson",
         "@net_starlark_go//starlarkstruct",
     ],
 )

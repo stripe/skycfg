@@ -24,6 +24,7 @@ import (
 	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
+	"go.starlark.net/syntax"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -774,7 +775,8 @@ func evalFunc(src string, globals starlark.StringDict) (starlark.Value, error) {
 		}
 	}
 
-	globals, err := starlark.ExecFile(&starlark.Thread{}, "", src, globals)
+	thread := &starlark.Thread{}
+	globals, err := starlark.ExecFileOptions(&syntax.FileOptions{}, thread, "", src, globals)
 	if err != nil {
 		return nil, err
 	}
@@ -786,7 +788,7 @@ func evalFunc(src string, globals starlark.StringDict) (starlark.Value, error) {
 	if !ok {
 		return nil, errors.New("Fun not callable")
 	}
-	return starlark.Call(&starlark.Thread{}, fun, nil, nil)
+	return starlark.Call(thread, fun, nil, nil)
 }
 
 func mustProtoMessage(t *testing.T, v starlark.Value) proto.Message {

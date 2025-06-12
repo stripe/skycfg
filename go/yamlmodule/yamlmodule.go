@@ -22,26 +22,26 @@ import (
 	"fmt"
 	"reflect"
 
+	starlarkjson "go.starlark.net/lib/json"
 	"go.starlark.net/starlark"
-	"go.starlark.net/starlarkjson"
 	"go.starlark.net/starlarkstruct"
 	yaml "gopkg.in/yaml.v2"
 )
 
 // NewModule returns a Starlark module of YAML-related functions.
 //
-//  yaml = module(
-//    decode,
-//    encode,
-//  )
+//	yaml = module(
+//	  decode,
+//	  encode,
+//	)
 //
 // See `docs/modules.asciidoc` for details on the API of each function.
 func NewModule() *starlarkstruct.Module {
 	return &starlarkstruct.Module{
 		Name: "yaml",
 		Members: starlark.StringDict{
-			"decode":    starlark.NewBuiltin("yaml.decode", yamlDecode),
-			"encode":    starlark.NewBuiltin("yaml.encode", yamlEncode),
+			"decode": starlark.NewBuiltin("yaml.decode", yamlDecode),
+			"encode": starlark.NewBuiltin("yaml.encode", yamlEncode),
 		},
 	}
 }
