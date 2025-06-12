@@ -39,6 +39,13 @@ http_archive(
     ],
 )
 
+# We have to load this before gazelle_dependencies to resolve conflicts in
+# favor of our own deps, such as go.starlark.net.
+# gazelle:repository_macro build/go_dependencies.bzl%go_dependencies
+load("//build:go_dependencies.bzl", "go_dependencies")
+
+go_dependencies()
+
 load("@bazel_gazelle//:deps.bzl", "gazelle_dependencies")
 
 gazelle_dependencies()
@@ -73,8 +80,3 @@ load(
 rules_proto_dependencies()
 
 rules_proto_toolchains()
-
-# gazelle:repository_macro build/go_dependencies.bzl%go_dependencies
-load("//build:go_dependencies.bzl", "go_dependencies")
-
-go_dependencies()
