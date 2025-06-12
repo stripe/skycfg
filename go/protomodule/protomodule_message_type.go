@@ -145,7 +145,9 @@ func (t *protoMessageType) CallInternal(
 	if err != nil {
 		return nil, err
 	}
-	for attrName, starlarkValue := range parsedKwargs {
+	for _, kwarg := range kwargs {
+		attrName := kwarg[0].(starlark.String).GoString()
+		starlarkValue := parsedKwargs[attrName]
 		if *starlarkValue == nil {
 			continue
 		}
