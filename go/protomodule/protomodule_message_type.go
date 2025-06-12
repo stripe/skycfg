@@ -145,6 +145,11 @@ func (t *protoMessageType) CallInternal(
 	if err != nil {
 		return nil, err
 	}
+
+	// Make sure to iterate over the user-provided kwargs in order.
+	// Ordering matters for oneof branches, since setting one resets all others.
+	// This order is what Python protobuf library uses.
+	// See https://github.com/stripe/skycfg/issues/103
 	for _, kwarg := range kwargs {
 		attrName := kwarg[0].(starlark.String).GoString()
 		starlarkValue := parsedKwargs[attrName]
