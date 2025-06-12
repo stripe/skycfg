@@ -110,7 +110,8 @@ func TestMessageV2(t *testing.T) {
 		),
 		f_toplevel_enum = proto.package("skycfg.test_proto").ToplevelEnumV2.TOPLEVEL_ENUM_V2_B,
 		f_nested_enum = proto.package("skycfg.test_proto").MessageV2.NestedEnum.NESTED_ENUM_B,
-		f_oneof_a = "string in oneof",
+		f_oneof_a = "string in oneof but overridden",
+		f_oneof_b = "string in oneof",
 		f_bytes = "also some string",
 
 		# Autoboxed wrappers
@@ -158,7 +159,7 @@ func TestMessageV2(t *testing.T) {
 		},
 		FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_B.Enum(),
 		FNestedEnum:   pb.MessageV2_NESTED_ENUM_B.Enum(),
-		FOneof:        &pb.MessageV2_FOneofA{"string in oneof"},
+		FOneof:        &pb.MessageV2_FOneofB{FOneofB: "string in oneof"},
 		FBytes:        []byte("also some string"),
 		F_BoolValue:   &wrapperspb.BoolValue{Value: true},
 		F_StringValue: &wrapperspb.StringValue{Value: "something"},
@@ -203,8 +204,8 @@ func TestMessageV2(t *testing.T) {
 		"f_nested_submsg": `<skycfg.test_proto.MessageV2.NestedMessage f_string:"nested_submsg val" >`,
 		"f_toplevel_enum": `<skycfg.test_proto.ToplevelEnumV2 TOPLEVEL_ENUM_V2_B=1>`,
 		"f_nested_enum":   `<skycfg.test_proto.MessageV2.NestedEnum NESTED_ENUM_B=1>`,
-		"f_oneof_a":       `"string in oneof"`,
-		"f_oneof_b":       `""`,
+		"f_oneof_a":       `""`,
+		"f_oneof_b":       `"string in oneof"`,
 		"f_bytes":         `"also some string"`,
 		"f_BoolValue":     `<google.protobuf.BoolValue value:true>`,
 		"f_StringValue":   `<google.protobuf.StringValue value:"something">`,
@@ -262,7 +263,8 @@ func TestMessageV3(t *testing.T) {
 		),
 		f_toplevel_enum = proto.package("skycfg.test_proto").ToplevelEnumV3.TOPLEVEL_ENUM_V3_B,
 		f_nested_enum = proto.package("skycfg.test_proto").MessageV3.NestedEnum.NESTED_ENUM_B,
-		f_oneof_a = "string in oneof",
+		f_oneof_a = "string in oneof but overridden",
+		f_oneof_b = "string in oneof",
 		f_bytes = "also some string",
 
 		# Autoboxed wrappers
@@ -320,7 +322,7 @@ func TestMessageV3(t *testing.T) {
 		},
 		FToplevelEnum: pb.ToplevelEnumV3_TOPLEVEL_ENUM_V3_B,
 		FNestedEnum:   pb.MessageV3_NESTED_ENUM_B,
-		FOneof:        &pb.MessageV3_FOneofA{"string in oneof"},
+		FOneof:        &pb.MessageV3_FOneofB{FOneofB: "string in oneof"},
 		FBytes:        []byte("also some string"),
 		F_BoolValue:   &wrapperspb.BoolValue{Value: true},
 		F_StringValue: &wrapperspb.StringValue{Value: "something"},
@@ -372,8 +374,8 @@ func TestMessageV3(t *testing.T) {
 		"f_nested_submsg": `<skycfg.test_proto.MessageV3.NestedMessage f_string:"nested_submsg val">`,
 		"f_toplevel_enum": `<skycfg.test_proto.ToplevelEnumV3 TOPLEVEL_ENUM_V3_B=1>`,
 		"f_nested_enum":   `<skycfg.test_proto.MessageV3.NestedEnum NESTED_ENUM_B=1>`,
-		"f_oneof_a":       `"string in oneof"`,
-		"f_oneof_b":       `""`,
+		"f_oneof_a":       `""`,
+		"f_oneof_b":       `"string in oneof"`,
 		"f_bytes":         `"also some string"`,
 		"f_BoolValue":     `<google.protobuf.BoolValue value:true>`,
 		"f_StringValue":   `<google.protobuf.StringValue value:"something">`,
@@ -829,7 +831,7 @@ func TestProtoMergeV2(t *testing.T) {
 		},
 		FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_B.Enum(),
 		FNestedEnum:   pb.MessageV2_NESTED_ENUM_B.Enum(),
-		FOneof:        &pb.MessageV2_FOneofA{"f_oneof_a msg1 string in oneof"},
+		FOneof:        &pb.MessageV2_FOneofA{FOneofA: "f_oneof_a msg1 string in oneof"},
 		FBytes:        []byte("f_bytes msg1"),
 	}
 	msg2 := &pb.MessageV2{
@@ -859,7 +861,7 @@ func TestProtoMergeV2(t *testing.T) {
 		},
 		FToplevelEnum: pb.ToplevelEnumV2_TOPLEVEL_ENUM_V2_B.Enum(),
 		FNestedEnum:   pb.MessageV2_NESTED_ENUM_B.Enum(),
-		FOneof:        &pb.MessageV2_FOneofB{"f_oneof_b msg2 string in oneof"},
+		FOneof:        &pb.MessageV2_FOneofB{FOneofB: "f_oneof_b msg2 string in oneof"},
 		FBytes:        []byte("f_bytes msg2"),
 	}
 	proto.Merge(msg1, msg2)
@@ -962,7 +964,7 @@ func TestProtoMergeV3(t *testing.T) {
 		},
 		FToplevelEnum: pb.ToplevelEnumV3_TOPLEVEL_ENUM_V3_B,
 		FNestedEnum:   pb.MessageV3_NESTED_ENUM_B,
-		FOneof:        &pb.MessageV3_FOneofA{"f_oneof_a msg1 string in oneof"},
+		FOneof:        &pb.MessageV3_FOneofA{FOneofA: "f_oneof_a msg1 string in oneof"},
 		FBytes:        []byte("f_bytes msg1"),
 	}
 	msg2 := &pb.MessageV3{
@@ -992,7 +994,7 @@ func TestProtoMergeV3(t *testing.T) {
 		},
 		FToplevelEnum: pb.ToplevelEnumV3_TOPLEVEL_ENUM_V3_B,
 		FNestedEnum:   pb.MessageV3_NESTED_ENUM_B,
-		FOneof:        &pb.MessageV3_FOneofB{"f_oneof_b msg2 string in oneof"},
+		FOneof:        &pb.MessageV3_FOneofB{FOneofB: "f_oneof_b msg2 string in oneof"},
 		FBytes:        []byte("f_bytes msg2"),
 	}
 	proto.Merge(msg1, msg2)
