@@ -9,7 +9,10 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 go_library(
     name = "skycfg",
-    srcs = ["skycfg.go"],
+    srcs = [
+        "reader.go",
+        "skycfg.go",
+    ],
     importpath = "github.com/stripe/skycfg",
     visibility = ["//visibility:public"],
     deps = [
