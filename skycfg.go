@@ -22,7 +22,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"path"
 	"path/filepath"
@@ -69,8 +69,10 @@ type localFileReader struct {
 	root string
 }
 
-// LocalFileReader returns a FileReader that resolves and loads files from
+// LocalFileReader returns a [FileReader] that resolves and loads files from
 // within a given filesystem directory.
+// LocalFileReader expects paths in load() to always use '/' as the separator,
+// regardless of the operating system's native path separator.
 func LocalFileReader(root string) FileReader {
 	if root == "" {
 		panic("LocalFileReader: empty root path")
@@ -90,7 +92,28 @@ func (r *localFileReader) Resolve(ctx context.Context, name, fromPath string) (s
 }
 
 func (r *localFileReader) ReadFile(ctx context.Context, path string) ([]byte, error) {
-	return ioutil.ReadFile(path)
+	return os.ReadFile(path)
+}
+
+type fsFileReader struct {
+	fsys fs.FS
+}
+
+// FSFileReader returns a [FileReader] that loads files from the given [fs.FS].
+// Path resolution on a FSFileReader is just [path.Clean].
+func FSFileReader(fsys fs.FS) FileReader {
+	if fsys == nil {
+		panic("FSFileReader: nil fsys")
+	}
+	return &fsFileReader{fsys: fsys}
+}
+
+func (r *fsFileReader) Resolve(ctx context.Context, name, fromPath string) (string, error) {
+	return path.Clean(name), nil
+}
+
+func (r *fsFileReader) ReadFile(ctx context.Context, path string) ([]byte, error) {
+	return fs.ReadFile(r.fsys, path)
 }
 
 // NewProtoMessage returns a Starlark value representing the given Protobuf

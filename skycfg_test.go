@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"testing/fstest"
 
 	"go.starlark.net/starlark"
 	"go.starlark.net/syntax"
@@ -60,6 +61,16 @@ def main(ctx):
 	msg.r_string.append(ctx.vars["var_key"])
 	helper3(ctx)
 
+	return [msg]
+`,
+	"test1_weird_paths.sky": `
+load(".////test2.sky", "helper2")
+
+test_proto = proto.package("skycfg.test_proto")
+
+def main(ctx):
+	msg = test_proto.MessageV2()
+	msg.f_string = json.encode(helper2(ctx))
 	return [msg]
 `,
 	"test2.sky": `
@@ -364,6 +375,16 @@ def main(ctx):
 `,
 }
 
+func testFSLoader() skycfg.FileReader {
+	mapFS := fstest.MapFS{}
+	for path, content := range testFiles {
+		mapFS[path] = &fstest.MapFile{
+			Data: []byte(content),
+		}
+	}
+	return skycfg.FSFileReader(mapFS)
+}
+
 // testLoader is a simple loader that loads files from the testFiles map.
 type testLoader struct {
 	HiddenFiles map[string]bool // pretend files in this map don't exist
@@ -385,6 +406,7 @@ func (loader *testLoader) ReadFile(ctx context.Context, path string) ([]byte, er
 type endToEndTestCase struct {
 	caseName    string
 	fileToLoad  string
+	useFSLoader bool // use testFSLoader instead of testLoader
 	vars        starlark.StringDict
 	expLoadErr  bool
 	expExecErr  bool
@@ -396,17 +418,25 @@ type endToEndTestCase struct {
 type ExecSkycfg func(config *skycfg.Config, testCase endToEndTestCase) ([]proto.Message, error)
 
 func runTestCases(t *testing.T, testCases []endToEndTestCase, execSkycfg ExecSkycfg) {
-	loader := &testLoader{}
+	testLoader := &testLoader{}
+	fsLoader := testFSLoader()
 	var cache skycfg.LoadCache
 	ctx := context.Background()
 
 	for _, testCase := range testCases {
-		loadOpts := []skycfg.LoadOption{skycfg.WithFileReader(loader)}
+		loader := skycfg.FileReader(testLoader)
+		if testCase.useFSLoader {
+			loader = fsLoader
+		}
 
+		loadOpts := []skycfg.LoadOption{skycfg.WithFileReader(loader)}
 		if testCase.loadOptions != nil {
 			loadOpts = append(loadOpts, testCase.loadOptions...)
-		} else {
-			// Only exercise load cache if the test case didn't provide special loadOptions.
+		}
+
+		// Exercise load cache if the test case didn't provide special loadOptions
+		// and we're using standard file loader.
+		if testCase.loadOptions == nil && !testCase.useFSLoader {
 			loadOpts = append(loadOpts, skycfg.WithLoadCache(&cache))
 		}
 
@@ -486,6 +516,29 @@ func TestSkycfgEndToEnd(t *testing.T) {
 						`{"key1":"value1","key2":"key3=value3","key4":{"key5":"value5","var_key":"var_value"}}`,
 					),
 					RString: []string{"var_value"},
+				},
+			},
+		},
+		endToEndTestCase{
+			caseName:   "weird path fails",
+			fileToLoad: "test1_weird_paths.sky",
+			vars: starlark.StringDict{
+				"var_key": starlark.String("var_value"),
+			},
+			expLoadErr: true,
+		},
+		endToEndTestCase{
+			caseName:    "weird path works with FSFileReader",
+			fileToLoad:  "test1_weird_paths.sky",
+			useFSLoader: true,
+			vars: starlark.StringDict{
+				"var_key": starlark.String("var_value"),
+			},
+			expProtos: []proto.Message{
+				&pb.MessageV2{
+					FString: proto.String(
+						`{"key1":"value1","key2":"key3=value3","key4":{"key5":"value5","var_key":"var_value"}}`,
+					),
 				},
 			},
 		},
