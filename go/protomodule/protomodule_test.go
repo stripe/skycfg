@@ -21,7 +21,6 @@ import (
 	"strings"
 	"testing"
 
-	"go.starlark.net/resolve"
 	"go.starlark.net/starlark"
 	"go.starlark.net/starlarkstruct"
 	"go.starlark.net/syntax"
@@ -33,10 +32,6 @@ import (
 
 	pb "github.com/stripe/skycfg/internal/test_proto"
 )
-
-func init() {
-	resolve.AllowFloat = true
-}
 
 func newRegistry() *protoregistry.Types {
 	registry := &protoregistry.Types{}

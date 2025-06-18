@@ -4,7 +4,7 @@ go 1.22
 
 require (
 	github.com/spaolacci/murmur3 v1.1.0
-	go.starlark.net v0.0.0-20230925163745-10651d5192ab
+	go.starlark.net v0.0.0-20240517230649-3792562d0b7f
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/yaml.v2 v2.2.1
 )
