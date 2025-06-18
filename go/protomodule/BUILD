@@ -3,6 +3,7 @@ load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "protomodule",
     srcs = [
+        "iter.go",
         "merge.go",
         "protomodule.go",
         "protomodule_enum.go",
@@ -33,13 +34,13 @@ go_library(
 go_test(
     name = "protomodule_test",
     srcs = [
+        "iter_test.go",
         "protomodule_message_test.go",
         "protomodule_test.go",
     ],
     embed = [":protomodule"],
     deps = [
         "//internal/test_proto:test_proto_go_proto",
-        "@net_starlark_go//resolve",
         "@net_starlark_go//starlark",
         "@net_starlark_go//starlarkstruct",
         "@net_starlark_go//syntax",

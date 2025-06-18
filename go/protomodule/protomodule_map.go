@@ -43,6 +43,7 @@ type protoMap struct {
 
 var _ starlark.Value = (*protoMap)(nil)
 var _ starlark.Iterable = (*protoMap)(nil)
+var _ starlark.IterableMapping = (*protoMap)(nil)
 var _ starlark.Sequence = (*protoMap)(nil)
 var _ starlark.HasAttrs = (*protoMap)(nil)
 var _ starlark.HasSetKey = (*protoMap)(nil)
