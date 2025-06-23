@@ -1,0 +1,32 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "debugger",
+    srcs = [
+        "debugger.go",
+        "frame.go",
+        "vars.go",
+    ],
+    importpath = "github.com/stripe/skycfg/debugger",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@net_starlark_go//repl",
+        "@net_starlark_go//starlark",
+        "@net_starlark_go//syntax",
+    ],
+)
+
+go_test(
+    name = "debugger_test",
+    srcs = [
+        "debugger_test.go",
+        "example_test.go",
+        "export_test.go",
+    ],
+    embed = [":debugger"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@net_starlark_go//starlark",
+        "@net_starlark_go//syntax",
+    ],
+)

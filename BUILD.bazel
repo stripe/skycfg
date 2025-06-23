@@ -2,7 +2,7 @@ load("@bazel_gazelle//:def.bzl", "gazelle")
 load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
 
 # gazelle:prefix github.com/stripe/skycfg
-# gazelle:build_file_name BUILD,BUILD.bazel
+# gazelle:build_file_name BUILD.bazel,BUILD
 # gazelle:go_naming_convention import
 
 # gazelle:exclude _examples
