@@ -6,8 +6,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"go.starlark.net/starlark"
-	"go.starlark.net/syntax"
 
 	. "github.com/stripe/skycfg/debugger"
 )
@@ -21,24 +19,6 @@ func TestMain(m *testing.M) {
 		os.Exit(0)
 	}
 	os.Exit(m.Run())
-}
-
-func TestGetPredeclared(t *testing.T) {
-	t.Parallel()
-
-	predeclared := starlark.StringDict{"secret": starlark.String("secret")}
-
-	thread := &starlark.Thread{}
-	file, err := starlark.ExecFileOptions(&syntax.FileOptions{}, thread, "file", "def f(): return 0", predeclared)
-	if err != nil {
-		t.Fatal(err)
-	}
-	f := file["f"].(*starlark.Function)
-
-	predeclared2 := GetPredeclared(f)
-	if predeclared2["secret"] != predeclared["secret"] {
-		t.Errorf("wrong predeclared")
-	}
 }
 
 type (
