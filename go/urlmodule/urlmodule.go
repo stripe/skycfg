@@ -27,11 +27,11 @@ import (
 
 // NewModule returns a Starlark module of URL-related functions.
 //
-//  url = module(
-//    encode_query,
-//  )
+//	url = module(
+//	    encode_query,
+//	)
 //
-// See `docs/modules.asciidoc` for details on the API of each function.
+// See docs/modules.asciidoc for details on the API of each function.
 func NewModule() *starlarkstruct.Module {
 	return &starlarkstruct.Module{
 		Name: "url",

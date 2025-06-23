@@ -32,20 +32,21 @@ import (
 
 // NewModule returns a Starlark module of Protobuf-related functions.
 //
-//  proto = module(
-//    clear,
-//    clone,
-//    decode_any,
-//    decode_json,
-//    decode_text,
-//    encode_any,
-//    encode_json,
-//    encode_text,
-//    merge,
-//    set_defaults,
-//  )
+//	proto = module(
+//	    clear,
+//	    clone,
+//	    decode_any,
+//	    decode_json,
+//	    decode_text,
+//	    encode_any,
+//	    encode_json,
+//	    encode_text,
+//	    merge,
+//	    package,
+//	    set_defaults,
+//	)
 //
-// See `docs/modules.asciidoc` for details on the API of each function.
+// See docs/modules.asciidoc for details on the API of each function.
 func NewModule(registry *protoregistry.Types) *starlarkstruct.Module {
 	return &starlarkstruct.Module{
 		Name: "proto",

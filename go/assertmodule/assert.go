@@ -26,9 +26,9 @@ import (
 )
 
 // AssertModule contains assertion functions.
-// The *TestContext returned can be used to track assertion failures.
-// assert.* functions from this module will mutate the *TestContext.
-// After execution is complete, TestContext.Failures will be non-empty
+// The [TestContext] returned can be used to track assertion failures.
+// assert.* functions from this module will mutate the [TestContext].
+// After execution is complete, [TestContext.Failures] will be non-empty
 // if any of the assertions failed, and also contain details about the failures.
 func AssertModule() *TestContext {
 	ctx := &TestContext{}

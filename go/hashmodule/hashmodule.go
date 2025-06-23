@@ -32,21 +32,21 @@ import (
 
 // NewModule returns a Starlark module of common hash functions.
 //
-// hash = module(
-//	md5,
-//	sha1,
-//	sha256,
-//	murmur3,
-// )
+//	hash = module(
+//	    md5,
+//	    sha1,
+//	    sha256,
+//	    murmur3,
+//	)
 //
 // See `docs/modules.asciidoc` for details on the API of each function.
 func NewModule() *starlarkstruct.Module {
 	return &starlarkstruct.Module{
 		Name: "hash",
 		Members: starlark.StringDict{
-			"md5":    starlark.NewBuiltin("hash.md5", fnHash(md5.New)),
-			"sha1":   starlark.NewBuiltin("hash.sha1", fnHash(sha1.New)),
-			"sha256": starlark.NewBuiltin("hash.sha256", fnHash(sha256.New)),
+			"md5":     starlark.NewBuiltin("hash.md5", fnHash(md5.New)),
+			"sha1":    starlark.NewBuiltin("hash.sha1", fnHash(sha1.New)),
+			"sha256":  starlark.NewBuiltin("hash.sha256", fnHash(sha256.New)),
 			"murmur3": starlark.NewBuiltin("hash.murmur3", fnHash64(murmur3.New64)),
 		},
 	}

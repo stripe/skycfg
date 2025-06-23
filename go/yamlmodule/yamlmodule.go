@@ -31,11 +31,11 @@ import (
 // NewModule returns a Starlark module of YAML-related functions.
 //
 //	yaml = module(
-//	  decode,
-//	  encode,
+//	    decode,
+//	    encode,
 //	)
 //
-// See `docs/modules.asciidoc` for details on the API of each function.
+// See docs/modules.asciidoc for details on the API of each function.
 func NewModule() *starlarkstruct.Module {
 	return &starlarkstruct.Module{
 		Name: "yaml",

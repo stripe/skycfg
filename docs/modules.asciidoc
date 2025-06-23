@@ -14,6 +14,7 @@ Index:
  * `<<hash.md5>>`
  * `<<hash.sha1>>`
  * `<<hash.sha256>>`
+ * `<<hash.murmur3>>`
 
 === `hash.md5`
 [[hash.md5]]
@@ -41,6 +42,15 @@ The https://en.wikipedia.org/wiki/SHA-2[SHA-256] hash function.
 
  >>> hash.sha256("hello")
  "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+ >>>
+
+=== `hash.murmur3`
+[[hash.murmur3]]
+
+The https://en.wikipedia.org/wiki/MurmurHash#MurmurHash3[MurmurHash3] hash function.
+
+ >>> hash.murmur3("test murmur3 string")
+ "91dd87efc613eb2c"
  >>>
 
 == url

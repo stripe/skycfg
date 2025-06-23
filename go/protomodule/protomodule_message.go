@@ -29,9 +29,9 @@ import (
 )
 
 // NewMessage returns a Starlark value representing the given Protobuf
-// message. It can be returned back to a proto.Message() via AsProtoMessage().
+// message. It can be turned back to a [proto.Message] with [AsProtoMessage].
 //
-// NewMessage copies the input proto.Message and therefore does not modify it
+// NewMessage copies the input [proto.Message] and therefore does not modify it.
 func NewMessage(msg proto.Message) (*protoMessage, error) {
 	msgReflect := msg.ProtoReflect()
 
@@ -74,8 +74,8 @@ func NewMessage(msg proto.Message) (*protoMessage, error) {
 }
 
 // AsProtoMessage returns a Protobuf message underlying the given Starlark
-// value, which must have been created by NewProtoMessage(). Returns
-// (_, false) if the value is not a valid message.
+// value, which must have been created by [NewMessage]. Returns
+// nil, false if the value is not a valid message.
 func AsProtoMessage(v starlark.Value) (proto.Message, bool) {
 	if msg, ok := v.(*protoMessage); ok {
 		return msg.toProtoMessage(), true
@@ -83,12 +83,12 @@ func AsProtoMessage(v starlark.Value) (proto.Message, bool) {
 	return nil, false
 }
 
-// protoMessage exposes an underlying protobuf message as a starlark.Value
+// protoMessage exposes an underlying protobuf message as a [starlark.Value].
 //
-// Internally protoMessage tracks the message state on the `fields` map. Values
-// are stored as starlark.Value through execution and only converted into a
-// proto.Message through AsProtoMessage. Any fields set to starlark.None or the
-// default field value will be ignored when returning to a protobuf.Message
+// Internally protoMessage tracks the message state on the fields map. Values
+// are stored as [starlark.Value] through execution and only converted into a
+// [proto.Message] through [AsProtoMessage]. Any fields set to [starlark.None] or the
+// default field value will be ignored when returning to a [proto.Message].
 type protoMessage struct {
 	// A copy of the underlying is stored so AsProtoMessage can construct a new object
 	msg     proto.Message

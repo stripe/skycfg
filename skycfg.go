@@ -50,14 +50,14 @@ const (
 )
 
 // NewProtoMessage returns a Starlark value representing the given Protobuf
-// message. It can be returned back to a proto.Message() via AsProtoMessage().
+// message. It can be turned back to a [proto.Message] with [AsProtoMessage].
 func NewProtoMessage(msg proto.Message) (starlark.Value, error) {
 	return protomodule.NewMessage(msg)
 }
 
 // AsProtoMessage returns a Protobuf message underlying the given Starlark
-// value, which must have been created by NewProtoMessage(). Returns
-// (_, false) if the value is not a valid message.
+// value, which must have been created by [NewProtoMessage]. Returns
+// nil, false if the value is not a valid message.
 func AsProtoMessage(v starlark.Value) (proto.Message, bool) {
 	return protomodule.AsProtoMessage(v)
 }
@@ -81,7 +81,7 @@ type commonOptions struct {
 	logOutput io.Writer
 }
 
-// A CommonOption is an option that can be applied to Load, Config.Main, and Test.Run.
+// A CommonOption is an option that can be applied to [Load], [Config.Main], and [Test.Run].
 type CommonOption interface {
 	LoadOption
 	ExecOption
@@ -103,7 +103,7 @@ func (fn fnCommonOption) applyTest(opts *testOptions) {
 }
 
 // WithLogOutput changes the destination of print() function calls in Starlark code.
-// If nil, os.Stderr will be used.
+// If nil, [os.Stderr] will be used.
 func WithLogOutput(w io.Writer) CommonOption {
 	return fnCommonOption(func(opts *commonOptions) {
 		opts.logOutput = w
@@ -111,6 +111,7 @@ func WithLogOutput(w io.Writer) CommonOption {
 }
 
 // A LoadOption adjusts details of how Skycfg configs are loaded.
+// Every [CommonOption] is also a LoadOption.
 type LoadOption interface {
 	applyLoad(*loadOptions)
 }
@@ -163,7 +164,7 @@ func WithFileReader(r FileReader) LoadOption {
 // A LoadCache is an object that can be shared between several different calls to [Load],
 // in order to avoid loading the same skycfg file multiple times. See [WithLoadCache].
 //
-// Sharing a LoadCache is only meaningful if compatible [FileReader]s are used.
+// Sharing a LoadCache is only meaningful if compatible FileReaders are used.
 //
 // The zero LoadCache is empty and ready to use. A LoadCache must not be copied after first use.
 // The same LoadCache is safe for use with concurrent [Load] calls.
@@ -404,13 +405,13 @@ func loadImpl(ctx context.Context, opts *loadOptions, filename string) (starlark
 	return locals, tests, err
 }
 
-// Filename returns the original filename passed to Load().
+// Filename returns the original filename passed to [Load].
 func (c *Config) Filename() string {
 	return c.filename
 }
 
 // Globals returns the set of variables in the Starlark global namespace,
-// including any added to the config loader by WithGlobals().
+// including any added to the config loader by [WithGlobals].
 func (c *Config) Globals() starlark.StringDict {
 	return c.globals
 }
@@ -423,6 +424,7 @@ func (c *Config) Locals() starlark.StringDict {
 
 // An ExecOption adjusts details of how a Skycfg config's main function is
 // executed.
+// Every [CommonOption] is also an ExecOption.
 type ExecOption interface {
 	applyExec(*execOptions)
 }
@@ -439,7 +441,7 @@ type fnExecOption func(*execOptions)
 
 func (fn fnExecOption) applyExec(opts *execOptions) { fn(opts) }
 
-// WithVars adds key:value pairs to the ctx.vars dict passed to main().
+// WithVars adds key–value pairs to the ctx.vars dict passed to main().
 func WithVars(vars starlark.StringDict) ExecOption {
 	return fnExecOption(func(opts *execOptions) {
 		for key, value := range vars {
@@ -449,6 +451,7 @@ func WithVars(vars starlark.StringDict) ExecOption {
 }
 
 // WithEntryPoint changes the name of the Skycfg function to execute.
+// By default, the entry point is "main".
 func WithEntryPoint(name string) ExecOption {
 	return fnExecOption(func(opts *execOptions) {
 		opts.funcName = name
@@ -462,7 +465,7 @@ func WithFlattenLists() ExecOption {
 	})
 }
 
-// WithPositionalArgs adds positional arguments in addition to ctx.
+// WithPositionalArgs adds positional arguments to pass to the entry point function in addition to ctx.
 func WithPositionalArgs(args ...starlark.Value) ExecOption {
 	return fnExecOption(func(opts *execOptions) {
 		opts.extraArgs = args
@@ -571,8 +574,8 @@ func (t *Test) Name() string {
 	return t.callable.Name()
 }
 
-// An TestOption adjusts details of how a Skycfg config's test functions are
-// executed.
+// An TestOption adjusts details of how a Skycfg config's test functions are executed.
+// Every [CommonOption] is also a TestOption.
 type TestOption interface {
 	applyTest(*testOptions)
 }
@@ -586,7 +589,7 @@ type fnTestOption func(*testOptions)
 
 func (fn fnTestOption) applyTest(opts *testOptions) { fn(opts) }
 
-// WithTestVars adds key:value pairs to the ctx.vars dict passed to tests
+// WithTestVars adds key–value pairs to the ctx.vars dict passed to tests.
 func WithTestVars(vars starlark.StringDict) TestOption {
 	return fnTestOption(func(opts *testOptions) {
 		for key, value := range vars {
@@ -595,7 +598,7 @@ func WithTestVars(vars starlark.StringDict) TestOption {
 	})
 }
 
-// Run actually executes a test. It returns a TestResult if the test completes (even if it fails)
+// Run actually executes a test. It returns a [TestResult] if the test completes (even if it fails).
 // The error return value will only be non-nil if the test execution itself errors.
 func (t *Test) Run(ctx context.Context, opts ...TestOption) (*TestResult, error) {
 	parsedOpts := &testOptions{

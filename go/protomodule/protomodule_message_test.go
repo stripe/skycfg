@@ -340,10 +340,10 @@ func TestMessageV3(t *testing.T) {
 		F_Any: mustMarshalAny(t, &pb.MessageV3{
 			F_Any: mustMarshalAny(t, &pb.MessageV3{FString: "string in f_Any"}),
 		}),
-		Pass: true,
+		Pass:   true,
 		Return: true,
 		Assert: true,
-		Safe_: true,
+		Safe_:  true,
 	}
 	checkProtoEqual(t, wantMsg, gotMsg)
 
