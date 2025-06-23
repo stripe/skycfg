@@ -82,8 +82,8 @@ def go_dependencies():
     go_repository(
         name = "net_starlark_go",
         importpath = "go.starlark.net",
-        sum = "h1:APah0oANPHA7m/z/1Ngcccc+BEO/dmLcEfrzHAQQY6w=",
-        version = "v0.0.0-20240517230649-3792562d0b7f",
+        sum = "h1:4JpDHHQ9BoQWTX4F6nMBaZCz7OePNidT395Mr6ipbP8=",
+        version = "v0.0.0-20250623223156-8bf495bf4e9a",
     )
     go_repository(
         name = "org_golang_google_protobuf",

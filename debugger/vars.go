@@ -73,7 +73,7 @@ func (s *debugSession) makeVars() *starlark.Builtin {
 		}
 
 		fmt.Printf("All predeclared symbols in frame %d (%s):\n", s.currentDepth, starFunc.Name())
-		for name, val := range getPredeclared(starFunc) {
+		for name, val := range starFunc.Module().Predeclared() {
 			if val == nil {
 				fmt.Printf("  %s = <uninitialized>\n", name)
 			} else {

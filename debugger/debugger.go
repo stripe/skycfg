@@ -238,7 +238,7 @@ func (s *debugSession) populateCurrentFrameVars() {
 	// Add variables the function has access to, in visibility order.
 
 	// Add predeclared symbols.
-	for name, val := range getPredeclared(starFunc) {
+	for name, val := range starFunc.Module().Predeclared() {
 		if val != nil {
 			s.currentFrameVars[name] = val
 		}
@@ -416,26 +416,6 @@ func (s *debugSession) checkForModifications(fn, operation string) {
 		}
 		fmt.Printf(" before %s. Please note that any variable modification in the debugger will not be visible from the original Starlark program\n", operation)
 	}
-}
-
-// Unlike fn.Globals(), starlark.Function doesn't provide a way to get the predeclared symbols.
-// (Note: Starlark's predeclared symbols are what skycfg.WithGlobals maps to).
-// We resort to reflection to get them from unexported fields.
-// See https://github.com/google/starlark-go/issues/594
-func getPredeclared(fn *starlark.Function) starlark.StringDict {
-	fVal := reflect.ValueOf(fn)
-
-	// fn.module
-	module := fVal.Elem().FieldByName("module")
-	// module is from an unexported field, so we need to use NewAt to remove the readonly bit.
-	module = reflect.NewAt(module.Type(), module.Addr().UnsafePointer()).Elem()
-
-	// fn.module.predeclared
-	predeclared := module.Elem().FieldByName("predeclared")
-	// predeclared is from an unexported field, so we need to use NewAt to remove the readonly bit.
-	predeclared = reflect.NewAt(predeclared.Type(), predeclared.Addr().UnsafePointer()).Elem()
-
-	return predeclared.Interface().(starlark.StringDict)
 }
 
 // getFrameOffset returns the highest stack frame (i.e., most recent call)
