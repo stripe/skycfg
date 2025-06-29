@@ -12,11 +12,11 @@ import (
 	"github.com/stripe/skycfg/debugger"
 )
 
-func Example() {
-	// Run this example with
-	//
-	//	go test -c github.com/stripe/skycfg/debugger && ./debugger.test -example
+// Run this example with
+//
+//	go test -c github.com/stripe/skycfg/debugger && ./debugger.test -example
 
+func Example() {
 	prog := `
 def g():
     closure = [42]
@@ -45,7 +45,7 @@ func printWithPos(thread *starlark.Thread, msg string) {
 		pos := thread.CallFrame(1).Pos
 		fmt.Fprintf(&buf, "[%v] ", pos)
 	}
-	fmt.Fprintf(&buf, msg)
+	buf.WriteString(msg)
 	buf.WriteByte('\n')
 
 	io.Copy(os.Stdout, &buf)
