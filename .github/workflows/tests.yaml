@@ -1,24 +1,31 @@
 name: "Tests"
 on: ["push", "pull_request"]
 
+# This disables all permissions since we don't use GITHUB_TOKEN.
+permissions: {}
+
 jobs:
   tests:
     name: "Go ${{ matrix.go.series }}"
     runs-on: "ubuntu-24.04"
     container:
-      image: "docker://gcr.io/bazel-public/bazel:7.4.1"
+      # Keep this in sync with .bazelversion
+      image: "docker://gcr.io/bazel-public/bazel:8.4.2"
       options: --user root
 
     strategy:
       matrix:
         go:
           # Keep minimum version up to date with go.mod
+          # Keep version list in sync with MODULE.bazel
           - series: "1.22"
             version: "1.22.12"
           - series: "1.23"
-            version: "1.23.8"
+            version: "1.23.12"
           - series: "1.24"
-            version: "1.24.2"
+            version: "1.24.9"
+          - series: "1.25"
+            version: "1.25.3"
 
     steps:
       - uses: "actions/checkout@v4"
@@ -28,11 +35,6 @@ jobs:
         with:
           path: cache
           key: "go=${{ matrix.go.version }};v=1"
-      - name: "Prepare workspace"
-        run: |
-          echo "GO_VERSION = '${GO_VERSION}'" > src/build/go_version.bzl
-        env:
-          GO_VERSION: ${{ matrix.go.version }}
       - name: "bazel test //..."
         working-directory: src
         run: |
@@ -45,4 +47,7 @@ jobs:
             --test_verbose_timeout_warnings \
             --repository_cache="$GITHUB_WORKSPACE/cache/repository_cache" \
             --disk_cache="$GITHUB_WORKSPACE/cache/disk_cache" \
+            --@io_bazel_rules_go//go/toolchain:sdk_version="$GO_VERSION" \
             //...
+        env:
+          GO_VERSION: ${{ matrix.go.version }}
