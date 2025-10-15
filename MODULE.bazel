@@ -1,0 +1,52 @@
+module(name = "com_github_stripe_skycfg")
+
+bazel_dep(
+    name = "rules_go",
+    version = "0.57.0",
+    repo_name = "io_bazel_rules_go",
+)
+bazel_dep(
+    name = "gazelle",
+    version = "0.45.0",
+    repo_name = "bazel_gazelle",
+)
+
+# NB: this must come BEFORE bazel_dep(name = "protobuf") because they register the from-source toolchain,
+# and the first registration wins.
+bazel_dep(
+    name = "toolchains_protoc",
+    version = "0.5.0",
+)
+
+protobuf_version = "30.1"
+
+protoc = use_extension("@toolchains_protoc//protoc:extensions.bzl", "protoc")
+protoc.toolchain(
+    version = "v" + protobuf_version,
+)
+
+bazel_dep(
+    name = "protobuf",
+    version = protobuf_version,
+    repo_name = "com_google_protobuf",
+)
+
+go_sdk = use_extension("@io_bazel_rules_go//go:extensions.bzl", "go_sdk")
+
+# Always put the minimum version first, as that is the default Go version used by Bazel.
+# Keep version list in sync with .github/workflows/tests.yaml and go.mod.
+go_sdk.download(version = "1.22.12")
+go_sdk.download(version = "1.23.12")
+go_sdk.download(version = "1.24.9")
+go_sdk.download(version = "1.25.3")
+
+go_deps = use_extension("@bazel_gazelle//:extensions.bzl", "go_deps")
+go_deps.from_file(go_mod = "//:go.mod")
+use_repo(
+    go_deps,
+    "com_github_spaolacci_murmur3",
+    "com_github_stretchr_testify",
+    "in_gopkg_yaml_v2",
+    "net_starlark_go",
+    "org_golang_google_protobuf",
+)
