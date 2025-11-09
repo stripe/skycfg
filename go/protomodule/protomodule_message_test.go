@@ -32,6 +32,8 @@ import (
 )
 
 func TestMessageAttrNames(t *testing.T) {
+	t.Parallel()
+
 	val, err := eval(`proto.package("skycfg.test_proto").MessageV3()`, nil)
 	if err != nil {
 		t.Fatal(err)
@@ -79,6 +81,8 @@ func TestMessageAttrNames(t *testing.T) {
 }
 
 func TestMessageV2(t *testing.T) {
+	t.Parallel()
+
 	val, err := eval(`proto.package("skycfg.test_proto").MessageV2(
 		f_int32 = 1010,
 		f_int64 = 1020,
@@ -232,6 +236,8 @@ func TestMessageV2(t *testing.T) {
 }
 
 func TestMessageV3(t *testing.T) {
+	t.Parallel()
+
 	val, err := eval(`proto.package("skycfg.test_proto").MessageV3(
 		f_int32 = 1010,
 		f_int64 = 1020,
@@ -340,10 +346,10 @@ func TestMessageV3(t *testing.T) {
 		F_Any: mustMarshalAny(t, &pb.MessageV3{
 			F_Any: mustMarshalAny(t, &pb.MessageV3{FString: "string in f_Any"}),
 		}),
-		Pass: true,
+		Pass:   true,
 		Return: true,
 		Assert: true,
-		Safe_: true,
+		Safe_:  true,
 	}
 	checkProtoEqual(t, wantMsg, gotMsg)
 
@@ -401,6 +407,8 @@ func TestMessageV3(t *testing.T) {
 }
 
 func TestAttrValidation(t *testing.T) {
+	t.Parallel()
+
 	globals := starlark.StringDict{
 		"pb": NewProtoPackage(newRegistry(), "skycfg.test_proto"),
 	}
@@ -565,6 +573,8 @@ func TestAttrValidation(t *testing.T) {
 }
 
 func TestProtoMessageString(t *testing.T) {
+	t.Parallel()
+
 	runSkycfgTests(t, []skycfgTest{
 		{
 			src: `proto.package("skycfg.test_proto").MessageV3(
@@ -576,6 +586,8 @@ func TestProtoMessageString(t *testing.T) {
 }
 
 func TestNestedMessages(t *testing.T) {
+	t.Parallel()
+
 	testPb := `proto.package("skycfg.test_proto").`
 
 	runSkycfgTests(t, []skycfgTest{
@@ -600,6 +612,8 @@ func TestNestedMessages(t *testing.T) {
 }
 
 func TestProtoComparisonEqual(t *testing.T) {
+	t.Parallel()
+
 	msg := &pb.MessageV2{
 		RString: []string{"a", "b", "c"},
 	}
@@ -620,6 +634,8 @@ func TestProtoComparisonEqual(t *testing.T) {
 }
 
 func TestProtoComparisonNotEqual(t *testing.T) {
+	t.Parallel()
+
 	msg := &pb.MessageV2{
 		RString: []string{"a", "b", "c"},
 	}
@@ -649,6 +665,8 @@ func TestProtoComparisonNotEqual(t *testing.T) {
 }
 
 func TestProtoSetDefaultV2(t *testing.T) {
+	t.Parallel()
+
 	var setInt int32 = 123
 	setString := "abc"
 	defaultString := "default_str"
@@ -709,6 +727,8 @@ func TestProtoSetDefaultV2(t *testing.T) {
 }
 
 func TestProtoClear(t *testing.T) {
+	t.Parallel()
+
 	runSkycfgTests(t, []skycfgTest{
 		{
 			name: "proto.clear V2",
@@ -737,6 +757,8 @@ func TestProtoClear(t *testing.T) {
 }
 
 func TestProtoMergeV2(t *testing.T) {
+	t.Parallel()
+
 	val, err := eval(`proto.merge(proto.package("skycfg.test_proto").MessageV2(
 		f_int32 = 1010,
 		f_uint32 = 1030,
@@ -870,6 +892,8 @@ func TestProtoMergeV2(t *testing.T) {
 }
 
 func TestProtoMergeV3(t *testing.T) {
+	t.Parallel()
+
 	val, err := eval(`proto.merge(proto.package("skycfg.test_proto").MessageV3(
 		f_int32 = 1010,
 		f_uint32 = 1030,
@@ -1003,6 +1027,8 @@ func TestProtoMergeV3(t *testing.T) {
 }
 
 func TestProtoMergeDiffTypes(t *testing.T) {
+	t.Parallel()
+
 	errorMsg := "proto.merge: types are not the same: got skycfg.test_proto.MessageV3 and skycfg.test_proto.MessageV2"
 	globals := starlark.StringDict{
 		"proto": NewModule(newRegistry()),
@@ -1017,29 +1043,184 @@ func TestProtoMergeDiffTypes(t *testing.T) {
 	}
 }
 
+func TestProtoFreeze_MessageV3(t *testing.T) {
+	t.Parallel()
+
+	// Use the same frozen value for all tests (which run in parallel)
+	// to try to induce a race.
+	emptyMessage, err := NewMessage(new(pb.MessageV3))
+	if err != nil {
+		t.Fatalf("NewMessage(new(MessageV3)): %v", err)
+	}
+	emptyMessage.Freeze()
+
+	runSkycfgTests(t, []skycfgTest{
+		{
+			name: "set scalar field",
+			srcFunc: `
+def fun():
+	pb = proto.package("skycfg.test_proto")
+	msg = pb.MessageV3()
+	msg.f_string = "foo"
+	msg.r_string.append("bar")
+	msg.map_submsg["key"] = pb.MessageV3(f_string="bar")
+	freeze(msg)
+
+	# these should be fine:
+	foo = msg.f_string
+	foo = msg.r_string[0]
+	foo = len(msg.r_submsg)
+	foo = msg.map_string.get("nonexistent_key")
+	foo = msg.map_submsg.setdefault("key", pb.MessageV3(f_string="baz"))
+
+	# but this should error:
+	msg.f_int32 = 42
+`,
+			wantErr: fmt.Errorf(`cannot set field "f_int32" of frozen message`),
+		},
+		{
+			name: "freeze lists",
+			srcFunc: `
+def fun():
+	if frozen_msg.r_string != frozen_msg.r_string:
+		fail("r_string != itself")
+	frozen_msg.r_string.append("foo")
+`,
+			wantErr: fmt.Errorf(`cannot append to frozen list`),
+		},
+		{
+			name: "freeze maps",
+			srcFunc: `
+def fun():
+	if frozen_msg.map_string != frozen_msg.map_string:
+		fail("map_string != itself")
+	frozen_msg.map_string["key"] = "value"
+`,
+			wantErr: fmt.Errorf(`cannot insert into frozen hash table`),
+		},
+		{
+			name:    "freeze clear",
+			src:     `proto.clear(frozen_msg)`,
+			wantErr: fmt.Errorf(`cannot clear frozen message`),
+		},
+		{
+			name:    "freeze merge",
+			src:     `proto.merge(frozen_msg, proto.package("skycfg.test_proto").MessageV3())`,
+			wantErr: fmt.Errorf(`cannot merge frozen message`),
+		},
+		{
+			name:    "freeze set_defaults",
+			src:     `proto.set_defaults(frozen_msg)`,
+			wantErr: fmt.Errorf(`cannot set field defaults of frozen message`),
+		},
+	}, withGlobals(starlark.StringDict{
+		"proto":      NewModule(newRegistry()),
+		"freeze":     freeze,
+		"frozen_msg": emptyMessage,
+	}))
+}
+
+func TestProtoFreeze_MessageV2(t *testing.T) {
+	t.Parallel()
+
+	// Use the same frozen value for all tests (which run in parallel)
+	// to try to induce a race.
+	emptyMessage, err := NewMessage(new(pb.MessageV2))
+	if err != nil {
+		t.Fatalf("NewMessage(new(MessageV2)): %v", err)
+	}
+	emptyMessage.Freeze()
+
+	runSkycfgTests(t, []skycfgTest{
+		{
+			name: "set scalar field",
+			srcFunc: `
+def fun():
+	pb = proto.package("skycfg.test_proto")
+	msg = pb.MessageV2()
+	msg.r_string.append("bar")
+	msg.map_submsg["key"] = pb.MessageV2(f_string="bar")
+	freeze(msg)
+
+	# these should be fine:
+	foo = msg.f_string
+	foo = msg.r_string[0]
+	foo = len(msg.r_submsg)
+	foo = msg.map_string.get("nonexistent_key")
+	foo = msg.map_submsg.setdefault("key", pb.MessageV2(f_string="baz"))
+
+	# but this should error:
+	msg.f_int32 = 42
+`,
+			wantErr: fmt.Errorf(`cannot set field "f_int32" of frozen message`),
+		},
+		{
+			name: "freeze lists",
+			srcFunc: `
+def fun():
+	if frozen_msg.r_string != frozen_msg.r_string:
+		fail("r_string != itself")
+	frozen_msg.r_string.append("foo")
+`,
+			wantErr: fmt.Errorf(`cannot append to frozen list`),
+		},
+		{
+			name: "freeze maps",
+			srcFunc: `
+def fun():
+	if frozen_msg.map_string != frozen_msg.map_string:
+		fail("map_string != itself")
+	frozen_msg.map_string["key"] = "value"
+`,
+			wantErr: fmt.Errorf(`cannot insert into frozen hash table`),
+		},
+		{
+			name:    "freeze clear",
+			src:     `proto.clear(frozen_msg)`,
+			wantErr: fmt.Errorf(`cannot clear frozen message`),
+		},
+		{
+			name:    "freeze merge",
+			src:     `proto.merge(frozen_msg, proto.package("skycfg.test_proto").MessageV2())`,
+			wantErr: fmt.Errorf(`cannot merge frozen message`),
+		},
+		{
+			name:    "freeze set_defaults",
+			src:     `proto.set_defaults(frozen_msg)`,
+			wantErr: fmt.Errorf(`cannot set field defaults of frozen message`),
+		},
+	}, withGlobals(starlark.StringDict{
+		"proto":      NewModule(newRegistry()),
+		"freeze":     freeze,
+		"frozen_msg": emptyMessage,
+	}))
+}
+
 // Pre 1.0 Skycfg allowed maps to be constructed with None values for proto2 (see protoMap.SetKey)
 func TestMapNoneCompatibility(t *testing.T) {
+	t.Parallel()
+
 	runSkycfgTests(t, []skycfgTest{
 		{
 			name: "Set map with None clears values",
 			srcFunc: `
 def fun():
-    pb = proto.package("skycfg.test_proto")
-    msg = pb.MessageV2()
-    m = {
-        "a": pb.MessageV2(),
-        "b": pb.MessageV2(),
-        "c": pb.MessageV2(),
-        "d": None,
-    }
-    msg.map_submsg = m
+	pb = proto.package("skycfg.test_proto")
+	msg = pb.MessageV2()
+	m = {
+		"a": pb.MessageV2(),
+		"b": pb.MessageV2(),
+		"c": pb.MessageV2(),
+		"d": None,
+	}
+	msg.map_submsg = m
 
-    m2 = msg.map_submsg
-    m2["b"] = None
-    m2.setdefault("e", None)
-    m2.update([("c", None)])
+	m2 = msg.map_submsg
+	m2["b"] = None
+	m2.setdefault("e", None)
+	m2.update([("c", None)])
 
-    return msg
+	return msg
 `,
 			want: &pb.MessageV2{
 				MapSubmsg: map[string]*pb.MessageV2{
@@ -1054,13 +1235,13 @@ def fun():
 			name: "Set a scalar value to None in proto2 works",
 			srcFunc: `
 def fun():
-    pb = proto.package("skycfg.test_proto")
-    msg = pb.MessageV2(
-	map_string = {
-	    "a": None
-        }
-    )
-    return msg
+	pb = proto.package("skycfg.test_proto")
+	msg = pb.MessageV2(
+		map_string = {
+			"a": None
+		}
+	)
+	return msg
 `,
 			want: &pb.MessageV2{
 				MapString: map[string]string{},
@@ -1070,13 +1251,13 @@ def fun():
 			name: "Set a scalar value to None in proto3 is not allowed",
 			srcFunc: `
 def fun():
-    pb = proto.package("skycfg.test_proto")
-    msg = pb.MessageV3(
-	map_string = {
-	    "a": None
-        }
-    )
-    return msg
+	pb = proto.package("skycfg.test_proto")
+	msg = pb.MessageV3(
+		map_string = {
+			"a": None
+		}
+	)
+	return msg
 `,
 			wantErr: fmt.Errorf(`TypeError: value None (type "NoneType") can't be assigned to type "string" in proto3 mode.`),
 		},
@@ -1087,15 +1268,15 @@ def fun():
 			name: "None and no copy on assignment mutates raw starlark dict",
 			srcFunc: `
 def fun():
-    pb = proto.package("skycfg.test_proto")
-    a = {
-        "ka": "va",
-        "ba": None,
-    }
-    msg = pb.MessageV2(
-	map_string = a
-    )
-    return a
+	pb = proto.package("skycfg.test_proto")
+	a = {
+		"ka": "va",
+		"ba": None,
+	}
+	msg = pb.MessageV2(
+		map_string = a,
+	)
+	return a
 `,
 			want: `{"ka": "va"}`,
 		},
@@ -1103,6 +1284,8 @@ def fun():
 }
 
 func TestUnsetProto2Fields(t *testing.T) {
+	t.Parallel()
+
 	// Proto v2 distinguishes between unset and set-to-empty.
 	runSkycfgTests(t, []skycfgTest{
 		{

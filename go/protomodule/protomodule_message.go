@@ -29,9 +29,9 @@ import (
 )
 
 // NewMessage returns a Starlark value representing the given Protobuf
-// message. It can be returned back to a proto.Message() via AsProtoMessage().
+// message. It can be returned back to a [proto.Message] via [AsProtoMessage].
 //
-// NewMessage copies the input proto.Message and therefore does not modify it
+// NewMessage copies the input [proto.Message] and therefore does not modify it
 func NewMessage(msg proto.Message) (*protoMessage, error) {
 	msgReflect := msg.ProtoReflect()
 
@@ -74,8 +74,8 @@ func NewMessage(msg proto.Message) (*protoMessage, error) {
 }
 
 // AsProtoMessage returns a Protobuf message underlying the given Starlark
-// value, which must have been created by NewProtoMessage(). Returns
-// (_, false) if the value is not a valid message.
+// value, which must have been created by [NewMessage].
+// Returns (_, false) if the value is not a valid message.
 func AsProtoMessage(v starlark.Value) (proto.Message, bool) {
 	if msg, ok := v.(*protoMessage); ok {
 		return msg.toProtoMessage(), true
@@ -187,15 +187,24 @@ func (msg *protoMessage) Attr(name string) (starlark.Value, error) {
 		return starlark.None, err
 	}
 
-	// For non-scalar values, set the value on access even if it is unset so
-	// use without initialization works.
-	//
-	// Example:
-	//   msg = MyProtoMessage()
-	//   msg.repeated_field.append("a")
-	//   # msg.repeated_field should be ["a"]
-	if fieldDesc.IsList() || fieldDesc.IsMap() || fieldDesc.Kind() == protoreflect.MessageKind {
-		msg.SetField(name, starlarkValue)
+	if msg.frozen {
+		// Technically we are allocating a new value every time, but identity is
+		// not observable through Starlark when the value is frozen, so it's fine.
+		starlarkValue.Freeze()
+	} else {
+		// For non-scalar values, set the value on access even if it is unset so
+		// use without initialization works.
+		//
+		// Example:
+		//   msg = MyProtoMessage()
+		//   msg.repeated_field.append("a")
+		//   # msg.repeated_field should be ["a"]
+		if fieldDesc.IsList() || fieldDesc.IsMap() || fieldDesc.Kind() == protoreflect.MessageKind {
+			err := msg.SetField(name, starlarkValue)
+			if err != nil {
+				return starlark.None, err
+			}
+		}
 	}
 
 	return starlarkValue, nil
@@ -228,7 +237,7 @@ func (msg *protoMessage) SetField(name string, val starlark.Value) error {
 		return fmt.Errorf("AttributeError: `%s' value has no field %q", msg.Type(), name)
 	}
 
-	if err := msg.CheckMutable("set field of"); err != nil {
+	if err := msg.CheckMutable(fmt.Sprintf("set field %q of", name)); err != nil {
 		return err
 	}
 
