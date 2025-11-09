@@ -388,14 +388,7 @@ func (msg *protoMessage) toProtoMessage() proto.Message {
 
 func getFieldDescriptor(msgDesc protoreflect.MessageDescriptor, fieldName string) protoreflect.FieldDescriptor {
 	fields := msgDesc.Fields()
-	for i := 0; i < fields.Len(); i++ {
-		field := fields.Get(i)
-		if fieldName == string(field.Name()) {
-			return field
-		}
-	}
-
-	return nil
+	return fields.ByName(protoreflect.Name(fieldName))
 }
 
 // Return if a value is not the default
