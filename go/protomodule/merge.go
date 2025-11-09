@@ -84,7 +84,7 @@ func mergeField(dst, src starlark.Value) (starlark.Value, error) {
 			return nil, mergeError(dst, src)
 		}
 
-		newMessage, err := NewMessage(dst.msg)
+		newMessage, err := NewMessage(dst.emptyMsg.Interface())
 		if err != nil {
 			return nil, err
 		}

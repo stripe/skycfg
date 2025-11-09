@@ -61,15 +61,12 @@ func NewMessage(msg proto.Message) (*protoMessage, error) {
 		return nil, rangeErr
 	}
 
-	// Clone and reset the input msg to ensure no mutations
-	cloned := proto.Clone(msg)
-	proto.Reset(cloned)
-
+	emptyMsg := msgReflect.New()
 	return &protoMessage{
-		msg:     cloned,
-		msgDesc: msgReflect.Descriptor(),
-		fields:  fields,
-		frozen:  false,
+		emptyMsg: emptyMsg,
+		msgDesc:  msgReflect.Descriptor(),
+		fields:   fields,
+		frozen:   false,
 	}, nil
 }
 
@@ -90,11 +87,10 @@ func AsProtoMessage(v starlark.Value) (proto.Message, bool) {
 // proto.Message through AsProtoMessage. Any fields set to starlark.None or the
 // default field value will be ignored when returning to a protobuf.Message
 type protoMessage struct {
-	// A copy of the underlying is stored so AsProtoMessage can construct a new object
-	msg     proto.Message
-	msgDesc protoreflect.MessageDescriptor
-	fields  map[string]starlark.Value
-	frozen  bool
+	emptyMsg protoreflect.Message // prototype of an empty message of this type
+	msgDesc  protoreflect.MessageDescriptor
+	fields   map[string]starlark.Value
+	frozen   bool
 }
 
 var _ starlark.Value = (*protoMessage)(nil)
@@ -284,7 +280,7 @@ func (msg *protoMessage) SetField(name string, val starlark.Value) error {
 	}
 
 	// If valueFromStarlark returns an error, the val cannot be assigned to the field
-	_, err := valueFromStarlark(msg.msg.ProtoReflect(), fieldDesc, val)
+	_, err := valueFromStarlark(msg.emptyMsg, fieldDesc, val)
 	if err != nil {
 		return err
 	}
@@ -364,8 +360,7 @@ func (msg *protoMessage) Merge(other *protoMessage) error {
 
 // Construct a new instance of msg.msg and set each field on msg.fields
 func (msg *protoMessage) toProtoMessage() proto.Message {
-	out := proto.Clone(msg.msg)
-	proto.Reset(out)
+	out := msg.emptyMsg.New()
 
 	// All entries in msg.fields should exist as fields on the message, and
 	// the values be the corresponding type, checked in SetField
@@ -375,15 +370,15 @@ func (msg *protoMessage) toProtoMessage() proto.Message {
 			continue
 		}
 
-		protoValue, err := valueFromStarlark(msg.msg.ProtoReflect(), fieldDesc, val)
+		protoValue, err := valueFromStarlark(msg.emptyMsg, fieldDesc, val)
 		if err != nil {
 			continue
 		}
 
-		out.ProtoReflect().Set(fieldDesc, protoValue)
+		out.Set(fieldDesc, protoValue)
 	}
 
-	return out
+	return out.Interface()
 }
 
 func getFieldDescriptor(msgDesc protoreflect.MessageDescriptor, fieldName string) protoreflect.FieldDescriptor {
