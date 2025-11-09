@@ -47,6 +47,7 @@ jobs:
             --test_verbose_timeout_warnings \
             --repository_cache="$GITHUB_WORKSPACE/cache/repository_cache" \
             --disk_cache="$GITHUB_WORKSPACE/cache/disk_cache" \
+            --@io_bazel_rules_go//go/config:race \
             --@io_bazel_rules_go//go/toolchain:sdk_version="$GO_VERSION" \
             //...
         env:
