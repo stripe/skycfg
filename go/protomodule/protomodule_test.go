@@ -33,6 +33,18 @@ import (
 	pb "github.com/stripe/skycfg/internal/test_proto"
 )
 
+// Some useful builtins for tests.
+var (
+	freeze = starlark.NewBuiltin("freeze", func(thread *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs []starlark.Tuple) (starlark.Value, error) {
+		var obj starlark.Value
+		if err := starlark.UnpackPositionalArgs(fn.Name(), args, kwargs, 1, &obj); err != nil {
+			return nil, err
+		}
+		obj.Freeze()
+		return obj, nil
+	})
+)
+
 func newRegistry() *protoregistry.Types {
 	registry := &protoregistry.Types{}
 	registry.RegisterMessage((&pb.MessageV2{}).ProtoReflect().Type())
@@ -706,6 +718,8 @@ func runSkycfgTests(t *testing.T, tests []skycfgTest, opts ...globalTestOption) 
 			name = test.src
 		}
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			var val starlark.Value
 			var err error
 			if test.src != "" {
@@ -756,17 +770,19 @@ func runSkycfgTests(t *testing.T, tests []skycfgTest, opts ...globalTestOption) 
 func eval(src string, globals starlark.StringDict) (starlark.Value, error) {
 	if globals == nil {
 		globals = starlark.StringDict{
-			"proto": NewModule(newRegistry()),
+			"freeze": freeze,
+			"proto":  NewModule(newRegistry()),
 		}
 	}
 
-	return starlark.Eval(&starlark.Thread{}, "", src, globals)
+	return starlark.EvalOptions(&syntax.FileOptions{}, &starlark.Thread{}, "", src, globals)
 }
 
 func evalFunc(src string, globals starlark.StringDict) (starlark.Value, error) {
 	if globals == nil {
 		globals = starlark.StringDict{
-			"proto": NewModule(newRegistry()),
+			"freeze": freeze,
+			"proto":  NewModule(newRegistry()),
 		}
 	}
 
