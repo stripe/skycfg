@@ -62,21 +62,7 @@ func mergeField(dst, src starlark.Value) (starlark.Value, error) {
 		}
 
 		newMap := newProtoMap(dst.mapKey, dst.mapValue)
-
-		for _, item := range dst.Items() {
-			err := newMap.SetKey(item[0], item[1])
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		for _, item := range src.Items() {
-			err := newMap.SetKey(item[0], item[1])
-			if err != nil {
-				return nil, err
-			}
-		}
-
+		newMap.dict = dst.dict.Union(src.dict)
 		return newMap, nil
 	case *protoMessage:
 		src, ok := src.(*protoMessage)
@@ -84,7 +70,7 @@ func mergeField(dst, src starlark.Value) (starlark.Value, error) {
 			return nil, mergeError(dst, src)
 		}
 
-		newMessage, err := NewMessage(dst.msg)
+		newMessage, err := NewMessage(dst.emptyMsg.Interface())
 		if err != nil {
 			return nil, err
 		}
