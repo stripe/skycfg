@@ -107,6 +107,10 @@ func (r *protoRepeated) Append(v starlark.Value) error {
 	return r.list.Append(v)
 }
 
+func (r *protoRepeated) appendUnchecked(v starlark.Value) error {
+	return r.list.Append(v)
+}
+
 func (r *protoRepeated) SetIndex(i int, v starlark.Value) error {
 	err := scalarTypeCheck(r.fieldDesc, v)
 	if err != nil {

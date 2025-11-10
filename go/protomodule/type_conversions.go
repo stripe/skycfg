@@ -215,7 +215,7 @@ func listValueToStarlark(listVal protoreflect.List, fieldDesc protoreflect.Field
 		if err != nil {
 			return starlark.None, err
 		}
-		out.Append(starlarkValue)
+		out.appendUnchecked(starlarkValue)
 	}
 	return out, nil
 }
