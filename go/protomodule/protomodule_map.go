@@ -50,10 +50,14 @@ var _ starlark.HasSetKey = (*protoMap)(nil)
 var _ starlark.Comparable = (*protoMap)(nil)
 
 func newProtoMap(mapKey protoreflect.FieldDescriptor, mapValue protoreflect.FieldDescriptor) *protoMap {
+	return newProtoMapSize(mapKey, mapValue, 0)
+}
+
+func newProtoMapSize(mapKey protoreflect.FieldDescriptor, mapValue protoreflect.FieldDescriptor, size int) *protoMap {
 	return &protoMap{
 		mapKey:   mapKey,
 		mapValue: mapValue,
-		dict:     starlark.NewDict(0),
+		dict:     starlark.NewDict(size),
 	}
 }
 
@@ -177,6 +181,20 @@ func (m *protoMap) SetKey(k, v starlark.Value) error {
 	// Typecheck value
 	err = scalarTypeCheck(m.mapValue, v)
 	if err != nil {
+		return err
+	}
+
+	return m.dict.SetKey(k, v)
+}
+
+// setKeyUnchecked is the same as [protoMap.SetKey], but assumes that k and v
+// have already been type-checked against the map's key and value types.
+func (m *protoMap) setKeyUnchecked(k, v starlark.Value) error {
+	// Pre 1.0 compatibility allowed maps to be constructed with None in proto2
+	// with the value treated as nil. protoreflect does not allow setting
+	// with a value of nil, so instead treat it as an unset
+	if fieldAllowsNone(m.mapValue) && v == starlark.None {
+		_, _, err := m.dict.Delete(k)
 		return err
 	}
 

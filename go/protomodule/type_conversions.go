@@ -265,9 +265,9 @@ func mapValueToStarlark(mapVal protoreflect.Map, keyType, valueType protoreflect
 		less, _ := starlark.Compare(syntax.LT, kvs[i].key, kvs[j].key)
 		return less
 	})
-	out := newProtoMap(keyType, valueType)
+	out := newProtoMapSize(keyType, valueType, len(kvs))
 	for _, item := range kvs {
-		if err := out.SetKey(item.key, item.value); err != nil {
+		if err := out.setKeyUnchecked(item.key, item.value); err != nil {
 			return starlark.None, err
 		}
 	}
