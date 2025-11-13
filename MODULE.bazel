@@ -18,6 +18,13 @@ bazel_dep(
     version = "0.5.0",
 )
 
+single_version_override(
+    module_name = "rules_go",
+    patch_strip = 1,
+    # Only necessary for Go <1.24. Remove when we bump the minimum version.
+    patches = ["//tools:rules_go_macos.patch"],
+)
+
 protobuf_version = "30.1"
 
 protoc = use_extension("@toolchains_protoc//protoc:extensions.bzl", "protoc")
@@ -49,4 +56,5 @@ use_repo(
     "in_gopkg_yaml_v2",
     "net_starlark_go",
     "org_golang_google_protobuf",
+    "org_golang_x_sync",
 )

@@ -1,0 +1,14 @@
+--- a/go/private/go_toolchain.bzl	2025-08-19 17:40:56.000000000 -0700
++++ b/go/private/go_toolchain.bzl	2025-11-12 21:48:21.186200804 -0800
+@@ -111,6 +111,11 @@
+             cgo_link_flags.extend(["-shared", "-Wl,-all_load"])
+         if host_goos == "linux":
+             cgo_link_flags.append("-Wl,-whole-archive")
++        if p.goos == "darwin":
++            # Add -B gobuildid for compatibility with macOS 26.
++            # Only necessary before Go 1.24.
++            # See https://go.dev/issues/68678
++            link_flags.extend(["-B", "gobuildid"])
+ 
+         go_toolchain(
+             name = "go_" + p.name + "-impl",
