@@ -34,6 +34,7 @@ go_library(
 go_test(
     name = "protomodule_test",
     srcs = [
+        "bench_test.go",
         "iter_test.go",
         "protomodule_message_test.go",
         "protomodule_test.go",

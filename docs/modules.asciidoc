@@ -62,6 +62,42 @@ order.
  "hello=a&world=b"
  >>>
 
+== parallel
+
+Functions for running code in parallel.
+This module is not loaded by skycfg by default;
+the embedder must explicitly opt into making this available.
+
+Index:
+
+ * `<<parallel.map>>`
+
+=== `parallel.map`
+[[parallel.map]]
+
+`parallel.map(function, iterable)` runs `function` on each element of
+`iterable` in parallel.
+Returns a list containing the result of `function`, in the same order as the
+original iterable.
+If any call to `function` fails, `parallel.map` fails as well.
+If multiple invocations fail, the error is chosen arbitrarily.
+
+To guarantee safety, the following measures are taken:
+
+ * The `function` and all elements of `iterable` are frozen.
+ * `map` cannot be called during module initialization.
+   See https://github.com/google/starlark-go/issues/623[google/starlark-go#623].
+ * `map` detects and forbids recursion, even if Starlark is configured to allow
+   recursion.
+
+[source,python]
+----
+>>> def run(value):
+...   return value + 42
+>>> parallel.map(run, [1, 2, 3])
+[43, 44, 45]
+----
+
 == proto
 
 Functions for constructing, modifying, and encoding
