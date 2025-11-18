@@ -51,7 +51,7 @@ func TestMap_basic_go(t *testing.T) {
 	s := starlark.NewSet(len(elements))
 	for _, val := range elements {
 		err := s.Insert(val)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}
 
 	seen := make(chan starlark.Value, 10)
