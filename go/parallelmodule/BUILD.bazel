@@ -1,0 +1,29 @@
+load("@io_bazel_rules_go//go:def.bzl", "go_library", "go_test")
+
+go_library(
+    name = "parallelmodule",
+    srcs = [
+        "parallelmodule.go",
+        "thread.go",
+    ],
+    importpath = "github.com/stripe/skycfg/go/parallelmodule",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@net_starlark_go//starlark",
+        "@net_starlark_go//starlarkstruct",
+        "@net_starlark_go//syntax",
+        "@org_golang_x_sync//errgroup",
+    ],
+)
+
+go_test(
+    name = "parallelmodule_test",
+    srcs = ["parallelmodule_test.go"],
+    embed = [":parallelmodule"],
+    deps = [
+        "@com_github_stretchr_testify//assert",
+        "@com_github_stretchr_testify//require",
+        "@net_starlark_go//starlark",
+        "@net_starlark_go//syntax",
+    ],
+)
