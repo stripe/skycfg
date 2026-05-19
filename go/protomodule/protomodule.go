@@ -277,8 +277,14 @@ var starlarkMerge = starlark.NewBuiltin("proto.merge", func(
 		return nil, err
 	}
 
-	dst := val1.(*protoMessage)
-	src := val2.(*protoMessage)
+	dst, ok := val1.(*protoMessage)
+	if !ok {
+		return nil, fmt.Errorf("%s: for parameter 1: got %s, want proto.Message", fn.Name(), val1.Type())
+	}
+	src, ok := val2.(*protoMessage)
+	if !ok {
+		return nil, fmt.Errorf("%s: for parameter 2: got %s, want proto.Message", fn.Name(), val2.Type())
+	}
 	if src.Type() != dst.Type() {
 		return nil, fmt.Errorf("%s: types are not the same: got %s and %s", fn.Name(), src.Type(), dst.Type())
 	}

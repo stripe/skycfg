@@ -1043,6 +1043,44 @@ func TestProtoMergeDiffTypes(t *testing.T) {
 	}
 }
 
+func TestProtoMergeNonMessage(t *testing.T) {
+	t.Parallel()
+
+	globals := starlark.StringDict{
+		"proto": NewModule(newRegistry()),
+	}
+
+	tests := []struct {
+		name     string
+		src      string
+		errorMsg string
+	}{
+		{
+			name:     "first arg not a message",
+			src:      `proto.merge("not a message", proto.package("skycfg.test_proto").MessageV2())`,
+			errorMsg: "proto.merge: for parameter 1: got string, want proto.Message",
+		},
+		{
+			name:     "second arg not a message",
+			src:      `proto.merge(proto.package("skycfg.test_proto").MessageV2(), "not a message")`,
+			errorMsg: "proto.merge: for parameter 2: got string, want proto.Message",
+		},
+	}
+	for _, tc := range tests {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			_, err := starlark.Eval(&starlark.Thread{}, "", tc.src, globals)
+			if err == nil {
+				t.Fatalf("expected error %q, got nil", tc.errorMsg)
+			}
+			if tc.errorMsg != err.Error() {
+				t.Errorf("expected error %q, got %q", tc.errorMsg, err.Error())
+			}
+		})
+	}
+}
+
 func TestProtoFreeze_MessageV3(t *testing.T) {
 	t.Parallel()
 
