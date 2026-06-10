@@ -24,7 +24,7 @@ import (
 // original iterable.
 // If any call to function fails, parallel.map fails as well.
 // If multiple invocations fail, the error is chosen arbitrarily.
-// If limit is provided and positive, at most limit goroutines run concurrently.
+// If limit is provided and nonnegative, at most limit goroutines run concurrently.
 //
 // To guarantee safety, the following measures are taken:
 //   - The function and each element of iterable are frozen.
