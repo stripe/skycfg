@@ -492,6 +492,37 @@ def run():
 	assert.NoError(t, err)
 }
 
+func TestMap_limit(t *testing.T) {
+	t.Parallel()
+
+	fileOpts := &syntax.FileOptions{}
+	root := &starlark.Thread{Name: "root"}
+	prog := `
+def mapper(arg):
+	return str(arg) + " out"
+
+def run():
+	return parallel.map(mapper, range(6), limit=2)
+`
+	res, err := starlark.ExecFileOptions(fileOpts, root, "TestMap_limit", prog, starlark.StringDict{"parallel": Module})
+	require.NoError(t, err)
+
+	out, err := starlark.Call(root, res["run"], nil, nil)
+	if assert.NoError(t, err) {
+		if assert.IsType(t, new(starlark.List), out) {
+			expected := []starlark.Value{
+				starlark.String("0 out"),
+				starlark.String("1 out"),
+				starlark.String("2 out"),
+				starlark.String("3 out"),
+				starlark.String("4 out"),
+				starlark.String("5 out"),
+			}
+			assert.Equal(t, expected, toFrozenSlice(out.(*starlark.List)))
+		}
+	}
+}
+
 // When we have go1.23, we can just do slices.Collect(l.Elements()).
 func starlarkListToSlice(l *starlark.List) (out []starlark.Value) {
 	iter := l.Iterate()
