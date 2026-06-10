@@ -24,7 +24,7 @@ import (
 // original iterable.
 // If any call to function fails, parallel.map fails as well.
 // If multiple invocations fail, the error is chosen arbitrarily.
-// If limit is provided and non-negative, at most `limit` goroutines run concurrently.
+// If limit is positive, at most limit calls to function run concurrently.
 //
 // To guarantee safety, the following measures are taken:
 //   - The function and each element of iterable are frozen.
@@ -139,7 +139,9 @@ func par(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs [
 	out := make([]starlark.Value, len(inputs))
 
 	var eg errgroup.Group
-	eg.SetLimit(limit)
+	if limit > 0 {
+		eg.SetLimit(limit)
+	}
 	for i, val := range inputs {
 		curThread, err := newThread(t, fn.Name(), i)
 		if err != nil {
