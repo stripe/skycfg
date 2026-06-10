@@ -17,7 +17,7 @@ import (
 //	    map,
 //	)
 //
-// def map(function, iterable, limit=None):
+// def map(function, iterable, limit=-1):
 //
 // Runs function on each element of iterable in parallel.
 // Returns a list containing the result of function, in the same order as the
@@ -139,9 +139,7 @@ func par(t *starlark.Thread, fn *starlark.Builtin, args starlark.Tuple, kwargs [
 	out := make([]starlark.Value, len(inputs))
 
 	var eg errgroup.Group
-	if limit > 0 {
-		eg.SetLimit(limit)
-	}
+	eg.SetLimit(limit)
 	for i, val := range inputs {
 		curThread, err := newThread(t, fn.Name(), i)
 		if err != nil {
